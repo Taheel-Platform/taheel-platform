@@ -8,9 +8,15 @@ export const config = {
   api: { bodyParser: false },
 };
 
+// قراءة بيانات الخدمة من متغير البيئة
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+
 const storage = new Storage({
   projectId: "taheel-platform-v2",
-  keyFilename: "serviceAccountKey.json",
+  credentials: {
+    client_email: serviceAccount.client_email,
+    private_key: serviceAccount.private_key,
+  },
 });
 const bucket = storage.bucket("taheel-platform");
 

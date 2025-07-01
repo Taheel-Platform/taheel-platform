@@ -1,8 +1,8 @@
 const admin = require("firebase-admin");
 const fs = require("fs");
 
-// مسار ملف الخدمة
-const serviceAccount = require("./serviceAccountKey.json");
+// قراءة بيانات الخدمة من متغير البيئة
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
