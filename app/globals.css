@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Cairo:wght@400;700;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* تم حذف @theme inline لأنه غير مدعوم في Next.js/Tailwind */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Cairo', 'Inter', Arial, Helvetica, sans-serif;
+}
+
+/* تخصيص الخط تلقائي حسب اللغة */
+[lang="en"] *, .en-font {
+  font-family: 'Inter', Arial, Helvetica, sans-serif !important;
+}
+[lang="ar"] *, .ar-font {
+  font-family: 'Cairo', Arial, Helvetica, sans-serif !important;
+}
+
+/* ========= تحسينات حديثة ولمسات عالمية ========== */
+
+/* ظل للبطاقات بشكل احترافي */
+.card-global {
+  box-shadow: 0 6px 32px 0 rgba(16, 185, 129, 0.10), 0 1.5px 4px 0 rgba(0,0,0,0.08);
+  border-radius: 1.6rem;
+  background: rgba(23, 37, 58, 0.97);
+  border: 1px solid #10b98133;
+}
+
+/* أزرار رئيسية بتدرج ألوان ولمسة عالمية */
+.btn-global {
+  background: linear-gradient(90deg, #34d399 0%, #059669 100%);
+  color: #171717;
+  font-weight: bold;
+  border-radius: 1.5em;
+  transition: transform 0.13s, box-shadow 0.13s;
+  box-shadow: 0 6px 24px -6px #05966940;
+}
+.btn-global:hover, .btn-global:focus {
+  transform: scale(1.04);
+  box-shadow: 0 12px 32px -8px #05966966;
+}
+
+/* حركة اهتزاز للأخطاء (للاستخدام مع animate-shake) */
+@keyframes animate-shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+.animate-shake {
+  animation: animate-shake 0.4s;
+}
+
+/* زر واتساب عائم احترافي */
+.whatsapp-float {
+  box-shadow: 0 4px 32px 0 #05966955;
+  border-radius: 9999px;
+  transition: transform 0.13s, box-shadow 0.13s;
+  ring: 2px solid #34d399;
+}
+.whatsapp-float:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 32px 0 #05966988;
+}
+
+/* خلفيات خفيفة للمناطق الهامة */
+.section-bg {
+  background: linear-gradient(120deg, #17253a 80%, #10b98120 100%);
+  border-radius: 1.5rem;
+}
+
+/* عناوين رئيسية عالمية */
+.heading-global {
+  font-size: 2.1rem;
+  letter-spacing: 0.04em;
+  font-weight: 900;
+  color: #34d399;
+  text-shadow: 0 1.5px 4px #00000030;
+}
+
+.whatsapp-float {
+  box-shadow: 0 4px 24px 0 rgba(16,185,129,0.28), 0 1.5px 4px 0 rgba(0,0,0,0.06);
+  border-radius: 9999px;
+  border: 4px solid #fff;
+  transition: all 0.2s;
+}
+.whatsapp-float:hover {
+  background: #059669 !important;
+  color: #fff !important;
+  box-shadow: 0 8px 32px 0 rgba(16,185,129,0.36), 0 2px 8px 0 rgba(0,0,0,0.10);
+}
+
+/* ==== CountrySelect (react-select) ==== */
+.country-select__control {
+  overflow: visible;
+}
+
+.country-select__value-container {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding-right: 8px;
+  direction: rtl;
+  overflow: hidden;
+}
+
+.country-select__single-value {
+  display: flex !important;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: 0.4em;
+  font-weight: bold;
+  color: #222;
+  direction: rtl;
+  overflow: hidden;
+  font-size: 0.92rem !important; /* صغر الخط */
+}
+
+.country-select__single-value .fi {
+  flex: none;
+  width: 17px !important;    /* صغر العلم */
+  height: 13px !important;   /* صغر العلم */
+  border-radius: 3px;
+  display: inline-block;
+  margin-left: 0.24em;
+  box-shadow: 0 1px 3px #0001;
+}
+
+.country-select__single-value span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  display: block;
+  flex: 1;
+  direction: rtl;
+  font-size: 0.92rem !important;
+}
+/* ==== نهاية التحسينات الجديدة ==== */

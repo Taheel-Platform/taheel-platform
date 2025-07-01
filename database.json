@@ -1,0 +1,737 @@
+{
+  "chats": {
+    "client-req1": {
+      "chatId": "client-req1",
+      "createdAt": "2023-05-22T12:47:00.000Z",
+      "messages": [
+        {
+          "content": "متى تجهز المعاملة؟",
+          "messageId": "msg1",
+          "senderId": "RES-2025-001",
+          "senderType": "client",
+          "timestamp": "2023-05-22T13:13:20.000Z",
+          "type": "text"
+        },
+        {
+          "content": "قيد الإجراء الآن.",
+          "messageId": "msg2",
+          "senderId": "EMP-001",
+          "senderType": "employee",
+          "timestamp": "2023-05-22T13:16:40.000Z",
+          "type": "text"
+        }
+      ],
+      "participants": ["RES-2025-001", "EMP-001"],
+      "requestId": "req1"
+    },
+    "client-req2": {
+      "chatId": "client-req2",
+      "createdAt": "2023-05-22T12:50:00.000Z",
+      "messages": [
+        {
+          "content": "يرجى تحديث الطلب.",
+          "messageId": "m1",
+          "senderId": "NON-2025-001",
+          "senderType": "client",
+          "timestamp": "2023-05-22T13:10:52.136Z",
+          "type": "text"
+        },
+        {
+          "content": "تم رفض الطلب لاستكمال المتطلبات ",
+          "messageId": "m2",
+          "senderId": "EMP-001",
+          "senderType": "employee",
+          "timestamp": "2023-05-22T13:13:12.986Z",
+          "type": "text"
+        }
+      ],
+      "participants": ["NON-2025-001", "EMP-001"],
+      "requestId": "req2"
+    },
+    "client-req3": {
+      "chatId": "client-req3",
+      "createdAt": "2025-06-22T14:01:00.000Z",
+      "messages": [
+        {
+          "content": "أحتاج دعم فني لحسابي.",
+          "messageId": "msg3-1",
+          "senderId": "BAN-2025-001",
+          "senderType": "client",
+          "timestamp": "2025-06-22T14:01:30.000Z",
+          "type": "text"
+        },
+        {
+          "content": "تم تحويل الطلب للدعم.",
+          "messageId": "msg3-2",
+          "senderId": "EMP-001",
+          "senderType": "employee",
+          "timestamp": "2025-06-22T14:05:00.000Z",
+          "type": "text"
+        }
+      ],
+      "participants": ["BAN-2025-001", "EMP-001"],
+      "requestId": "banReq1"
+    }
+  },
+  "documents": {
+    "eidFront-3a0b7c53": {
+      "documentId": "eidFront-3a0b7c53",
+      "expiryDate": "2025-12-31",
+      "isImportant": true,
+      "ownerId": "RES-2025-001",
+      "qrCodeUrl": "https://taheel-platform.app/qr-docs/eidFront-3a0b7c53.png",
+      "type": "eidFront",
+      "uploadedAt": "2023-05-22T12:46:40.000Z",
+      "uploadedBy": "RES-2025-001",
+      "url": "https://storage.googleapis.com/taheel-platform/uploads/RES-2025-001/eidFront-3a0b7c53-5da7-4e5a-bbfb-4e60eafb311c.png"
+    },
+    "passport-2025-001": {
+      "documentId": "passport-2025-001",
+      "expiryDate": "2027-05-30",
+      "isImportant": true,
+      "ownerId": "RES-2025-001",
+      "qrCodeUrl": "https://taheel-platform.app/qr-docs/passport-2025-001.png",
+      "type": "passport",
+      "uploadedAt": "2023-05-22T12:46:40.000Z",
+      "uploadedBy": "RES-2025-001",
+      "url": "https://example.com/passport.jpg"
+    },
+    "tradeLicense-2025-001": {
+      "documentId": "tradeLicense-2025-001",
+      "expiryDate": "2026-12-31",
+      "isImportant": true,
+      "ownerId": "COM-2025-001",
+      "qrCodeUrl": "https://taheel-platform.app/qr-docs/tradeLicense-2025-001.png",
+      "type": "tradeLicense",
+      "uploadedAt": "2025-06-16T10:00:00.000Z",
+      "uploadedBy": "COM-2025-001",
+      "url": "https://storage.googleapis.com/taheel-platform/uploads/COM-2025-001/tradeLicense-2025-001.png"
+    }
+  },
+  "notifications": {
+    "notif1": {
+      "body": "طلب رقم TAH-1001 الآن قيد المعالجة.",
+      "isRead": false,
+      "notificationId": "notif1",
+      "relatedRequest": "test001",
+      "targetId": "RES-2025-001",
+      "timestamp": "2025-06-01T11:26:32.986Z",
+      "title": "تم تحديث حالة طلبك",
+      "type": "status"
+    },
+    "notif2": {
+      "body": "طلب رقم TAH-1002 الآن مكتمل.",
+      "isRead": false,
+      "notificationId": "notif2",
+      "relatedRequest": "test002",
+      "targetId": "NON-2025-001",
+      "timestamp": "2025-06-01T11:34:10.000Z",
+      "title": "تم قبول طلبك",
+      "type": "status"
+    },
+    "notif3": {
+      "body": "تم تعليق حسابك مؤقتا بسبب نشاط مريب.",
+      "isRead": false,
+      "notificationId": "notif3",
+      "relatedRequest": "",
+      "targetId": "SUS-2025-001",
+      "timestamp": "2025-06-20T10:16:32.986Z",
+      "title": "تعليق حساب",
+      "type": "account"
+    },
+    "notif4": {
+      "body": "تم حظر حسابك. لمزيد من التفاصيل، تواصل مع الدعم.",
+      "isRead": false,
+      "notificationId": "notif4",
+      "relatedRequest": "",
+      "targetId": "BAN-2025-001",
+      "timestamp": "2025-06-21T21:34:10.000Z",
+      "title": "حظر الحساب",
+      "type": "account"
+    }
+  },
+  "requests": {
+    "banReq1": {
+      "assignedTo": "EMP-001",
+      "clientId": "BAN-2025-001",
+      "coinsGiven": 0,
+      "createdAt": "2025-06-22T14:01:00.000Z",
+      "isArchived": false,
+      "lastUpdated": "2025-06-22T14:07:00.000Z",
+      "paidAmount": 0,
+      "qrCodeUrl": "",
+      "requestId": "banReq1",
+      "serviceId": "",
+      "status": "rejected",
+      "statusHistory": [
+        {
+          "status": "submitted",
+          "timestamp": "2025-06-22T14:01:00.000Z",
+          "updatedBy": "BAN-2025-001"
+        },
+        {
+          "note": "تم حظر العميل بسبب نشاط غير قانوني",
+          "status": "rejected",
+          "timestamp": "2025-06-22T14:07:00.000Z",
+          "updatedBy": "EMP-001"
+        }
+      ],
+      "trackingNumber": "BAN-REQ-2025-01"
+    },
+    "companyReq1": {
+      "assignedTo": "EMP-001",
+      "clientId": "COM-2025-001",
+      "coinsGiven": 14,
+      "createdAt": "2025-06-11T16:45:00.000Z",
+      "isArchived": false,
+      "lastUpdated": "2025-06-11T17:00:00.000Z",
+      "paidAmount": 1500,
+      "qrCodeUrl": "https://taheel-platform.app/qr-requests/COMP-2025-001.png",
+      "requestId": "companyReq1",
+      "serviceId": "service3",
+      "status": "pending_requirements",
+      "statusHistory": [
+        {
+          "status": "submitted",
+          "timestamp": "2025-06-11T16:45:00.000Z",
+          "updatedBy": "COM-2025-001"
+        },
+        {
+          "note": "يرجى استكمال الأوراق المطلوبة",
+          "status": "pending_requirements",
+          "timestamp": "2025-06-11T17:00:00.000Z",
+          "updatedBy": "EMP-001"
+        }
+      ],
+      "trackingNumber": "COMP-2025-001"
+    },
+    "req1": {
+      "assignedTo": "EMP-001",
+      "clientId": "RES-2025-001",
+      "coinsGiven": 10,
+      "createdAt": "2023-05-22T12:46:40.000Z",
+      "isArchived": false,
+      "lastUpdated": "2023-05-22T13:10:00.000Z",
+      "paidAmount": 500,
+      "qrCodeUrl": "https://taheel-platform.app/qr-requests/TRK001.png",
+      "requestId": "req1",
+      "serviceId": "service1",
+      "status": "rejected",
+      "statusHistory": [
+        {
+          "status": "submitted",
+          "timestamp": "2023-05-22T12:46:40.000Z",
+          "updatedBy": "RES-2025-001"
+        },
+        {
+          "status": "under_review",
+          "timestamp": "2023-05-22T12:50:00.000Z",
+          "updatedBy": "EMP-001"
+        },
+        {
+          "status": "government_processing",
+          "timestamp": "2023-05-22T12:53:20.000Z",
+          "updatedBy": "EMP-001"
+        },
+        {
+          "status": "completed",
+          "timestamp": "2023-05-22T13:10:00.000Z",
+          "updatedBy": "EMP-001"
+        },
+        {
+          "status": "rejected",
+          "timestamp": "2023-05-22T13:15:00.000Z",
+          "updatedBy": "EMP-001"
+        }
+      ],
+      "trackingNumber": "TRK001"
+    },
+    "req2": {
+      "assignedTo": "EMP-001",
+      "clientId": "NON-2025-001",
+      "coinsGiven": 10,
+      "createdAt": "2023-05-22T12:48:40.000Z",
+      "isArchived": false,
+      "lastUpdated": "2023-05-22T13:11:40.000Z",
+      "paidAmount": 350,
+      "qrCodeUrl": "https://taheel-platform.app/qr-requests/TRK002.png",
+      "requestId": "req2",
+      "serviceId": "service2",
+      "status": "pending_requirements",
+      "statusHistory": [
+        {
+          "status": "submitted",
+          "timestamp": "2023-05-22T12:48:40.000Z",
+          "updatedBy": "NON-2025-001"
+        },
+        {
+          "status": "under_review",
+          "timestamp": "2023-05-22T12:50:40.000Z",
+          "updatedBy": "EMP-001"
+        },
+        {
+          "note": "يرجى رفع نسخة من جواز السفر",
+          "status": "pending_requirements",
+          "timestamp": "2023-05-22T13:11:40.000Z",
+          "updatedBy": "EMP-001"
+        }
+      ],
+      "trackingNumber": "TRK002"
+    },
+    "test001": {
+      "assignedTo": "MCfS0tFJNHY8vUCNtL55PvwWhmb2",
+      "clientId": "RES-2025-001",
+      "coinsGiven": 10,
+      "createdAt": "2025-06-01T11:00:00.000Z",
+      "isArchived": false,
+      "lastUpdated": "2025-06-01T11:30:00.000Z",
+      "paidAmount": 500,
+      "qrCodeUrl": "https://taheel-platform.app/qr-requests/TAH-1001.png",
+      "requestId": "test001",
+      "serviceId": "service1",
+      "status": "new",
+      "trackingNumber": "TAH-1001",
+      "transferHistory": [
+        {
+          "from": "",
+          "timestamp": "2025-05-25T09:14:25.395Z",
+          "to": "EMP-001"
+        },
+        {
+          "from": "EMP-001",
+          "timestamp": "2025-06-09T11:15:19.931Z",
+          "to": "MCfS0tFJNHY8vUCNtL55PvwWhmb2"
+        }
+      ]
+    },
+    "test002": {
+      "assignedTo": "EMP-001",
+      "attachments": {
+        "eidBack": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Emirates_ID_sample_back.png/600px-Emirates_ID_sample_back.png",
+        "eidFront": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Emirates_ID_sample_front.png/600px-Emirates_ID_sample_front.png",
+        "passport": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Passport_Photo.jpg/440px-Passport_Photo.jpg"
+      },
+      "clientId": "NON-2025-001",
+      "coinsGiven": 10,
+      "createdAt": "2025-06-01T11:05:00.000Z",
+      "isArchived": false,
+      "lastUpdated": "2025-06-01T11:33:24.625Z",
+      "paidAmount": 111,
+      "qrCodeUrl": "https://taheel-platform.app/qr-requests/TAH-1002.png",
+      "requestId": "test002",
+      "serviceId": "other1",
+      "status": "pending_requirements",
+      "trackingNumber": "TAH-1002",
+      "transferHistory": [
+        {
+          "from": "",
+          "timestamp": "2025-05-25T09:15:26.512Z",
+          "to": "EMP-001"
+        }
+      ]
+    }
+  },
+  "servicesByClientType": {
+    "company": {
+      "service3": {
+        "description": "خدمة تأسيس شركة داخل الإمارات",
+        "description_en": "Company formation inside UAE",
+        "isActive": true,
+        "name": "تأسيس شركة",
+        "name_en": "Company Formation",
+        "price": 1500,
+        "requiredDocuments": ["رخصة تجارية"],
+        "coins": 14,
+        "duration": "7 أيام"
+      }
+    },
+    "nonresident": {
+      "service2": {
+        "description": "خدمة إصدار تأشيرة سياحية",
+        "description_en": "Tourist visa issuance",
+        "isActive": true,
+        "name": "تأشيرة سياحية",
+        "name_en": "Tourist Visa",
+        "price": 350,
+        "requiredDocuments": ["جواز السفر"],
+        "coins": 10,
+        "duration": "5 أيام"
+      }
+    },
+    "other": {
+      "other1": {
+        "description": "خدمة أخرى",
+        "description_en": "Other Service",
+        "isActive": true,
+        "name": "خدمة أخرى",
+        "name_en": "Other Service",
+        "price": 111,
+        "coins": 5,
+        "duration": "4 أيام"
+      }
+    },
+    "resident": {
+      "service1": {
+        "description": "خدمة تجديد الإقامة للمقيمين",
+        "description_en": "Residency renewal for residents",
+        "isActive": true,
+        "name": "تجديد إقامة",
+        "name_en": "Renew Residency",
+        "price": 500,
+        "requiredDocuments": ["جواز السفر", "الهوية"],
+        "coins": 12,
+        "duration": "3 أيام"
+      },
+      "service4": {
+        "description": "إصدار إقامة جديدة للمقيمين",
+        "description_en": "New residency for residents",
+        "isActive": true,
+        "name": "إصدار إقامة جديدة",
+        "name_en": "New Residency Issue",
+        "price": 700,
+        "requiredDocuments": ["جواز السفر", "صورة شخصية", "عقد العمل"],
+        "coins": 15,
+        "duration": "4 أيام"
+      }
+    }
+  },
+  "users": {
+    "BAN-2025-001": {
+      "address": "",
+      "banHistory": [
+        {
+          "admin": "tv1UsF7SHqPVd3JFZ04ufp71VIC2",
+          "date": "2025-06-22T14:07:00.000Z",
+          "reason": "نشاط غير قانوني"
+        }
+      ],
+      "birthdate": "1992-08-05",
+      "coins": 0,
+      "email": "banned@email.com",
+      "emirate": "أبوظبي",
+      "gender": "male",
+      "isActive": false,
+      "lang": "ar",
+      "name": "يوسف",
+      "nationality": "مصري",
+      "passportExpiry": "",
+      "passportNumber": "",
+      "phone": "0555555555",
+      "profilePic": "https://storage.googleapis.com/taheel-platform/uploads/BAN-2025-001/profilePic-cb6b9c4e-2a2d-4b11-9a5d-3c6cfd2e5e6b.png",
+      "qrClientCardGeneratedAt": "2025-06-21T20:10:00.000Z",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "https://taheel-platform.app/qr-clients/BAN-2025-001.png",
+      "registeredAt": "2025-06-21T19:55:00.000Z",
+      "role": "client",
+      "status": "banned",
+      "type": "resident",
+      "userId": "BAN-2025-001",
+      "wallet": 0
+    },
+    "COM-2025-001": {
+      "address": "",
+      "authorizedPerson": "",
+      "birthdate": "",
+      "businessType": "",
+      "coins": 2,
+      "companyEstablishmentNumber": "",
+      "companyInfo": {
+        "companyName": "شركة التميز",
+        "licenseExpiry": "",
+        "licenseNumber": "",
+        "owner": "Ali mahmoud"
+      },
+      "companyName": "شركة التميز",
+      "email": "contact@tamayoz.com",
+      "emirate": "دبي",
+      "gender": "",
+      "isActive": true,
+      "lang": "ar",
+      "licenseExpiry": "",
+      "licenseNumber": "",
+      "name": "شركة التميز",
+      "nationality": "غير محددة",
+      "owner": "Ali mahmoud",
+      "phone": "0522222222",
+      "profilePic": "https://storage.googleapis.com/taheel-platform/uploads/COM-2025-001/profilePic-fda6707d-cb2e-46b8-82b2-d12c91c66c6b.png",
+      "qrClientCardGeneratedAt": "2023-05-22T12:43:21.000Z",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "https://taheel-platform.app/qr-clients/COM-2025-001.png",
+      "registeredAt": "2023-05-22T12:43:20.000Z",
+      "role": "client",
+      "status": "active",
+      "type": "company",
+      "userId": "COM-2025-001",
+      "wallet": 1200
+    },
+    "EMP-001": {
+      "address": "",
+      "attendance": [
+        {
+          "date": "2025-06-23",
+          "in": "08:01",
+          "out": "14:31"
+        },
+        {
+          "date": "2025-06-22",
+          "in": "08:03",
+          "out": "15:00"
+        }
+      ],
+      "loginHistory": [
+        {
+          "date": "2025-06-21",
+          "in": 1748131200000,
+          "out": 1748152800000
+        },
+        {
+          "date": "2025-06-22",
+          "in": 1748217600000,
+          "out": 1748242800000
+        },
+        {
+          "date": "2025-06-23",
+          "in": 1748304000000,
+          "out": 1748327400000
+        }
+      ],
+      "birthdate": "",
+      "coins": 0,
+      "email": "employee2@taheel.ae",
+      "emirate": "",
+      "gender": "",
+      "isActive": true,
+      "isArchived": false,
+      "jobTitle": "موظف خدمة عملاء",
+      "lang": "ar",
+      "lastOnline": "2025-06-23T14:20:00.000Z",
+      "name": "employee ",
+      "nationality": "",
+      "notes": [
+        {
+          "date": "2025-06-10",
+          "note": "مكافأة: سرعة إنجاز"
+        },
+        {
+          "date": "2025-06-14",
+          "note": "إنذار: تأخير متكرر"
+        }
+      ],
+      "permissions": [
+        "requests:view_assigned",
+        "requests:edit",
+        "clients:view",
+        "chats:staff"
+      ],
+      "phone": "",
+      "profilePic": "",
+      "qrClientCardGeneratedAt": "",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "",
+      "registeredAt": "2025-05-22T16:30:05.360Z",
+      "role": "employee",
+      "status": "online",
+      "transactionsDone": 22,
+      "transactionsTransferredFrom": 3,
+      "transactionsTransferredTo": 5,
+      "type": "employee",
+      "userId": "EMP-001",
+      "workHoursMonth": 140,
+      "workHoursToday": 6
+    },
+    "MCfS0tFJNHY8vUCNtL55PvwWhmb2": {
+      "address": "",
+      "attendance": [
+        {
+          "date": "2025-06-23",
+          "in": "09:10",
+          "out": "14:10"
+        },
+        {
+          "date": "2025-06-22",
+          "in": "09:00",
+          "out": "14:50"
+        }
+      ],
+      "loginHistory": [
+        {
+          "date": "2025-06-21",
+          "in": 1748134800000,
+          "out": 1748156400000
+        },
+        {
+          "date": "2025-06-22",
+          "in": 1748221200000,
+          "out": 1748242200000
+        },
+        {
+          "date": "2025-06-23",
+          "in": 1748307600000,
+          "out": 1748326800000
+        }
+      ],
+      "birthdate": "",
+      "coins": 0,
+      "email": "staff@taheel.ae",
+      "emirate": "",
+      "gender": "",
+      "isActive": true,
+      "isArchived": false,
+      "jobTitle": "مدخل بيانات",
+      "lang": "ar",
+      "lastOnline": "2025-06-23T10:40:00.000Z",
+      "name": "Ahmed Ali",
+      "nationality": "",
+      "notes": [
+        {
+          "date": "2025-06-05",
+          "note": "ملاحظة: دعم العملاء"
+        }
+      ],
+      "permissions": [
+        "requests:view_all",
+        "requests:edit",
+        "clients:view",
+        "chats:staff"
+      ],
+      "phone": "",
+      "profilePic": "",
+      "qrClientCardGeneratedAt": "",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "",
+      "registeredAt": "2025-05-22T16:30:05.360Z",
+      "role": "employee",
+      "status": "offline",
+      "transactionsDone": 12,
+      "transactionsTransferredFrom": 2,
+      "transactionsTransferredTo": 1,
+      "type": "employee",
+      "userId": "MCfS0tFJNHY8vUCNtL55PvwWhmb2",
+      "workHoursMonth": 120,
+      "workHoursToday": 5
+    },
+    "NON-2025-001": {
+      "address": "",
+      "birthdate": "2000-03-20",
+      "coins": 15,
+      "documents": [
+        {
+          "documentId": "workVisa-5pqh49g5",
+          "type": "workVisa",
+          "uploadedAt": "2025-06-12T16:52:16.585Z",
+          "url": "https://storage.googleapis.com/taheel-platform/uploads/NON-2025-001/workVisa-5ad0f680-5a32-45c7-a1bd-083cccd5b909.pdf"
+        },
+        {
+          "documentId": "profilePic-70dmdd1y",
+          "type": "profilePic",
+          "uploadedAt": "2025-06-12T16:57:07.636Z",
+          "url": "https://storage.googleapis.com/taheel-platform/uploads/NON-2025-001/profilePic-f88fd78f-61a0-458a-a3e0-e1d44ed6340f.png"
+        }
+      ],
+      "email": "laila@email.com",
+      "emirate": "دبي",
+      "gender": "female",
+      "isActive": false,
+      "lang": "ar",
+      "name": "ليلى",
+      "nationality": "مصرية",
+      "passportExpiry": "2026-07-01",
+      "passportNumber": "A1234567",
+      "phone": "0511111111",
+      "profilePic": "https://storage.googleapis.com/taheel-platform/uploads/NON-2025-001/profilePic-6e7fbb88-b7b1-4749-ab93-80c2af37c467.png",
+      "qrClientCardGeneratedAt": "2023-05-22T12:35:01.000Z",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "https://taheel-platform.app/qr-clients/NON-2025-001.png",
+      "registeredAt": "2023-05-22T12:35:00.000Z",
+      "role": "client",
+      "status": "inactive",
+      "type": "nonResident",
+      "userId": "NON-2025-001",
+      "wallet": 820
+    },
+    "RES-2025-001": {
+      "address": "دبي، شارع الشيخ زايد",
+      "birthdate": "1990-01-01",
+      "coins": 2,
+      "documents": [
+        {
+          "documentId": "eidFront-3a0b7c53",
+          "expiryDate": "2025-12-31",
+          "isImportant": true,
+          "qrCodeUrl": "https://taheel-platform.app/qr-docs/eidFront-3a0b7c53.png",
+          "type": "eidFront",
+          "url": "https://storage.googleapis.com/taheel-platform/uploads/RES-2025-001/eidFront-3a0b7c53-5da7-4e5a-bbfb-4e60eafb311c.png"
+        },
+        {
+          "documentId": "eidBack-2025-001",
+          "expiryDate": "2025-12-31",
+          "isImportant": false,
+          "qrCodeUrl": "",
+          "type": "eidBack",
+          "url": "https://example.com/eid-back.jpg"
+        },
+        {
+          "documentId": "passport-2025-001",
+          "expiryDate": "2027-05-30",
+          "isImportant": true,
+          "qrCodeUrl": "https://taheel-platform.app/qr-docs/passport-2025-001.png",
+          "type": "passport",
+          "url": "https://example.com/passport.jpg"
+        },
+        {
+          "documentId": "profilePic-pcq38w6m",
+          "type": "profilePic",
+          "uploadedAt": "2025-06-11T21:18:08.860Z",
+          "url": "https://storage.googleapis.com/taheel-platform/uploads/RES-2025-001/profilePic-015c5737-2ad2-4e74-bf30-f4b9aeba7596.png"
+        }
+      ],
+      "eidExpiry": "2025-12-31",
+      "eidNumber": "784-2000-1234567-1",
+      "email": "ahmed@email.com",
+      "emirate": "دبي",
+      "gender": "male",
+      "isActive": true,
+      "lang": "ar",
+      "name": "أحمد",
+      "nationality": "إماراتي",
+      "passportExpiry": "2027-05-30",
+      "passportNumber": "X11223344",
+      "phone": "0500000000",
+      "profilePic": "https://storage.googleapis.com/taheel-platform/uploads/RES-2025-001/profilePic-46170f31-c34a-4e5a-b267-b3117ecb1fc4.png",
+      "qrClientCardGeneratedAt": "2023-05-22T12:46:41.000Z",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "https://taheel-platform.app/qr-clients/RES-2025-001.png",
+      "registeredAt": "2023-05-22T12:46:40.000Z",
+      "role": "client",
+      "status": "active",
+      "type": "resident",
+      "userId": "RES-2025-001",
+      "wallet": 500
+    },
+    "SUS-2025-001": {
+      "address": "",
+      "birthdate": "1994-11-12",
+      "coins": 0,
+      "email": "suspended@email.com",
+      "emirate": "الشارقة",
+      "gender": "female",
+      "isActive": false,
+      "lang": "ar",
+      "name": "ميساء",
+      "nationality": "سورية",
+      "passportExpiry": "",
+      "passportNumber": "",
+      "phone": "0566666666",
+      "profilePic": "https://storage.googleapis.com/taheel-platform/uploads/SUS-2025-001/profilePic-a324c7b5-1e2a-4f9e-9b92-6d6c6d5c9e23.png",
+      "qrClientCardGeneratedAt": "2025-06-20T11:00:00.000Z",
+      "qrClientCardLastUsed": "",
+      "qrClientCardUrl": "https://taheel-platform.app/qr-clients/SUS-2025-001.png",
+      "registeredAt": "2025-06-20T10:55:00.000Z",
+      "role": "client",
+      "status": "suspended",
+      "type": "resident",
+      "userId": "SUS-2025-001",
+      "wallet": 0
+    }
+  }
+}
