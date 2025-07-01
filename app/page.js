@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -124,7 +125,8 @@ function ServiceCard({ title, link, icon, desc, counter, counterLabel, tagColor,
     </Link>
   );
 }
-export default function HomePage() {
+
+function HomePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
@@ -147,7 +149,6 @@ export default function HomePage() {
     "Accurate and reliable with the latest technologies",
   ];
 
-  // correction: hooks must be at the top before any return
   useEffect(() => {
     const intervalIndividuals = setInterval(() => setIndividuals((prev) => prev + 3), 5 * 60 * 1000);
     const intervalTransactions = setInterval(() => setTransactions((prev) => prev + 4), 60 * 60 * 1000);
@@ -742,5 +743,12 @@ export default function HomePage() {
         </a>
       </footer>
     </div>
+  );
+}
+export default function HomePage() {
+  return (
+    <Suspense fallback={<GlobalLoader />}>
+      <HomePageInner />
+    </Suspense>
   );
 }

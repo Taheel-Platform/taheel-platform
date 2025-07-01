@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from "react";
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,7 +14,6 @@ import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import React from "react";
-
 
 // لف Field خارج RegisterPage وبـ React.memo
 const Field = React.memo(function Field({ label, name, placeholder, value, onChange, lang, ...rest }) {
@@ -56,7 +56,6 @@ async function verifyCode(email, code) {
 
 const PhoneCodeSelect = dynamic(() => import("@/components/PhoneCodeSelect"), { ssr: false });
 const CountrySelect = dynamic(() => import("@/components/CountrySelect"), { ssr: false });
-
 
 const LANGUAGES = {
   // ... نفس تعريف LANGUAGES كما بالكود السابق
@@ -210,7 +209,7 @@ const LANGUAGES = {
   }
 };
 
-export default function RegisterPage() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [lang, setLang] = useState(searchParams.get("lang") === "en" ? "en" : "ar");
@@ -953,5 +952,12 @@ export default function RegisterPage() {
         </div>
       </footer>
     </div>
+  );
+}
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageInner />
+    </Suspense>
   );
 }

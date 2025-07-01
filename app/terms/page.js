@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
@@ -180,7 +181,7 @@ const PRIVACY = {
   }
 };
 
-export default function PrivacyPage() {
+function PrivacyPageInner() {
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
   const t = PRIVACY[lang];
@@ -224,5 +225,13 @@ export default function PrivacyPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <Suspense fallback={null}>
+      <PrivacyPageInner />
+    </Suspense>
   );
 }
