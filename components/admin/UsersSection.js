@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Suspense } from "react";
 import {
   FaWallet, FaCoins, FaBell, FaWhatsapp, FaTrash,
   FaCommentDots, FaUserCheck, FaUserSlash, FaBuilding, FaUserPlus
@@ -648,5 +649,12 @@ export default function UsersManagementSection({ lang = "ar" }) {
         </div>
       )}
     </div>
+  );
+}
+export default function MyComponent(props) {
+  return (
+    <Suspense fallback={null}>
+      <MyComponentInner {...props} />
+    </Suspense>
   );
 }

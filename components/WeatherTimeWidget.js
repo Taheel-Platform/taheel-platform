@@ -3,20 +3,13 @@ import { FiSun, FiMoon } from "react-icons/fi";
 
 // مراحل القمر كإيموجي (8 مراحل رئيسية)
 const moonPhases = [
-  "🌑", // New Moon
-  "🌒", // Waxing Crescent
-  "🌓", // First Quarter
-  "🌔", // Waxing Gibbous
-  "🌕", // Full Moon
-  "🌖", // Waning Gibbous
-  "🌗", // Last Quarter
-  "🌘", // Waning Crescent
+  "🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"
 ];
 
 // تحديد مرحلة القمر بشكل تقريبي
 function getMoonPhaseEmoji(date) {
-  const synodicMonth = 29.53058867; // متوسط طول الشهر القمري
-  const knownNewMoon = new Date("2000-01-06T18:14:00Z"); // مرجع معروف لبداية شهر قمري
+  const synodicMonth = 29.53058867;
+  const knownNewMoon = new Date("2000-01-06T18:14:00Z");
   const diff = date - knownNewMoon;
   const days = diff / (1000 * 60 * 60 * 24);
   const phase = Math.floor((days % synodicMonth) / (synodicMonth / moonPhases.length));
@@ -25,10 +18,10 @@ function getMoonPhaseEmoji(date) {
 
 // إيموجي الشمس حسب أوقات اليوم
 function getSunEmoji(hour) {
-  if (hour >= 5 && hour < 7) return "🌅"; // شروق
-  if (hour >= 7 && hour < 17) return "☀️"; // نهار
-  if (hour >= 17 && hour < 19) return "🌇"; // غروب
-  if (hour >= 19 || hour < 5) return "🌙"; // ليل
+  if (hour >= 5 && hour < 7) return "🌅";
+  if (hour >= 7 && hour < 17) return "☀️";
+  if (hour >= 17 && hour < 19) return "🌇";
+  if (hour >= 19 || hour < 5) return "🌙";
   return "☀️";
 }
 
@@ -45,7 +38,6 @@ export default function WeatherTimeWidget({ isArabic }) {
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      // الأرقام بالإنجليزي دائماً
       const options = {
         hour: "2-digit",
         minute: "2-digit",
@@ -60,12 +52,8 @@ export default function WeatherTimeWidget({ isArabic }) {
         weekday: "long",
         timeZone: TIMEZONE,
       };
-      setCurrentTime(
-        now.toLocaleTimeString("en-US", options)
-      );
-      setCurrentDate(
-        now.toLocaleDateString("en-US", dateOptions)
-      );
+      setCurrentTime(now.toLocaleTimeString("en-US", options));
+      setCurrentDate(now.toLocaleDateString("en-US", dateOptions));
       const hour = +now.toLocaleString("en-US", { hour: "2-digit", hour12: false, timeZone: TIMEZONE });
       setIsDay(hour >= 6 && hour < 18);
       setSunEmoji(getSunEmoji(hour));

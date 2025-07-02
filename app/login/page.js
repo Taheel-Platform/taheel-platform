@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -65,7 +66,7 @@ const LANGUAGES = {
   }
 };
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [lang, setLang] = useState(searchParams.get("lang") === "en" ? "en" : "ar");
@@ -452,5 +453,13 @@ export default function LoginPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { FaCamera, FaSpinner, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import Image from "next/image";
 
@@ -79,7 +79,7 @@ const DOCS_EID = [
   { key: "passport", labelKey: "passport", color: "violet", accept: "image/*,.pdf" },
 ];
 
-export default function UpgradeModal({
+function MyComponentInner({
   onSave,
   onClose,
   locale = "ar",
@@ -420,5 +420,13 @@ export default function UpgradeModal({
         </form>
       </div>
     </div>
+  );
+}
+
+export default function MyComponent(props) {
+  return (
+    <Suspense fallback={null}>
+      <MyComponentInner {...props} />
+    </Suspense>
   );
 }

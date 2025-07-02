@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -782,5 +783,12 @@ export default function OrdersSection({ lang = "ar" }) {
         `}
       </style>
     </div>
+  );
+}
+export default function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
   );
 }

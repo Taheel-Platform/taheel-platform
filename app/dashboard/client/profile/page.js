@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -84,7 +85,7 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
-export default function ClientProfilePage({ userId = DEFAULT_USER_ID }) {
+function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
   const router = useRouter();
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
@@ -115,89 +116,82 @@ export default function ClientProfilePage({ userId = DEFAULT_USER_ID }) {
   // لإجبار إعادة تحميل بيانات العميل بعد الدفع (الكاش باك)
   const [reloadClient, setReloadClient] = useState(false);
 
-useEffect(() => {
-  async function fetchData() {
-    setLoading(true);
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
 
-    // 1. جلب العميل الحالي
-    const userDoc = await getDoc(doc(firestore, "users", userId));
-    const user = userDoc.exists() ? userDoc.data() : null;
-    setClient(user);
+      // 1. جلب العميل الحالي
+      const userDoc = await getDoc(doc(firestore, "users", userId));
+      const user = userDoc.exists() ? userDoc.data() : null;
+      setClient(user);
 
-    // 2. جلب الشركات المرتبطة بالعميل (لو النوع مقيم فقط)
-    let relatedCompanies = [];
-    if (user?.type === "resident" && user?.userId) {
-      const companiesSnap = await getDocs(
+      // 2. جلب الشركات المرتبطة بالعميل (لو النوع مقيم فقط)
+      let relatedCompanies = [];
+      if (user?.type === "resident" && user?.userId) {
+        const companiesSnap = await getDocs(
+          query(
+            collection(firestore, "users"),
+            where("type", "==", "company"),
+            where("owner", "in", [user.name, user.userId])
+          )
+        );
+        relatedCompanies = companiesSnap.docs.map(doc => doc.data());
+      }
+      setCompanies(relatedCompanies);
+
+      // 3. جلب كل الخدمات (التصحيح هنا)
+      const servicesSnap = await getDocs(collection(firestore, "services"));
+      let arr = [];
+      servicesSnap.forEach(doc => arr.push({ ...doc.data(), id: doc.id }));
+
+      let servicesByType = {
+        resident: [],
+        nonresident: [],
+        company: [],
+        other: [],
+      };
+
+      arr.forEach(srv => {
+        if (srv.active === false) return; // أو إذا عندك حقل active
+        if (srv.category === "resident") servicesByType.resident.push(srv);
+        else if (srv.category === "nonresident") servicesByType.nonresident.push(srv);
+        else if (srv.category === "company") servicesByType.company.push(srv);
+        else if (srv.category === "other") servicesByType.other.push(srv);
+      });
+
+      setServices({
+        resident: servicesByType.resident || [],
+        nonresident: servicesByType.nonresident || [],
+        company: servicesByType.company || [],
+        other: servicesByType.other || [],
+      });
+
+      // 4. جلب الطلبات الخاصة بالعميل
+      const ordersSnap = await getDocs(
         query(
-          collection(firestore, "users"),
-          where("type", "==", "company"),
-          where("owner", "in", [user.name, user.userId])
+          collection(firestore, "requests"),
+          where("clientId", "==", userId),
+          orderBy("createdAt", "desc")
         )
       );
-      relatedCompanies = companiesSnap.docs.map(doc => doc.data());
+      let clientOrders = ordersSnap.docs.map(doc => doc.data());
+      setOrders(clientOrders);
+
+      // 5. جلب الإشعارات
+      const notifsSnap = await getDocs(
+        query(
+          collection(firestore, "notifications"),
+          where("targetId", "==", userId)
+        )
+      );
+      let clientNotifs = notifsSnap.docs.map(d => d.data());
+      clientNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setNotifications(clientNotifs);
+
+      setLoading(false);
     }
-    setCompanies(relatedCompanies);
-
-    // 3. جلب كل الخدمات (التصحيح هنا)
-    const servicesSnap = await getDocs(collection(firestore, "services"));
-let arr = [];
-servicesSnap.forEach(doc => arr.push({ ...doc.data(), id: doc.id }));
-
-let servicesByType = {
-  resident: [],
-  nonresident: [],
-  company: [],
-  other: [],
-};
-
-arr.forEach(srv => {
-  if (srv.active === false) return; // أو إذا عندك حقل active
-  if (srv.category === "resident") servicesByType.resident.push(srv);
-  else if (srv.category === "nonresident") servicesByType.nonresident.push(srv);
-  else if (srv.category === "company") servicesByType.company.push(srv);
-  else if (srv.category === "other") servicesByType.other.push(srv);
-});
-
-setServices({
-  resident: servicesByType.resident,
-  nonresident: servicesByType.nonresident,
-  company: servicesByType.company,
-  other: servicesByType.other,
-});
-
-setServices({
-  resident: servicesByType.resident || [],
-  nonresident: servicesByType.nonresident || [],
-  company: servicesByType.company || [],
-  other: servicesByType.other || [],
-});
-
-// 4. جلب الطلبات الخاصة بالعميل
-    const ordersSnap = await getDocs(
-      query(
-        collection(firestore, "requests"),
-        where("clientId", "==", userId),
-        orderBy("createdAt", "desc")
-      )
-    );
-    let clientOrders = ordersSnap.docs.map(doc => doc.data());
-    setOrders(clientOrders);
-
-    // 5. جلب الإشعارات
-    const notifsSnap = await getDocs(
-      query(
-        collection(firestore, "notifications"),
-        where("targetId", "==", userId)
-      )
-    );
-    let clientNotifs = notifsSnap.docs.map(d => d.data());
-    clientNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-    setNotifications(clientNotifs);
-
-    setLoading(false);
-  }
-  fetchData();
-}, [userId, reloadClient]);
+    fetchData();
+  }, [userId, reloadClient]);
 
   // اغلاق القوائم عند الضغط خارجها
   useEffect(() => {
@@ -215,23 +209,22 @@ setServices({
     setLang((l) => (l === "ar" ? "en" : "ar"));
   }
 
-
-async function handleLogout() {
-  // حذف جميع رسائل الشات
-  if (client?.userId) {
-    const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
-    const deletes = [];
-    msgsSnap.forEach((msg) => {
-      deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
-    });
-    await Promise.all(deletes);
-    // حذف غرفة الشات نفسها
-    await deleteDoc(doc(firestore, "chatRooms", client.userId));
+  async function handleLogout() {
+    // حذف جميع رسائل الشات
+    if (client?.userId) {
+      const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
+      const deletes = [];
+      msgsSnap.forEach((msg) => {
+        deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
+      });
+      await Promise.all(deletes);
+      // حذف غرفة الشات نفسها
+      await deleteDoc(doc(firestore, "chatRooms", client.userId));
+    }
+    // تسجيل الخروج من Firebase
+    await signOut(auth);
+    router.replace("/login");
   }
-  // تسجيل الخروج من Firebase
-  await signOut(auth);
-  router.replace("/login");
-}
 
   function filterService(service) {
     return (lang === "ar" ? service.name : (service.name_en || service.name))
@@ -254,61 +247,61 @@ async function handleLogout() {
 
   // دالة شحن المحفظة (مع كوينات البونص وإشعار) - Firestore فقط
   async function handleWalletCharge(amount) {
-  if (!client) return;
+    if (!client) return;
 
-  // PayTabs JS
-  window.Paytabs.open({
-    secretKey: "PUT_YOUR_SECRET_KEY",
-    merchantEmail: "your@email.com",
-    amount: amount,
-    currency: "AED",
-    customer_phone: client.phone || "",
-    customer_email: client.email || "",
-    order_id: `wallet_${client.userId}_${Date.now()}`,
-    site_url: window.location.origin,
-    product_name: "Wallet Topup",
+    // PayTabs JS
+    window.Paytabs.open({
+      secretKey: "PUT_YOUR_SECRET_KEY",
+      merchantEmail: "your@email.com",
+      amount: amount,
+      currency: "AED",
+      customer_phone: client.phone || "",
+      customer_email: client.email || "",
+      order_id: `wallet_${client.userId}_${Date.now()}`,
+      site_url: window.location.origin,
+      product_name: "Wallet Topup",
 
-    onSuccess: async (response) => {
-      let bonus = 0;
-      if (amount === 100) bonus = 50;
-      else if (amount === 500) bonus = 250;
-      else if (amount === 1000) bonus = 500;
-      else if (amount === 5000) bonus = 2500;
+      onSuccess: async (response) => {
+        let bonus = 0;
+        if (amount === 100) bonus = 50;
+        else if (amount === 500) bonus = 250;
+        else if (amount === 1000) bonus = 500;
+        else if (amount === 5000) bonus = 2500;
 
-      const newWallet = (client.walletBalance || 0) + amount;
-      const newCoins = (client.coins || 0) + bonus;
+        const newWallet = (client.walletBalance || 0) + amount;
+        const newCoins = (client.coins || 0) + bonus;
 
-      await updateDoc(doc(firestore, "users", client.userId), { walletBalance: newWallet });
-      await addNotification(
-        client.userId,
-        lang === "ar" ? "تم شحن المحفظة" : "Wallet Charged",
-        lang === "ar" ? `تم شحن محفظتك بمبلغ ${amount} درهم.` : `Your wallet was charged with ${amount} AED.`
-      );
-
-      if (bonus > 0) {
-        await updateDoc(doc(firestore, "users", client.userId), { coins: newCoins });
+        await updateDoc(doc(firestore, "users", client.userId), { walletBalance: newWallet });
         await addNotification(
           client.userId,
-          lang === "ar" ? "تم إضافة كوينات" : "Coins Added",
-          lang === "ar"
-            ? `تم إضافة ${bonus} كوين لرصيدك كمكافأة شحن المحفظة.`
-            : `You received ${bonus} coins as wallet charge bonus.`
+          lang === "ar" ? "تم شحن المحفظة" : "Wallet Charged",
+          lang === "ar" ? `تم شحن محفظتك بمبلغ ${amount} درهم.` : `Your wallet was charged with ${amount} AED.`
         );
+
+        if (bonus > 0) {
+          await updateDoc(doc(firestore, "users", client.userId), { coins: newCoins });
+          await addNotification(
+            client.userId,
+            lang === "ar" ? "تم إضافة كوينات" : "Coins Added",
+            lang === "ar"
+              ? `تم إضافة ${bonus} كوين لرصيدك كمكافأة شحن المحفظة.`
+              : `You received ${bonus} coins as wallet charge bonus.`
+          );
+        }
+
+        setReloadClient((v) => !v);
+        alert(lang === "ar" ? "تم شحن المحفظة بنجاح!" : "Wallet charged successfully!");
+      },
+
+      onFailure: (error) => {
+        alert(lang === "ar" ? "فشل الدفع! برجاء المحاولة مرة أخرى" : "Payment failed! Please try again.");
       }
-
-      setReloadClient((v) => !v);
-      alert(lang === "ar" ? "تم شحن المحفظة بنجاح!" : "Wallet charged successfully!");
-    },
-
-    onFailure: (error) => {
-      alert(lang === "ar" ? "فشل الدفع! برجاء المحاولة مرة أخرى" : "Payment failed! Please try again.");
-    }
-  });
-}
+    });
+  }
 
   if (loading) {
-  return <GlobalLoader />;
-}
+    return <GlobalLoader />;
+  }
 
   if (!client) {
     return (
@@ -793,5 +786,12 @@ async function handleLogout() {
         )}
       </main>
     </div>
+  );
+}
+export default function ClientProfilePage(props) {
+  return (
+    <Suspense fallback={null}>
+      <ClientProfilePageInner {...props} />
+    </Suspense>
   );
 }
