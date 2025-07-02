@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Suspense } from "react";
 import {
   FaWallet, FaCoins, FaBell, FaWhatsapp, FaTrash,
   FaCommentDots, FaUserCheck, FaUserSlash, FaBuilding, FaUserPlus
@@ -18,7 +17,7 @@ import {
   where
 } from "firebase/firestore";
 import { firestore, auth } from "@/lib/firebase.client";
-import ChatWidgetFull from "@/components/ChatWidgetFull"; // ✅ استيراد شات العملاء فقط هنا
+import ChatWidgetFull from "@/components/ChatWidgetFull";
 
 const typeTabs = [
   { key: "all", label: "الكل", icon: <FaUserPlus /> },
@@ -46,14 +45,12 @@ function clientTypeIcon(type) {
   }
 }
 
-// دالة توليد رقم عميل فريد (Firestore)
 async function generateUniqueClientNumber(type) {
   let prefix = "";
   if (type === "resident") prefix = "RES";
   else if (type === "nonResident") prefix = "NON";
   else prefix = "COM";
 
-  // جلب كل العملاء من Firestore
   const clientsSnap = await getDocs(
     query(collection(firestore, "users"), where("type", "==", type))
   );
@@ -75,7 +72,7 @@ async function generateUniqueClientNumber(type) {
   return `${prefix}-${serial3}-${serial4}`;
 }
 
-export default function UsersManagementSection({ lang = "ar" }) {
+function UsersManagementSection({ lang = "ar" }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -97,15 +94,12 @@ export default function UsersManagementSection({ lang = "ar" }) {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
 
-  // قراءة كل العملاء من Firestore مباشرة
   useEffect(() => {
     const usersRef = collection(firestore, "users");
-    // نستخدم onSnapshot لعمل listen مباشر
     const unsub = onSnapshot(usersRef, (snap) => {
       const arr = [];
       snap.forEach(docSnap => {
         const user = docSnap.data();
-        // جلب فقط العملاء: role === "client"
         if (user.role === "client") arr.push({ ...user, uid: docSnap.id });
       });
       setClients(arr);
@@ -113,8 +107,7 @@ export default function UsersManagementSection({ lang = "ar" }) {
     return () => unsub();
   }, []);
 
-  const list =
-    tab === "all" ? clients : clients.filter((c) => c.type === tab);
+  const list = tab === "all" ? clients : clients.filter((c) => c.type === tab);
   const filtered = list.filter((u) =>
     [u.name, u.email, u.phone, u.clientNumber]
       .join(" ")
@@ -171,7 +164,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
     }
   };
 
-  // إضافة عميل جديد مع توليد رقم فريد
   const handleAddClient = async (e) => {
     e.preventDefault();
     setAddError("");
@@ -181,12 +173,9 @@ export default function UsersManagementSection({ lang = "ar" }) {
     }
     setAddLoading(true);
     try {
-      // 1. تسجيل العميل في Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, addData.email, addData.password);
       const { user } = userCredential;
-      // 2. توليد رقم عميل فريد
       const clientNumber = await generateUniqueClientNumber(addData.type);
-      // 3. حفظ بيانات العميل في Firestore
       const clientData = {
         clientNumber,
         name: addData.name,
@@ -222,7 +211,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
     setShowChat(false);
   };
 
-  // ✅ زر الشات مع العميل يظهر فقط داخل كارت العميل عند الضغط على الزر
   const renderClientCard = (client) => {
     const statusMap = {
       active: { label: "نشط", color: "bg-emerald-100 text-emerald-700" },
@@ -347,7 +335,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
           >
             <FaWhatsapp /> واتساب
           </button>
-          {/* شات العميل يظهر فقط هنا عند الضغط */}
           <button
             className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold shadow transition cursor-pointer"
             onClick={() => setShowChat(true)}
@@ -372,15 +359,13 @@ export default function UsersManagementSection({ lang = "ar" }) {
             <FaTrash /> حذف
           </button>
         </div>
-        {/* شات العميل يظهر فقط هنا */}
         {showChat && (
           <div className="mt-4">
-           <ChatWidgetFull
-  userId={employee.userId}
-  userName={employee.name}
-  roomId={client.userId} // نفس اسم غرفة العميل!!
-/>
-
+            <ChatWidgetFull
+              userId={"employeeId"}
+              userName={"موظف"}
+              roomId={client.uid}
+            />
           </div>
         )}
       </div>
@@ -510,7 +495,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
         </table>
       </div>
 
-      {/* بطاقة العميل */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="relative">
@@ -527,7 +511,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
         </div>
       )}
 
-      {/* نافذة تعديل بيانات العميل */}
       {edit && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative animate-fade-in border-2 border-emerald-100">
@@ -585,7 +568,6 @@ export default function UsersManagementSection({ lang = "ar" }) {
         </div>
       )}
 
-      {/* نافذة إضافة عميل جديد */}
       {addNew && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8 relative animate-fade-in border-2 border-emerald-200">
@@ -651,10 +633,5 @@ export default function UsersManagementSection({ lang = "ar" }) {
     </div>
   );
 }
-export default function MyComponent(props) {
-  return (
-    <Suspense fallback={null}>
-      <MyComponentInner {...props} />
-    </Suspense>
-  );
-}
+
+export { UsersManagementSection };
