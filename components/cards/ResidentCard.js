@@ -1,12 +1,13 @@
+import { Suspense } from "react";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
 import Image from "next/image";
-import EditModal from "./EditModal";
+import EditModal from "./EditModal"; // <=== هنا صححنا الاستيراد
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
-export default function ResidentCard({
+function ResidentCard({
   client = {},
   lang = "ar",
 }) {
@@ -79,7 +80,6 @@ export default function ResidentCard({
   }
 
   // رفع صورة البروفايل عبر API خارجي (Google Cloud Storage)
-  console.log("userId:", userId);
   const handleAvatarChange = async (e) => {
     if (e.target.files && e.target.files[0] && userId) {
       try {
@@ -258,3 +258,13 @@ export default function ResidentCard({
     </div>
   );
 }
+
+function MyComponent(props) {
+  return (
+    <Suspense fallback={null}>
+      <MyComponentInner {...props} />
+    </Suspense>
+  );
+}
+
+export { ResidentCard, MyComponent };

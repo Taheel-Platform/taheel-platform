@@ -8,10 +8,10 @@ import {
 } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
-import ResidentCard from "@/components/cards/ResidentCard";
+import { ResidentCard } from "@/components/cards/ResidentCard";
 import CompanyCardGold from "@/components/cards/CompanyCard";
 import ChatWidgetFull from "@/components/ChatWidgetFull";
-import NonResidentCard from "@/components/cards/NonResidentCard";
+import { NonResidentCard } from "@/components/cards/NonResidentCard";
 import ServiceProfileCard from "@/components/ServiceProfileCard";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";

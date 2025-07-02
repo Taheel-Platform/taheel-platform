@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
+
 import {
   FaCheckCircle, FaRegCircle, FaSearch, FaEye, FaTimes, FaDownload, FaUserPlus, FaEdit, FaCamera, FaStickyNote
 } from "react-icons/fa";
@@ -40,7 +42,7 @@ function generateEmployeeNumber(staffList) {
   return `EMP-${year}-${String(nextNum).padStart(3, "0")}`;
 }
 
-export default function StaffSection() {
+ function StaffSection() {
   const [staff, setStaff] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -518,4 +520,12 @@ function getHourDiff(start, end) {
   const [h1, m1] = ("" + start).split(":").map(Number);
   const [h2, m2] = ("" + end).split(":").map(Number);
   return Math.max(0, (h2 + m2 / 60) - (h1 + m1 / 60));
+}
+
+export default function MyComponent(props) {
+  return (
+    <Suspense fallback={null}>
+      <MyComponentInner {...props} />
+    </Suspense>
+  );
 }

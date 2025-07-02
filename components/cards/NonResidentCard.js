@@ -1,13 +1,15 @@
+import { Suspense } from "react";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt } from "react-icons/fa";
 import Image from "next/image";
 import UpgradeModal from "./UpgradeModal";
-import ResidentCard from "./ResidentCard";
+import { ResidentCard } from "./ResidentCard";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
-export default function NonResidentCard({
+
+function NonResidentCard({
   client,
   lang = "ar",
 }) {
@@ -336,3 +338,13 @@ export default function NonResidentCard({
     </div>
   );
 }
+
+function MyComponent(props) {
+  return (
+    <Suspense fallback={null}>
+      <MyComponentInner {...props} />
+    </Suspense>
+  );
+}
+
+export { NonResidentCard, MyComponent };
