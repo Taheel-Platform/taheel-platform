@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -14,8 +15,8 @@ import {
 
 // استيراد الأقسام
 import ProfileSection from "@/components/employee/ProfileSection";
-import AttendanceSection from "@/components/employee/AttendanceSection";
-import MyOrdersSection from "@/components/employee/MyOrdersSection";
+import { AttendanceSection } from "@/components/employee/AttendanceSection";
+import { MyOrdersSection } from "@/components/employee/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
 
@@ -128,7 +129,7 @@ function useOnlineStatus(employeeData) {
 }
 
 // --- Main Dashboard Page ---
-function EmployeeDashboardPage({ employeeData }) {
+function EmployeeDashboardPageInner({ employeeData }) {
   const [lang, setLang] = useState("ar");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("profile");
@@ -395,10 +396,18 @@ function EmployeeDashboardPage({ employeeData }) {
 }
 
 // --- Export ---
-export default function EmployeeDashboardWrapper() {
+function EmployeeDashboardPageWrapper() {
   return (
     <EmployeeGuard>
-      {(employeeData) => <EmployeeDashboardPage employeeData={employeeData} />}
+      {(employeeData) => <EmployeeDashboardPageInner employeeData={employeeData} />}
     </EmployeeGuard>
+  );
+}
+
+export default function EmployeeDashboardPageExport(props) {
+  return (
+    <Suspense fallback={null}>
+      <EmployeeDashboardPageWrapper {...props} />
+    </Suspense>
   );
 }

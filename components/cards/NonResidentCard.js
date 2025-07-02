@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt } from "react-icons/fa";
@@ -7,7 +6,6 @@ import UpgradeModal from "./UpgradeModal";
 import { ResidentCard } from "./ResidentCard";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
-
 
 function NonResidentCard({
   client,
@@ -131,12 +129,10 @@ function NonResidentCard({
 
   // --- ترقية أو رفع جواز جديد ---
   const handleUpgradeModalSave = (data) => {
-    // data = { type: "passport", passport } أو { type: "resident", eidFront, eidBack }
     if (data?.type === "resident") {
       setResidentExpiry(data.eidExpiry || "");
       setIsResident(true);
     }
-    // يمكنك هنا أيضًا معالجة حالة رفع جواز جديد (تجديد الجواز) لو أردت
     setShowUpgradeModal(false);
   };
 
@@ -149,7 +145,7 @@ function NonResidentCard({
       client={{
         ...client,
         cardType: "مقيم",
-        eidExpiry: residentExpiry || expireDate, // تاريخ الإقامة الجديدة
+        eidExpiry: residentExpiry || expireDate,
         resident: true,
       }}
       lang={lang}
@@ -339,12 +335,5 @@ function NonResidentCard({
   );
 }
 
-function MyComponent(props) {
-  return (
-    <Suspense fallback={null}>
-      <MyComponentInner {...props} />
-    </Suspense>
-  );
-}
-
-export { NonResidentCard, MyComponent };
+// تصدير المكون فقط (بدون MyComponent)
+export { NonResidentCard };
