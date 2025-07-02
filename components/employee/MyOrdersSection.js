@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -86,7 +85,7 @@ const typeTabs = [
   { key: "other", label: "أخرى", icon: <FaUserAlt /> }
 ];
 
-export default function OrdersSection({ lang = "ar" }) {
+function MyOrdersSection({ lang = "ar" }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -785,10 +784,5 @@ export default function OrdersSection({ lang = "ar" }) {
     </div>
   );
 }
-export default function AttendanceSection(props) {
-  return (
-    <Suspense fallback={null}>
-      <AttendanceSectionInner {...props} />
-    </Suspense>
-  );
-}
+
+export { MyOrdersSection };
