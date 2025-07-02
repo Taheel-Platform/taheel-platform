@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import { Suspense } from "react";
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -35,7 +36,7 @@ const ABOUT = {
   }
 };
 
-export default function AboutPage() {
+function AboutContent() {
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
   const t = ABOUT[lang];
@@ -89,5 +90,13 @@ export default function AboutPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function AboutPage() {
+  return (
+    <Suspense fallback={null}>
+      <AboutContent />
+    </Suspense>
   );
 }
