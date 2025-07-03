@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { firestore } from "../../lib/firebase.client";
@@ -9,7 +10,7 @@ const CATEGORY_LABELS = {
   report: { ar: "التقارير", en: "Reports" },
 };
 
-export default function ArchivePage({ lang = "ar" }) {
+export default function ArchiveSection({ lang = "ar" }) {
   // حالات الواجهة
   const [category, setCategory] = useState("translation");
   const [files, setFiles] = useState([]);

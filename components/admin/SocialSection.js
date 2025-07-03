@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import {
   FaFacebook, FaInstagram, FaTwitter, FaYoutube, FaTiktok,
@@ -27,7 +28,7 @@ const INIT_SOCIALS = [
 ];
 
 // --- الكومبوننت الرئيسي
-export default function SocialDashboard({ lang = "ar" }) {
+export default function SocialSection({ lang = "ar" }) {
   // إدارة الحسابات
   const [socials, setSocials] = useState(INIT_SOCIALS);
   const [editIdx, setEditIdx] = useState(null);
