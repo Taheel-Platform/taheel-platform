@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -785,4 +787,4 @@ function MyOrdersSection({ lang = "ar" }) {
   );
 }
 
-export { MyOrdersSection };
+export default MyOrdersSection;

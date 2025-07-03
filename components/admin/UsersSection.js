@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import {
   FaWallet, FaCoins, FaBell, FaWhatsapp, FaTrash,

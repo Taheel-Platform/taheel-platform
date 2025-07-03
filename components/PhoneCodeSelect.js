@@ -1,3 +1,5 @@
+"use client";
+
 import Select from "react-select";
 import 'flag-icons/css/flag-icons.min.css';
 import { PHONE_CODES } from "@/lib/phone-codes";
