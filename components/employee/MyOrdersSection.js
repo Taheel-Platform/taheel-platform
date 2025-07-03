@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -85,7 +86,7 @@ const typeTabs = [
   { key: "other", label: "أخرى", icon: <FaUserAlt /> }
 ];
 
-function MyOrdersSection({ lang = "ar" }) {
+export default function MyOrdersSection({ lang = "ar" }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -784,5 +785,3 @@ function MyOrdersSection({ lang = "ar" }) {
     </div>
   );
 }
-
-export { MyOrdersSection };

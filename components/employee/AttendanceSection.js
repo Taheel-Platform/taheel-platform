@@ -64,7 +64,7 @@ function exportToCSV(attendanceArr, lang) {
 
 // ======== Main AttendanceSection Component =========
 
-function AttendanceSection({ employeeData, lang = "ar" }) {
+export default function AttendanceSection({ employeeData, lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -223,5 +223,3 @@ function AttendanceSection({ employeeData, lang = "ar" }) {
     </div>
   );
 }
-
-export { AttendanceSection };
