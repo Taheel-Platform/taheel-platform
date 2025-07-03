@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import Select from "react-select";
 import 'flag-icons/css/flag-icons.min.css';
 import { countries } from "@/lib/countries-ar-en";
