@@ -181,7 +181,7 @@ const PRIVACY = {
   }
 };
 
-function PrivacyPageInner() {
+function TermsPageInner() {
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
   const t = PRIVACY[lang];
@@ -228,10 +228,10 @@ function PrivacyPageInner() {
   );
 }
 
-export default function PrivacyPage() {
+export default function TermsPage() {
   return (
     <Suspense fallback={null}>
-      <PrivacyPageInner />
+      <TermsPageInner />
     </Suspense>
   );
 }

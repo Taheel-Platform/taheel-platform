@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt } from "react-icons/fa";

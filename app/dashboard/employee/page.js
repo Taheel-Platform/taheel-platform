@@ -404,7 +404,7 @@ function EmployeeDashboardPageWrapper() {
   );
 }
 
-export default function EmployeeDashboardPageExport(props) {
+export default function EmployeeDashboardPage(props) {
   return (
     <Suspense fallback={null}>
       <EmployeeDashboardPageWrapper {...props} />
