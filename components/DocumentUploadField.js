@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useRef } from "react";
 import { FaCloudUploadAlt, FaCheckCircle, FaExclamationCircle, FaSpinner, FaEdit } from "react-icons/fa";
 import axios from "axios";
