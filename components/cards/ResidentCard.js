@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
@@ -6,7 +7,7 @@ import EditModal from "./EditModal";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
-function ResidentCard({
+export default function ResidentCard({
   client = {},
   lang = "ar",
 }) {
@@ -258,4 +259,3 @@ function ResidentCard({
   );
 }
 
-export { ResidentCard };
