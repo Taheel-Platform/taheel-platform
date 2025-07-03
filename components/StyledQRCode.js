@@ -56,13 +56,14 @@ export default function StyledQRCode({
       }
     });
 
-    if (ref.current) {
-      ref.current.innerHTML = "";
-      qrCode.append(ref.current);
+    const currentRef = ref.current;
+    if (currentRef) {
+      currentRef.innerHTML = "";
+      qrCode.append(currentRef);
     }
 
     return () => {
-      if (ref.current) ref.current.innerHTML = "";
+      if (currentRef) currentRef.innerHTML = "";
     };
   }, [value, logo, size]);
 

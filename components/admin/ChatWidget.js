@@ -1,5 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useRef, useState, useCallback } from "react";
+import Image from "next/image";
+
 import {
   collection, query, orderBy, addDoc, serverTimestamp, onSnapshot, setDoc, doc, getDoc
 } from "firebase/firestore";
@@ -147,7 +150,7 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
   }, [users, userId, selectedChat]);
 
   // إرسال رسالة مع صوت إرسال
-  const sendMessage = async (
+  const sendMessage = useCallback(async (
     msg = null,
     imageFile = null,
     fileDoc = null,
@@ -212,7 +215,7 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
       notificationSend.currentTime = 0;
       notificationSend.play();
     }
-  };
+  }, [selectedChat, userId, users, userName, userAvatar]);
 
   // فايل أو صورة
   const handleFileChange = (e) => {
@@ -248,8 +251,8 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
     }
   };
 
-  useEffect(() => { if (image) sendMessage(null, image, null, null, "image"); }, [image]);
-  useEffect(() => { if (file) sendMessage(null, null, file, null, "file"); }, [file]);
+  useEffect(() => { if (image) sendMessage(null, image, null, null, "image"); }, [image, sendMessage]);
+  useEffect(() => { if (file) sendMessage(null, null, file, null, "file"); }, [file, sendMessage]);
 
   const handleSelectChat = (id) => {
     setSelectedChat(id);
@@ -300,7 +303,7 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
             onClick={() => handleSelectChat("main-room")}
             title="الشات العام"
           >
-            <img src={GROUP_AVATAR} alt="الشات العام" className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
+            <Image src={GROUP_AVATAR} alt="الشات العام" width={32} height={32} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
             <span className="text-white font-bold">الشات العام</span>
             {unread["main-room"] && (
               <span className="ml-auto inline-block w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-pulse"></span>
@@ -315,7 +318,7 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
               onClick={() => handleSelectChat(u.id)}
               title={`محادثة مع ${u.name}`}
             >
-              <img src={getSafeAvatar(u.avatar)} alt={u.name} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
+              <Image src={getSafeAvatar(u.avatar)} alt={u.name} width={32} height={32} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
               <span className="text-white font-semibold">{u.name}</span>
               <FaCircle className={online[u.id] ? "text-green-400" : "text-gray-400"} size={11} />
               {unread[u.id] && (
@@ -330,7 +333,7 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-emerald-800 bg-gradient-to-l from-emerald-900 to-blue-900">
           <div className="flex items-center gap-2">
-            <img src={getSafeAvatar(chatAvatar)} alt={chatTitle} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
+            <Image src={getSafeAvatar(chatAvatar)} alt={chatTitle} width={32} height={32} className="w-8 h-8 rounded-full border-2 border-white bg-white object-cover" />
             <span className="text-emerald-200 font-bold text-base">{chatTitle}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -358,11 +361,11 @@ export default function ChatWidget({ userId, userName, userAvatar }) {
             <div key={msg.id} className={`flex ${msg.senderId === userId ? "justify-end" : "justify-start"}`}>
               <div className={`rounded-2xl px-4 py-2 max-w-[70%] break-words relative ${msg.senderId === userId ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-900"}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <img src={getSafeAvatar(msg.senderAvatar)} alt={msg.senderName || "موظف"} className="w-7 h-7 rounded-full bg-white object-cover" />
+                  <Image src={getSafeAvatar(msg.senderAvatar)} alt={msg.senderName || "موظف"} width={28} height={28} className="w-7 h-7 rounded-full bg-white object-cover" />
                   <span className="text-xs font-bold">{msg.senderName || "موظف"}</span>
                 </div>
                 {msg.type === "text" ? <span>{msg.text}</span> : null}
-                {msg.type === "image" && (<a href={msg.imageUrl} target="_blank" rel="noopener noreferrer"><img src={msg.imageUrl} alt="img" className="max-w-[120px] max-h-[120px] rounded-lg border mt-1" /></a>)}
+                {msg.type === "image" && (<a href={msg.imageUrl} target="_blank" rel="noopener noreferrer"><Image src={msg.imageUrl} alt="img" width={120} height={120} className="max-w-[120px] max-h-[120px] rounded-lg border mt-1" /></a>)}
                 {msg.type === "file" && (<a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-800 underline mt-1"><FaFileAlt /> <span>{msg.fileName || "ملف مرفق"}</span></a>)}
                 {msg.type === "audio" && (<audio controls src={msg.audioUrl} className="mt-1" />)}
                 <div className="text-[10px] text-gray-400 mt-1 text-left">{msg.senderName || "موظف"}</div>
