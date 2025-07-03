@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import {
   collection, query, orderBy, addDoc, serverTimestamp, onSnapshot, setDoc, doc, getDoc
