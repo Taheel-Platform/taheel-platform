@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { FaCamera, FaSpinner, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import Image from "next/image";
