@@ -15,8 +15,8 @@ import {
 
 // استيراد الأقسام
 import ProfileSection from "@/components/employee/ProfileSection";
-import { AttendanceSection } from "@/components/employee/AttendanceSection";
-import { MyOrdersSection } from "@/components/employee/MyOrdersSection";
+import AttendanceSection from "@/components/employee/AttendanceSection";
+import MyOrdersSection from "@/components/employee/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
 
