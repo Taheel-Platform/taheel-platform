@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   getDatabase,
   ref as dbRef,
@@ -76,7 +77,7 @@ export default function ChatWidgetFull({
       createdAt: Date.now(),
       status: "open",
     });
-  }, [roomId, userId, userName]);
+  }, [db, roomId, userId, userName]);
 
   // مراقبة الرسائل (مع ترتيب الرسائل حسب الوقت)
   useEffect(() => {
@@ -117,7 +118,7 @@ export default function ChatWidgetFull({
       setChatClosed(val?.status === "closed");
     });
     return () => unsub();
-  }, [roomId]);
+  }, [db, roomId]);
 
   // إرسال رسالة أو مرفق base64 (صورة/صوت)
   const sendMessage = async (type = "text", content = {}) => {
@@ -258,7 +259,7 @@ export default function ChatWidgetFull({
         {msg.type === "text" && <span>{msg.text}</span>}
         {msg.type === "bot" && <span>{msg.text}</span>}
         {msg.type === "image" && (
-          <img src={msg.imageBase64} alt="img" className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
+          <Image src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
         )}
         {msg.type === "audio" && (
           <audio controls src={msg.audioBase64} className="mt-1" />
