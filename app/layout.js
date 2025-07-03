@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import "./globals.css";
 import ForceLangWrapper from "./ForceLangWrapper";
 
@@ -32,7 +33,9 @@ export default function RootLayout({ children }) {
           '--font-cairo': fontFallbacks.cairo
         }}
       >
-        <ForceLangWrapper defaultLang="ar" />
+        <Suspense fallback={null}>
+          <ForceLangWrapper defaultLang="ar" />
+        </Suspense>
         {children}
       </body>
     </html>

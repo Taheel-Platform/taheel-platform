@@ -29,6 +29,9 @@ import {
   orderBy
 } from "firebase/firestore";
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();

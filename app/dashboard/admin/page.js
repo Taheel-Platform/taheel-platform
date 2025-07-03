@@ -13,6 +13,9 @@ import StaffSection from "@/components/admin/StaffSection";
 import OrdersSection from "@/components/admin/OrdersSection";
 import FinanceSection from "@/components/admin/FinanceSection";
 import NotificationsSection from "@/components/admin/NotificationsSection";
+
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
 import ServicesSection from "@/components/admin/ServicesSection";
 import SocialSection from "@/components/admin/SocialSection";
 import SettingsSection from "@/components/admin/SettingsSection";
