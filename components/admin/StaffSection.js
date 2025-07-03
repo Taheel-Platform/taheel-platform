@@ -525,7 +525,7 @@ function getHourDiff(start, end) {
 export default function MyComponent(props) {
   return (
     <Suspense fallback={null}>
-      <MyComponentInner {...props} />
+      <StaffSection {...props} />
     </Suspense>
   );
 }
