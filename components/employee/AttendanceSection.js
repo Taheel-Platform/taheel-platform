@@ -224,4 +224,4 @@ function AttendanceSection({ employeeData, lang = "ar" }) {
   );
 }
 
-export { AttendanceSection };
+export default AttendanceSection;
