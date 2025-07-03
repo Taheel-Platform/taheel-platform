@@ -5,6 +5,9 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 const CAREERS = {
   ar: {
     title: "انضم إلى فريق تأهيل",

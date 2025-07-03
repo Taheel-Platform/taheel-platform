@@ -5,6 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 const ABOUT = {
   ar: {
     title: "عن تأهيل – المنصة الحكومية الذكية المعتمدة عالميًا",
@@ -95,7 +98,7 @@ function AboutContent() {
 
 export default function AboutPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div>Loading...</div>}>
       <AboutContent />
     </Suspense>
   );
