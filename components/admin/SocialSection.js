@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import {
   FaFacebook, FaInstagram, FaTwitter, FaYoutube, FaTiktok,
