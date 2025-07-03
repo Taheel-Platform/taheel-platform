@@ -1,3 +1,4 @@
+"use client";
 import { useState, Suspense } from "react";
 import { FaCamera, FaSpinner, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import Image from "next/image";
@@ -423,7 +424,7 @@ function MyComponentInner({
   );
 }
 
-export default function MyComponent(props) {
+export default function UpgradeModal(props) {
   return (
     <Suspense fallback={null}>
       <MyComponentInner {...props} />
