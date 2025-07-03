@@ -1,13 +1,14 @@
+"use client";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt } from "react-icons/fa";
 import Image from "next/image";
 import UpgradeModal from "./UpgradeModal";
-import { ResidentCard } from "./ResidentCard";
+import ResidentCard from "./ResidentCard";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
-function NonResidentCard({
+export default function NonResidentCard({
   client,
   lang = "ar",
 }) {
@@ -335,5 +336,3 @@ function NonResidentCard({
   );
 }
 
-// تصدير المكون فقط (بدون MyComponent)
-export { NonResidentCard };
