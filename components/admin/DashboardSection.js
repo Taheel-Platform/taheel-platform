@@ -1,3 +1,4 @@
+"use client";
 import {
   FaUsers, FaBuilding, FaUserCheck, FaUserAlt, FaRegClock,
   FaShoppingCart, FaCheckCircle, FaHourglassHalf, FaTimesCircle,
