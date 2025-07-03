@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 import {
   FaCheckCircle, FaRegCircle, FaSearch, FaEye, FaTimes, FaDownload, FaUserPlus, FaEdit, FaCamera, FaStickyNote
@@ -152,7 +153,7 @@ function generateEmployeeNumber(staffList) {
                 >
                   <td className="font-mono font-bold text-indigo-700">{s.employeeNumber || "-"}</td>
                   <td>
-                    <img src={getProfilePic(s)} alt={getStaffName(s)} className="w-11 h-11 rounded-full border-2 border-emerald-100 mx-auto bg-white shadow cursor-pointer" />
+                    <Image src={getProfilePic(s)} alt={getStaffName(s)} width={44} height={44} className="w-11 h-11 rounded-full border-2 border-emerald-100 mx-auto bg-white shadow cursor-pointer" />
                   </td>
                   <td className="font-bold text-emerald-900 cursor-pointer">{getStaffName(s)}</td>
                   <td>
@@ -248,7 +249,7 @@ function StaffCard({ staff, onClose, onImageChange, onAddNote }) {
         </button>
         <div className="flex flex-col md:flex-row gap-7 items-center">
           <div className="relative group mb-2 md:mb-0">
-            <img src={imgFile || getProfilePic(staff)} alt={getStaffName(staff)}
+            <Image src={imgFile || getProfilePic(staff)} alt={getStaffName(staff)} width={144} height={144}
                  className="w-36 h-36 rounded-full border-4 border-emerald-200 shadow object-cover bg-white transition-transform group-hover:scale-105 cursor-pointer"
             />
             <label title="تغيير الصورة"
@@ -403,7 +404,7 @@ function StaffAddModal({ onClose, staffList }) {
         {error && <div className="bg-red-100 text-red-800 p-2 rounded mb-2">{error}</div>}
         <div className="flex flex-col items-center mb-4">
           <div className="relative group mb-2">
-            <img src={img || "/avatar.svg"} alt="صورة الموظف" className="w-24 h-24 rounded-full border-4 border-emerald-200 shadow object-cover bg-white" />
+            <Image src={img || "/avatar.svg"} alt="صورة الموظف" width={96} height={96} className="w-24 h-24 rounded-full border-4 border-emerald-200 shadow object-cover bg-white" />
             <label title="إضافة صورة" className="absolute bottom-2 right-2 bg-white/80 rounded-full p-2 shadow cursor-pointer border border-emerald-200 hover:bg-emerald-50 transition">
               <FaCamera className="text-emerald-700 text-lg" />
               <input type="file" accept="image/*" className="hidden" onChange={handleImg}/>
@@ -522,10 +523,10 @@ function getHourDiff(start, end) {
   return Math.max(0, (h2 + m2 / 60) - (h1 + m1 / 60));
 }
 
-export default function MyComponent(props) {
+export default function StaffSectionWrapper(props) {
   return (
     <Suspense fallback={null}>
-      <MyComponentInner {...props} />
+      <StaffSection {...props} />
     </Suspense>
   );
 }
