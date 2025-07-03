@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -43,7 +44,7 @@ const CAREERS = {
   }
 };
 
-export default function CareersPage() {
+function CareersContent() {
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
   const t = CAREERS[lang];
@@ -104,5 +105,13 @@ export default function CareersPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function CareersPage() {
+  return (
+    <Suspense fallback={<div className="text-white text-center py-10">Loading careers...</div>}>
+      <CareersContent />
+    </Suspense>
   );
 }

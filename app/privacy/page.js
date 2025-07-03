@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 const PRIVACY = {
@@ -180,7 +181,7 @@ const PRIVACY = {
   }
 };
 
-export default function PrivacyPage() {
+function PrivacyContent() {
   const searchParams = useSearchParams();
   const lang = searchParams.get("lang") === "ar" ? "ar" : "en";
   const t = PRIVACY[lang];
@@ -224,5 +225,13 @@ export default function PrivacyPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function PrivacyPage() {
+  return (
+    <Suspense fallback={<div className="text-white text-center py-10">Loading privacy policy...</div>}>
+      <PrivacyContent />
+    </Suspense>
   );
 }
