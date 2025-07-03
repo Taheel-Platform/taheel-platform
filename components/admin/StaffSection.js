@@ -1,3 +1,4 @@
+"use client";
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 
@@ -525,7 +526,7 @@ function getHourDiff(start, end) {
 export default function MyComponent(props) {
   return (
     <Suspense fallback={null}>
-      <MyComponentInner {...props} />
+      <StaffSection {...props} />
     </Suspense>
   );
 }
