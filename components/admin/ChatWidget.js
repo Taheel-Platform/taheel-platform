@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
+
 import {
   collection, query, orderBy, addDoc, serverTimestamp, onSnapshot, setDoc, doc, getDoc
 } from "firebase/firestore";
