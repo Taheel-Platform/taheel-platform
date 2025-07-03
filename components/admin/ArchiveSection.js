@@ -1,3 +1,4 @@
+"use client";
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { firestore } from "../../lib/firebase.client";
