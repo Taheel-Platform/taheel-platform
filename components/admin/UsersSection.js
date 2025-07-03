@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect } from "react";
 import {
   FaWallet, FaCoins, FaBell, FaWhatsapp, FaTrash,
@@ -72,7 +73,7 @@ async function generateUniqueClientNumber(type) {
   return `${prefix}-${serial3}-${serial4}`;
 }
 
-function UsersManagementSection({ lang = "ar" }) {
+function UsersSection({ lang = "ar" }) {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -634,5 +635,5 @@ function UsersManagementSection({ lang = "ar" }) {
   );
 }
 
-export default UsersManagementSection;
+export default UsersSection;
 
