@@ -14,6 +14,9 @@ import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
+
+const RECAPTCHA_SITE_KEY = "6LccUGsrAAAAAAmCooJAyIIzvHqdDzlC3A9MP8Y4";
+
 // Force dynamic rendering to prevent static export issues
 export const dynamicConfig = 'force-dynamic';
 import React from "react";
