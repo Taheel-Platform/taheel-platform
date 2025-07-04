@@ -1,8 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
 import { Response } from "next/server";
-import { firestore } from "@/lib/firebaseServer";
-import { collection, getDocs } from "firebase/firestore";
+import { adminFirestore } from "@/lib/firebase.admin"; 
+import { collection, getDocs } from "firebase-admin/firestore"; 
 
 export async function GET() {
   try {
