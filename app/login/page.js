@@ -12,7 +12,7 @@ import GlobalLoader from "@/components/GlobalLoader";
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-const RECAPTCHA_SITE_KEY = "6LccUGsrAAAAAAmCooJAyIIzvHqdDzlC3A9MP8Y4";
+const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 
 const LANGUAGES = {
   ar: {
