@@ -21,7 +21,6 @@ export default function RootLayout({ children }) {
         <link 
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Geist:wght@400;700;900&family=Geist+Mono:wght@400;700;900&display=swap" 
           rel="stylesheet"
-          onError="this.remove()"
         />
       </head>
       <body
