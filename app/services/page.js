@@ -9,6 +9,9 @@ import { FaGlobe, FaWhatsapp } from "react-icons/fa";
 import { motion } from "framer-motion";
 import GlobalLoader from "@/components/GlobalLoader";
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 const SECTION_LABELS = {
   resident: { ar: "خدمات المقيمين", en: "Resident Services" },
   nonresident: { ar: "خدمات غير المقيمين", en: "Non-Resident Services" },

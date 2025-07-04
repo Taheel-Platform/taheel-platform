@@ -13,6 +13,9 @@ import {
   FaChevronRight, FaChevronLeft, FaClock, FaEnvelope
 } from "react-icons/fa";
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 // استيراد الأقسام
 import ProfileSection from "@/components/employee/ProfileSection";
 import { AttendanceSection } from "@/components/employee/AttendanceSection";
@@ -406,7 +409,7 @@ function EmployeeDashboardPageWrapper() {
 
 export default function EmployeeDashboardPageExport(props) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div>Loading...</div>}>
       <EmployeeDashboardPageWrapper {...props} />
     </Suspense>
   );

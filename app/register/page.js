@@ -13,6 +13,9 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+
+// Force dynamic rendering to prevent static export issues
+export const dynamicConfig = 'force-dynamic';
 import React from "react";
 
 // لف Field خارج RegisterPage وبـ React.memo

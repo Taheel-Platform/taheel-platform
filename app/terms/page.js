@@ -4,6 +4,9 @@ import { Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
+
 const PRIVACY = {
   ar: {
     title: "سياسة الخصوصية لمنصة تأهيل",
