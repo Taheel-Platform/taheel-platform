@@ -1,4 +1,7 @@
 "use client";
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
 import { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -63,7 +66,7 @@ const currentEmployee = {
     : "موظف"
 };
 
-export default function OrdersSection({ lang = "ar" }) {
+function OrdersSectionInner({ lang = "ar" }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -233,23 +236,22 @@ export default function OrdersSection({ lang = "ar" }) {
   }
 
   async function handleAssign(order, empId) {
-  const employee = employees.find(e => e.userId === empId);
-  if (!employee) return;
+    const employee = employees.find(e => e.userId === empId);
+    if (!employee) return;
 
-  await updateDoc(doc(db, "requests", order.requestId), {
-  assignedTo: employee.userId,          // 👈 رقم الموظف وليس الاسم
-  assignedToName: employee.name || "",  // (اختياري للعرض فقط)
-  lastUpdated: new Date().toISOString()
-});
+    await updateDoc(doc(db, "requests", order.requestId), {
+      assignedTo: employee.userId,          // 👈 رقم الموظف وليس الاسم
+      assignedToName: employee.name || "",  // (اختياري للعرض فقط)
+      lastUpdated: new Date().toISOString()
+    });
 
-  setAssignModal(false);
-  setSelected((s) =>
-    s && s.requestId === order.requestId
-      ? { ...s, assignedTo: empId, assignedToName: employee.name }
-      : s
-  );
-}
-
+    setAssignModal(false);
+    setSelected((s) =>
+      s && s.requestId === order.requestId
+        ? { ...s, assignedTo: empId, assignedToName: employee.name }
+        : s
+    );
+  }
 
   // إشعار مخصص
   async function sendCustomNotification(order, content) {
@@ -782,5 +784,12 @@ function renderOrderDetails(order) {
         </div>
       )}
     </div>
+  );
+}
+export default function OrdersSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <OrdersSectionInner {...props} />
+    </Suspense>
   );
 }

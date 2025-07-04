@@ -1,3 +1,6 @@
+"use client";
+export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import Select from "react-select";
 import 'flag-icons/css/flag-icons.min.css';
 import { PHONE_CODES } from "@/lib/phone-codes";
@@ -53,7 +56,7 @@ const customSingleValue = (props) => (
   </div>
 );
 
-export default function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode", ...rest }) {
+function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode", ...rest }) {
   return (
     <Select
       name={name}
@@ -156,3 +159,13 @@ export default function PhoneCodeSelect({ value, onChange, required = false, nam
     />
   );
 }
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { PhoneCodeSelect, AttendanceSection };

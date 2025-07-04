@@ -1,6 +1,11 @@
+"use client";
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 
-export default function WhatsappButton({ lang = "ar", className = "" }) {
+// زر واتساب عائم
+function WhatsappButton({ lang = "ar", className = "" }) {
   return (
     <a
       href="https://wa.me/971555555555"
@@ -18,3 +23,19 @@ export default function WhatsappButton({ lang = "ar", className = "" }) {
     </a>
   );
 }
+
+// تعريف كومبوننت AttendanceSectionInner هنا أو استيراده من ملف آخر
+function AttendanceSectionInner(props) {
+  // منطقك الخاص بالحضور
+  return <div>Attendance Section Under Construction</div>;
+}
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { WhatsappButton, AttendanceSection };

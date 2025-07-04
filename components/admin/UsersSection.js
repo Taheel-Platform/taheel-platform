@@ -1,4 +1,7 @@
 "use client";
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import {
   FaWallet, FaCoins, FaBell, FaWhatsapp, FaTrash,
@@ -635,5 +638,4 @@ function UsersManagementSection({ lang = "ar" }) {
   );
 }
 
-export default UsersManagementSection;
-
+export { UsersManagementSection };

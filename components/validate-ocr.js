@@ -1,3 +1,6 @@
+"use client";
+export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import formidable from 'formidable-serverless';
 import fs from 'fs';
 
@@ -5,7 +8,7 @@ export const config = { api: { bodyParser: false } };
 
 const OCR_API_KEY = "K82258740888957"; // مفتاحك هنا
 
-export default async function handler(req, res) {
+async function ocrHandler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const form = new formidable.IncomingForm();
@@ -42,3 +45,13 @@ export default async function handler(req, res) {
     });
   });
 }
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { ocrHandler as default, AttendanceSection };

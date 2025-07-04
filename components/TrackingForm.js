@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -154,9 +156,9 @@ async function getRequestByTrackingNumber(trackingNumber) {
 
   // جلب الطلبات من Firestore وليس RTDB
   const q = query(
-  collection(firestore, "requests"),
-  where("trackingNumber", "==", normalizedInput)
-);
+    collection(firestore, "requests"),
+    where("trackingNumber", "==", normalizedInput)
+  );
   const snap = await getDocs(q);
 
   if (snap.empty) return null;
@@ -167,7 +169,7 @@ async function getRequestByTrackingNumber(trackingNumber) {
 
 // إذا لم يكن لديك normalizedTrackingNumber في كل مستند، يمكن استخدم جلب جميع الطلبات ثم البحث، لكن يفضل حفظ normalizedTrackingNumber عند الانشاء أو التعديل.
 
-export default function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
+function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
   const [trackingInput, setTrackingInput] = useState('');
   const [trackingError, setTrackingError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -331,3 +333,13 @@ export default function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
     </section>
   );
 }
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { TrackingForm, AttendanceSection };

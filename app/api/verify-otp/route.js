@@ -1,3 +1,6 @@
+"use client";
+export const dynamic = "force-dynamic";
+import { Response } from "next/server";
 import { getOtp, deleteOtp } from "@/lib/otpDb";
 
 export async function POST(req) {

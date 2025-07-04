@@ -1,4 +1,6 @@
-'use client';
+"use client";
+export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import Select from "react-select";
 import 'flag-icons/css/flag-icons.min.css';
 import { countries } from "@/lib/countries-ar-en";
@@ -71,7 +73,7 @@ const CustomSingleValue = (props) => (
   </div>
 );
 
-export default function CountrySelect({
+function CountrySelect({
   label = "الدولة",
   name = "country",
   value,
@@ -195,3 +197,13 @@ export default function CountrySelect({
     </div>
   );
 }
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { CountrySelect, AttendanceSection };

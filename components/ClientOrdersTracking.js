@@ -1,4 +1,6 @@
 "use client";
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -38,7 +40,7 @@ function buildTimeline(statusHistory = []) {
   });
 }
 
-// كارت تتبع الطلب (يعتمد على البيانات القادمة من props فقط)
+// كارت تتبع الطلب
 function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, isArabic, orderId }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const timeline = buildTimeline(statusHistory || []);
@@ -80,14 +82,12 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
         <div className="flex flex-col items-center relative pt-1 pb-1 mx-1 z-10 min-w-[120px]">
           {timeline.map((step, idx) => {
             const Icon = step.icon;
-            // تحديد لون الخط العمودي ليكون واضحًا على الخلفية الفاتحة
             const lineColor =
               step.done || step.active
                 ? `linear-gradient(to bottom, ${step.color}, ${timeline[idx + 1]?.color || step.color})`
-                : "rgba(40,54,70,0.15)"; // رمادي شفاف واضح
+                : "rgba(40,54,70,0.15)";
             return (
               <div key={step.key} className="flex flex-row items-center min-h-[40px]">
-                {/* العمود: الأيقونة والخط العمودي */}
                 <div className="flex flex-col items-center">
                   <motion.div
                     initial={{ scale: 1 }}
@@ -120,7 +120,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                   >
                     <Icon size={15} />
                   </motion.div>
-                  {/* الخط العمودي تحت الأيقونة (إلا آخر واحدة) */}
                   {idx < timeline.length - 1 && (
                     <div
                       style={{
@@ -135,7 +134,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                     />
                   )}
                 </div>
-                {/* نص الحالة */}
                 <span
                   className="text-xs font-bold ml-2"
                   style={{
@@ -199,14 +197,12 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                 <FaUpload />
                 {isArabic ? "رفع المستند المطلوب" : "Upload Required Document"}
               </button>
-              {/* مودال رفع المستند */}
               <ClientOrdersTrackingModal
                 show={showUploadModal}
                 onClose={() => setShowUploadModal(false)}
                 note={note}
                 isArabic={isArabic}
                 orderId={trackingNumber}
-                // onUpload={(file) => ...}
               />
             </div>
           )}
@@ -216,8 +212,8 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
   );
 }
 
-// الكومبوننت الرئيسي
-export default function ClientOrdersTracking({ clientId, lang = "ar", orders = [] }) {
+// الكومبوننت الرئيسي للطلبات
+function ClientOrdersTracking({ clientId, lang = "ar", orders = [] }) {
   return (
     <div className="w-full flex flex-col items-center mt-2 mb-8">
       <span className="text-emerald-900 text-lg font-bold mb-4 tracking-tight">
@@ -244,3 +240,14 @@ export default function ClientOrdersTracking({ clientId, lang = "ar", orders = [
     </div>
   );
 }
+
+// الكومبوننت الرئيسي للصفحة NotFound
+function NotFoundPage(props) {
+  return (
+    <Suspense fallback={null}>
+      <NotFoundContent {...props} />
+    </Suspense>
+  );
+}
+
+export { ClientOrdersTracking, NotFoundPage };

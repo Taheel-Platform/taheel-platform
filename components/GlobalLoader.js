@@ -1,7 +1,9 @@
 "use client";
+export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import Image from "next/image";
 
-export default function GlobalLoader() {
+function GlobalLoader() {
   return (
     <div className="taheel-loader-root">
       <div className="global-bg"></div>
@@ -239,3 +241,13 @@ export default function GlobalLoader() {
     </div>
   );
 }
+
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { GlobalLoader, AttendanceSection };
