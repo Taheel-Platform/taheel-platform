@@ -12,7 +12,10 @@ import GlobalLoader from "@/components/GlobalLoader";
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+  throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_KEY in environment variables!");
+}
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
 
 const LANGUAGES = {
   ar: {
