@@ -7,7 +7,7 @@ import { firestore } from "@/lib/firebase.client";
 import { collection, getDocs } from "firebase/firestore";
 import { FaGlobe, FaWhatsapp } from "react-icons/fa";
 import { motion } from "framer-motion";
-import GlobalLoader from "@/components/GlobalLoader";
+import { GlobalLoader } from "@/components/GlobalLoader";
 
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
