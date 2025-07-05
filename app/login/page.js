@@ -7,7 +7,7 @@ import { FaLock, FaUser, FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
-import GlobalLoader from "@/components/GlobalLoader";
+import { GlobalLoader } from "@/components/GlobalLoader";
 
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
