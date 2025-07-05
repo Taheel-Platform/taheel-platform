@@ -1,5 +1,5 @@
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
 
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/firebase.admin";
