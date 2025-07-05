@@ -9,7 +9,7 @@ import { doc, getDoc, collection, query, where, getDocs } from "firebase/firesto
 import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
-
+console.log(data);
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 // Force dynamic rendering to prevent static export issues
