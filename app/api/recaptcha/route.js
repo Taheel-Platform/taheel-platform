@@ -21,8 +21,8 @@ export async function POST(req) {
 
     const data = await res.json();
 
-    // score: لقيم v3، عادة 0.5 متوسط جيد (غيره حسب حاجتك)
-    if (!data.success || (typeof data.score === "number" && data.score < 0.1)) {
+    // score: لقيم v3، عادة 0.3 أو 0.5 متوسط جيد (غيّرها حسب الحاجة، هنا 0.3 حسب طلبك)
+    if (!data.success || (typeof data.score === "number" && data.score < 0.3)) {
       return NextResponse.json({ success: false, message: "فشل التحقق من reCAPTCHA", data }, { status: 400 });
     }
 
