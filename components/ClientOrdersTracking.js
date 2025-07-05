@@ -13,6 +13,7 @@ import {
   FaUpload,
 } from "react-icons/fa";
 import ClientOrdersTrackingModal from "./ClientOrdersTrackingModal";
+import { GlobalLoader } from '@/components/GlobalLoader'
 
 // تعريف خطوات التتبع
 const statusStepsList = [
