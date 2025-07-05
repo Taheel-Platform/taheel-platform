@@ -20,8 +20,8 @@ export async function POST(req) {
     });
 
     const data = await res.json();
-    // console.log("reCAPTCHA data:", data); // أزل في الإنتاج
 
+    // score: لقيم v3، عادة 0.5 متوسط جيد (غيره حسب حاجتك)
     if (!data.success || (typeof data.score === "number" && data.score < 0.1)) {
       return NextResponse.json({ success: false, message: "فشل التحقق من reCAPTCHA", data }, { status: 400 });
     }
