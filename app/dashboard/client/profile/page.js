@@ -16,7 +16,7 @@ import ServiceProfileCard from "@/components/ServiceProfileCard";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
-import GlobalLoader from "@/components/GlobalLoader";
+import { GlobalLoader } from "@/components/GlobalLoader";
 import {
   collection,
   doc,
