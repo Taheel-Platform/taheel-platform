@@ -2,15 +2,15 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/firebase.admin";
-import { collection, getDocs } from "firebase-admin/firestore";
 
+// الكود الصحيح في firebase-admin
 export async function GET() {
   try {
-    const querySnapshot = await getDocs(collection(adminFirestore, "services"));
+    const snapshot = await adminFirestore.collection("services").get();
     let services = [];
-    querySnapshot.forEach((doc) =>
-      services.push({ id: doc.id, ...doc.data() })
-    );
+    snapshot.forEach((doc) => {
+      services.push({ id: doc.id, ...doc.data() });
+    });
     return NextResponse.json({ services });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 });
