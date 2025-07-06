@@ -9,15 +9,17 @@ export const config = {
 };
 
 // قراءة بيانات الخدمة من متغير البيئة
-const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+const serviceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_KEY 
+  ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+  : null;
 
-const storage = new Storage({
+const storage = serviceAccount ? new Storage({
   projectId: "taheel-platform-v2",
   credentials: {
     client_email: serviceAccount.client_email,
     private_key: serviceAccount.private_key,
   },
-});
+}) : null;
 const bucket = storage.bucket("taheel-platform");
 
 function parseForm(req) {
@@ -33,6 +35,11 @@ function parseForm(req) {
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  if (!storage) {
+    res.status(500).json({ error: "Storage configuration not available" });
     return;
   }
 

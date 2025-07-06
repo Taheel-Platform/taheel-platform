@@ -242,6 +242,24 @@ function ClientOrdersTracking({ clientId, lang = "ar", orders = [] }) {
   );
 }
 
+// الكومبوننت الداخلي للصفحة NotFound
+function NotFoundContent(props) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
+        <p className="text-xl text-gray-600 mb-8">الصفحة غير موجودة</p>
+        <button 
+          onClick={() => window.history.back()}
+          className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition"
+        >
+          العودة للخلف
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // الكومبوننت الرئيسي للصفحة NotFound
 function NotFoundPage(props) {
   return (
@@ -251,4 +269,5 @@ function NotFoundPage(props) {
   );
 }
 
-export { ClientOrdersTracking, NotFoundPage };
+export default ClientOrdersTracking;
+export { NotFoundPage };

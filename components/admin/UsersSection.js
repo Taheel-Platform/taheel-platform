@@ -639,4 +639,4 @@ function UsersManagementSection({ lang = "ar" }) {
   );
 }
 
-export { UsersManagementSection };
+export default UsersManagementSection;

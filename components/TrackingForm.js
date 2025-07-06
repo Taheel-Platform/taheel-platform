@@ -335,6 +335,8 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
   );
 }
 
+import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
+
 function AttendanceSection(props) {
   return (
     <Suspense fallback={null}>
@@ -343,4 +345,5 @@ function AttendanceSection(props) {
   );
 }
 
-export { TrackingForm, AttendanceSection };
+export default TrackingForm;
+export { AttendanceSection };
