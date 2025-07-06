@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 
@@ -64,7 +64,7 @@ function exportToCSV(attendanceArr, lang) {
 
 // ======== Main AttendanceSection Component =========
 
-function AttendanceSection({ employeeData, lang = "ar" }) {
+function AttendanceSectionInner({ employeeData, lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -224,4 +224,12 @@ function AttendanceSection({ employeeData, lang = "ar" }) {
   );
 }
 
-export { AttendanceSection };
+function AttendanceSection(props) {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceSectionInner {...props} />
+    </Suspense>
+  );
+}
+
+export { AttendanceSection, AttendanceSectionInner };

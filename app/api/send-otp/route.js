@@ -1,4 +1,3 @@
-"use client";
 export const dynamic = "force-dynamic";
 import { Response } from "next/server";
 import { saveOtp, getOtp } from "@/lib/otpDb";

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { firestore } from "../../lib/firebase.client";
-import StyledQRCode from "../StyledQRCode";
+import { firestore } from "@/lib/firebase.client";
+import StyledQRCode from "@/components/StyledQRCode";
 
 const CATEGORY_LABELS = {
   translation: { ar: "الترجمة", en: "Translation" },
