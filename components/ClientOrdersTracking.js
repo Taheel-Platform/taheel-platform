@@ -251,3 +251,4 @@ function NotFoundPage(props) {
 }
 
 export { ClientOrdersTracking, NotFoundPage };
+export default GlobalLoader;

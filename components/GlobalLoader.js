@@ -251,3 +251,4 @@ function AttendanceSection(props) {
 }
 
 export { GlobalLoader, AttendanceSection };
+export default GlobalLoader;
