@@ -268,11 +268,3 @@ function NotFoundPage(props) {
     </Suspense>
   );
 }
-
-<<<<<<< HEAD
-export { ClientOrdersTracking, NotFoundPage };
-export default GlobalLoader;
-=======
-export default ClientOrdersTracking;
-export { NotFoundPage };
->>>>>>> dc45a9ec2996bdea2692d904b441455a40bac5c4
