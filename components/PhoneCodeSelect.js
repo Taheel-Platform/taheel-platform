@@ -160,6 +160,8 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
   );
 }
 
+import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
+
 function AttendanceSection(props) {
   return (
     <Suspense fallback={null}>

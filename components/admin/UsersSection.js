@@ -22,6 +22,7 @@ import {
 } from "firebase/firestore";
 import { firestore, auth } from "@/lib/firebase.client";
 import ChatWidgetFull from "@/components/ChatWidgetFull";
+import { GlobalLoader } from '@/components/GlobalLoader'
 
 const typeTabs = [
   { key: "all", label: "الكل", icon: <FaUserPlus /> },
@@ -638,4 +639,4 @@ function UsersManagementSection({ lang = "ar" }) {
   );
 }
 
-export { UsersManagementSection };
+export default UsersManagementSection;

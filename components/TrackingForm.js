@@ -12,6 +12,7 @@ import {
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { GlobalLoader } from '@/components/GlobalLoader'
 
 const statusStepsList = [
   { key: "submitted", labelEn: "Submitted", labelAr: "تقديم الطلب", color: "#22c55e", icon: FaEnvelopeOpenText },
@@ -334,6 +335,8 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
   );
 }
 
+import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
+
 function AttendanceSection(props) {
   return (
     <Suspense fallback={null}>
@@ -342,4 +345,5 @@ function AttendanceSection(props) {
   );
 }
 
-export { TrackingForm, AttendanceSection };
+export default TrackingForm;
+export { AttendanceSection };

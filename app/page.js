@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import TrackingForm from "@/components/TrackingForm";
-import GlobalLoader from "@/components/GlobalLoader";
+import { GlobalLoader } from "@/components/GlobalLoader";
 
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';

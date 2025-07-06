@@ -198,6 +198,8 @@ function CountrySelect({
   );
 }
 
+import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
+
 function AttendanceSection(props) {
   return (
     <Suspense fallback={null}>
