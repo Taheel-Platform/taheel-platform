@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/firebase.admin";
 
-// الكود الصحيح في firebase-admin
 export async function GET() {
   try {
     const snapshot = await adminFirestore.collection("services").get();
