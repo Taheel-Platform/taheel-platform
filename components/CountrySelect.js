@@ -1,9 +1,7 @@
 "use client";
-export const dynamic = "force-dynamic";
-import { Suspense } from "react";
 import Select from "react-select";
+import countries from "@/lib/countries-ar-en";
 import 'flag-icons/css/flag-icons.min.css';
-import { countries } from "@/lib/countries-ar-en";
 
 // Custom Option for dropdown list
 const CustomOption = (props) => (
@@ -92,7 +90,7 @@ function CountrySelect({
       <Select
         options={countries}
         value={countries.find(c => c.value === value) || null}
-        onChange={opt => onChange({ target: { name, value: opt?.value } })}
+        onChange={opt => onChange && onChange({ name, value: opt?.value })}
         placeholder={placeholder}
         isSearchable={isSearchable}
         components={{
@@ -198,14 +196,4 @@ function CountrySelect({
   );
 }
 
-import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
-
-function AttendanceSection(props) {
-  return (
-    <Suspense fallback={null}>
-      <AttendanceSectionInner {...props} />
-    </Suspense>
-  );
-}
-
-export { CountrySelect, AttendanceSection };
+export default CountrySelect;

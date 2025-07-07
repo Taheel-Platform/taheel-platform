@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>رمز التحقق - منصة تأهيل | Verification Code - Taheel Platform</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body {
+        background: #eaf5f2;
+        font-family: 'Tajawal', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 420px;
+        margin: 30px auto;
+        background: #fff;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px #0001;
+        border: 1.5px solid #0d9468;
+      }
+      .header {
+        background: linear-gradient(90deg, #0d9468 60%, #1d4d40 100%);
+        padding: 24px 0 16px 0;
+        text-align: center;
+      }
+      .header img {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 2px 14px #0002;
+        margin-bottom: 8px;
+      }
+      .header h1 {
+        color: #fff;
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      .header h2 {
+        color: #e7fffa;
+        margin: 0;
+        font-size: 1.08rem;
+        font-weight: normal;
+        letter-spacing: 0.5px;
+      }
+      .content {
+        padding: 32px 32px 24px 32px;
+        text-align: center;
+      }
+      .code {
+        font-size: 2.1rem;
+        font-family: 'Roboto Mono', monospace;
+        font-weight: bold;
+        color: #107e5b;
+        letter-spacing: 6px;
+        margin: 24px 0 8px 0;
+        direction: ltr;
+      }
+      .desc {
+        color: #333;
+        font-size: 1.05rem;
+        margin-bottom: 10px;
+        line-height: 1.7;
+      }
+      .desc-en {
+        color: #444;
+        font-size: 0.98rem;
+        margin-bottom: 8px;
+        direction: ltr;
+        text-align: left;
+      }
+      .footer {
+        background: #f3f7f5;
+        font-size: 0.92rem;
+        color: #59776a;
+        padding: 20px 12px 15px 12px;
+        border-top: 1px solid #d6ede5;
+        text-align: center;
+      }
+      .footer a {
+        color: #107e5b;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      @media (max-width: 520px) {
+        .container { max-width: 99vw; border-radius: 10px; }
+        .content { padding: 18px 7vw 15px 7vw; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <!-- ضع رابط اللوجو الصحيح هنا -->
+        <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل | Taheel Logo" />
+        <h1>منصة تأهيل</h1>
+        <h2>Taheel Platform</h2>
+      </div>
+      <div class="content">
+        <div class="desc">
+          مرحبًا بك في <b>منصة تأهيل</b>!<br>
+          رمز التحقق الخاص بك هو:
+        </div>
+        <!-- هنا الكود الديناميكي -->
+        <div class="code">{{CODE}}</div>
+        <div class="desc-en">
+          Welcome to <b>Taheel Platform</b>!<br>
+          Your verification code is above.<br>
+          This code will expire after 10 minutes.
+        </div>
+        <div class="desc" style="font-size:0.97rem; color:#c22">
+          إذا لم تطلب رمز التحقق، تجاهل هذه الرسالة.
+        </div>
+      </div>
+      <div class="footer">
+        &copy; 2025 تأهيل | Taheel. جميع الحقوق محفوظة.<br>
+        <a href="https://taheel.ae">taheel.ae</a> |
+        للتواصل: <a href="mailto:info@taheel.ae">info@taheel.ae</a>
+      </div>
+    </div>
+  </body>
+</html>

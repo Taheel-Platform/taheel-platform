@@ -13,6 +13,8 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import countries from "@/lib/countries-ar-en";
+import PHONE_CODES from "@/lib/phone-codes";
 
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
@@ -724,12 +726,9 @@ function RegisterPageInner() {
 
             {/* CountrySelect nationality */}
             <CountrySelect
-              label={t.nationality}
-              name="nationality"
-              value={form.nationality}
-              onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
-              lang={lang}
-            />
+  value={form.nationality}
+  onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
+/>
             <Select label={t.gender} name="gender" options={GENDERS} value={form.gender} onChange={handleChange} />
           </section>
 <section className="rounded-2xl border border-sky-100 bg-sky-50/30 px-4 py-5 flex flex-col gap-8">
@@ -762,12 +761,9 @@ function RegisterPageInner() {
   ) : (
     <>
       <CountrySelect
-        label={t.country}
-        name="country"
-        value={form.country}
-        onChange={opt => handleChange({ name: "country", value: opt?.value })}
-        lang={lang}
-      />
+  value={form.country}
+  onChange={opt => handleChange({ name: "country", value: opt?.value })}
+/>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <Field
           label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
@@ -905,11 +901,9 @@ function RegisterPageInner() {
                 <label className="font-semibold text-gray-800">{t.phoneCode}</label>
                 {/* PhoneCodeSelect التعديل هنا فقط */}
                 <PhoneCodeSelect
-                  value={form.phoneCode}
-                  onChange={opt => handleChange({ name: "phoneCode", value: opt?.code })}
-                  name="phoneCode"
-                  lang={lang}
-                />
+  value={form.phoneCode}
+  onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
+/>
               </div>
               <div className="col-span-2">
                 <Field label={t.phone} name="phone" type="tel" value={form.phone} placeholder={t.phone} onChange={handleChange} lang={lang} />

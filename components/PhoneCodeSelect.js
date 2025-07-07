@@ -1,10 +1,9 @@
 "use client";
-export const dynamic = "force-dynamic";
-import { Suspense } from "react";
 import Select from "react-select";
+import PHONE_CODES from "@/lib/phone-codes";
 import 'flag-icons/css/flag-icons.min.css';
-import { PHONE_CODES } from "@/lib/phone-codes";
 
+// Custom Option for dropdown list
 const customOption = (props) => (
   <div
     {...props.innerProps}
@@ -57,12 +56,17 @@ const customSingleValue = (props) => (
 );
 
 function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode", ...rest }) {
+  // تحسين: دعم القيمة كـ string أو كائن
+  const selectedOption = typeof value === "string"
+    ? PHONE_CODES.find(c => c.code === value) || null
+    : value || null;
+
   return (
     <Select
       name={name}
       options={PHONE_CODES}
-      value={PHONE_CODES.find(c => c.code === value) || null}
-      onChange={opt => onChange({ target: { name, value: opt?.code } })}
+      value={selectedOption}
+      onChange={opt => onChange && onChange({ name, value: opt?.code })}
       required={required}
       placeholder="اختر كود الدولة"
       isSearchable
@@ -86,7 +90,7 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
           maxWidth: "100%",
           boxShadow: "none",
           display: "flex",
-          alignItems: "center", // مهم جداً لوسطية السهم وباقي العناصر
+          alignItems: "center",
         }),
         valueContainer: (base) => ({
           ...base,
@@ -97,7 +101,7 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
           maxWidth: "100%",
           minWidth: 0,
           overflow: "hidden",
-          display: "flex", // مهم!
+          display: "flex",
         }),
         input: (base) => ({
           ...base,
@@ -148,7 +152,7 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
           margin: 0,
           display: "flex",
           alignItems: "center",
-          height: 44, // اجبار السهم أن يكون في وسط الحقل
+          height: 44,
         }),
         menu: (base) => ({
           ...base,
@@ -160,14 +164,4 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
   );
 }
 
-import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
-
-function AttendanceSection(props) {
-  return (
-    <Suspense fallback={null}>
-      <AttendanceSectionInner {...props} />
-    </Suspense>
-  );
-}
-
-export { PhoneCodeSelect, AttendanceSection };
+export default PhoneCodeSelect;

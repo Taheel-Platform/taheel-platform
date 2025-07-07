@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { Response } from "next/server";
+import { NextResponse } from "next/server";
 import { saveOtp, getOtp } from "@/lib/otpDb";
 import { sendOtpMail } from "@/lib/sendMail";
 
@@ -9,7 +9,7 @@ export async function POST(req) {
     const cleanEmail = email?.trim().toLowerCase();
 
     if (!cleanEmail || !cleanEmail.includes("@")) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, message: "بريد إلكتروني غير صالح" },
         { status: 400 }
       );
@@ -17,7 +17,7 @@ export async function POST(req) {
 
     const existing = await getOtp(cleanEmail);
     if (existing && Date.now() - existing.created_at < 60 * 1000) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, message: "يرجى الانتظار دقيقة لإعادة الإرسال" },
         { status: 429 }
       );
@@ -26,14 +26,23 @@ export async function POST(req) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     await saveOtp(cleanEmail, code, Date.now() + 10 * 60 * 1000);
 
-    // احتمال يحصل خطأ هنا لو الإيميل مش شغال
-    await sendOtpMail(cleanEmail, code);
+    // محاولة إرسال الإيميل ومعالجة الخطأ لو حدث
+    const mailResult = await sendOtpMail(cleanEmail, code);
+    if (!mailResult.success) {
+      // يمكنك هنا إظهار تفاصيل الخطأ في حالة التطوير فقط
+      console.error("SEND OTP MAIL ERROR:", mailResult.error);
+      return NextResponse.json(
+        { success: false, message: "تعذر إرسال البريد الإلكتروني. الرجاء المحاولة لاحقاً." },
+        { status: 500 }
+      );
+    }
 
-    return Response.json({ success: true, message: "تم إرسال رمز التحقق" });
+    return NextResponse.json({ success: true, message: "تم إرسال رمز التحقق" });
   } catch (error) {
+    // إظهار الخطأ في اللوغ فقط
     console.error("OTP SEND ERROR:", error);
-    return Response.json(
-      { success: false, message: "حدث خطأ أثناء إرسال البريد الإلكتروني. حاول لاحقاً." },
+    return NextResponse.json(
+      { success: false, message: "حدث خطأ أثناء معالجة الطلب. حاول لاحقاً." },
       { status: 500 }
     );
   }
