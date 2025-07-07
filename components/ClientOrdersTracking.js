@@ -261,6 +261,7 @@ function NotFoundContent(props) {
 }
 
 // الكومبوننت الرئيسي للصفحة NotFound
+export default ClientOrdersTracking;
 function NotFoundPage(props) {
   return (
     <Suspense fallback={null}>
@@ -268,6 +269,3 @@ function NotFoundPage(props) {
     </Suspense>
   );
 }
-
-export default ClientOrdersTracking;
-export { NotFoundPage };
