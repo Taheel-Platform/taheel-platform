@@ -7,7 +7,6 @@ export async function GET() {
   try {
     const snapshot = await adminFirestore.collection("services").get();
     let services = [];
-    snapshot.forEach((doc) => {
       services.push({ id: doc.id, ...doc.data() });
     });
     return NextResponse.json({ services });
