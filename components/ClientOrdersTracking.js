@@ -1,8 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import { Suspense } from "react";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   FaEnvelopeOpenText,
@@ -11,26 +10,38 @@ import {
   FaCog,
   FaCheckCircle,
   FaUpload,
+  FaTimesCircle,
 } from "react-icons/fa";
 import ClientOrdersTrackingModal from "./ClientOrdersTrackingModal";
-import { GlobalLoader } from '@/components/GlobalLoader'
+import { app } from "@/lib/firebase.client";
+import { collection, getDocs, getFirestore, query, where } from "firebase/firestore";
+import { GlobalLoader } from '@/components/GlobalLoader';
 
-// تعريف خطوات التتبع
+// الحالات الأساسية فقط (بدون pending_requirements ولا rejected)
 const statusStepsList = [
   { key: "submitted", labelEn: "Submitted", labelAr: "تقديم الطلب", color: "#22c55e", icon: FaEnvelopeOpenText },
   { key: "under_review", labelEn: "Under Review", labelAr: "مراجعة", color: "#0ea5e9", icon: FaSearch },
-  { key: "pending_requirements", labelEn: "Pending Requirements", labelAr: "بانتظار الاستكمال", color: "#facc15", icon: FaClipboardCheck },
   { key: "government_processing", labelEn: "Government Processing", labelAr: "إجراء حكومي", color: "#a3a3a3", icon: FaCog },
   { key: "completed", labelEn: "Completed", labelAr: "الإنجاز", color: "#10b981", icon: FaCheckCircle }
 ];
 
+// الحالات المخفية
+const hiddenSteps = {
+  pending_requirements: { key: "pending_requirements", labelEn: "Pending Requirements", labelAr: "بانتظار الاستكمال", color: "#facc15", icon: FaClipboardCheck },
+  rejected: { key: "rejected", labelEn: "Rejected", labelAr: "تم رفض الطلب", color: "#ef4444", icon: FaTimesCircle }
+};
+
 function buildTimeline(statusHistory = []) {
-  const currStatus = statusHistory.length
-    ? statusHistory[statusHistory.length - 1].status
+  // استبعد الحالات المخفية
+  const filteredHistory = statusHistory.filter(
+    h => h.status !== "pending_requirements" && h.status !== "rejected"
+  );
+  const currStatus = filteredHistory.length
+    ? filteredHistory[filteredHistory.length - 1].status
     : "submitted";
   const currIdx = statusStepsList.findIndex((s) => s.key === currStatus);
   return statusStepsList.map((step, idx) => {
-    const inHistory = statusHistory.find((h) => h.status === step.key);
+    const inHistory = filteredHistory.find((h) => h.status === step.key);
     return {
       ...step,
       active: idx === currIdx,
@@ -41,14 +52,24 @@ function buildTimeline(statusHistory = []) {
   });
 }
 
-// كارت تتبع الطلب
-function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, isArabic, orderId }) {
+// الكارت الواحد
+function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, isArabic, orderId, orderName }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  // آخر حالة
+  const lastStatusObj = statusHistory?.length ? statusHistory[statusHistory.length - 1] : { status: "submitted" };
+  const lastStatus = lastStatusObj.status;
+  const lastNote = lastStatusObj.note || "";
+
+  // هل آخر حالة مخفية؟
+  const isPendingReq = lastStatus === "pending_requirements";
+  const isRejected = lastStatus === "rejected";
+  const hiddenStep = hiddenSteps[lastStatus];
+
+  // شريط التتبع (لا يشمل الحالات المخفية)
   const timeline = buildTimeline(statusHistory || []);
-  const t = (ar, en) => (isArabic ? ar : en);
   const lastStep = timeline.find(s => s.active);
-  const isPendingReq = lastStep?.key === "pending_requirements";
-  const note = lastStep?.note;
+
+  const t = (ar, en) => (isArabic ? ar : en);
 
   return (
     <motion.div
@@ -60,7 +81,7 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
       className="transition-all duration-200"
     >
       <div
-        className="relative rounded-2xl shadow-lg border-2 px-4 py-4 flex flex-row gap-3 items-stretch min-w-[230px] max-w-[295px] w-full overflow-hidden group"
+        className="relative rounded-2xl shadow-lg border-2 px-4 py-6 flex flex-col items-center min-w-[270px] max-w-[340px] w-full overflow-hidden group min-h-[415px] max-h-[415px]"
         style={{
           background: "linear-gradient(135deg, #ebfff7 60%, #d1fae5 100%)",
           borderColor: "#b6eedb",
@@ -79,142 +100,233 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
             draggable={false}
           />
         </div>
-        {/* محتوى الكارت */}
-        <div className="flex flex-col items-center relative pt-1 pb-1 mx-1 z-10 min-w-[120px]">
-          {timeline.map((step, idx) => {
-            const Icon = step.icon;
-            const lineColor =
-              step.done || step.active
-                ? `linear-gradient(to bottom, ${step.color}, ${timeline[idx + 1]?.color || step.color})`
-                : "rgba(40,54,70,0.15)";
-            return (
-              <div key={step.key} className="flex flex-row items-center min-h-[40px]">
-                <div className="flex flex-col items-center">
-                  <motion.div
-                    initial={{ scale: 1 }}
-                    animate={step.active ? { scale: [1, 1.13, 1] } : { scale: 1 }}
-                    transition={
-                      step.active
-                        ? { repeat: Infinity, duration: 1.1, ease: "easeInOut" }
-                        : { duration: 0.2 }
-                    }
-                    className="flex items-center justify-center rounded-full border-2 shadow-sm"
+
+        {/* رقم الطلب */}
+        <div className="flex flex-col items-center w-full mb-1 mt-2 z-10">
+          <span className="text-emerald-700 font-bold text-xs">{t("رقم الطلب", "Order No.")}</span>
+          <span className="font-mono text-emerald-900 text-xs break-all">{trackingNumber}</span>
+        </div>
+
+        {/* اسم الطلب */}
+        <div className="flex items-center justify-center w-full mb-3 z-10">
+          <span className="font-extrabold text-base text-emerald-900 bg-white/90 rounded-full px-3 py-1 border border-emerald-100 shadow text-center w-full truncate" style={{maxWidth: 200}}>
+            {orderName}
+          </span>
+        </div>
+
+        {/* شريط التتبع الرأسي (يختفي لو آخر حالة مخفية) */}
+        {!(isPendingReq || isRejected) && (
+          <div className="relative flex flex-row w-full min-h-[140px] mb-2 z-10">
+            {/* الشريط */}
+            <div className="relative flex flex-col items-center min-w-[40px] pt-2 pb-2">
+              {/* الخط الخلفي */}
+              <div
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{
+                  top: 16,
+                  width: 5,
+                  height: 32 * (timeline.length - 1) + 18 * (timeline.length - 1),
+                  background: "#e2e8f0",
+                  zIndex: 1,
+                  borderRadius: 9,
+                }}
+              />
+              {/* الخط المتحرك */}
+              <motion.div
+                className="absolute left-1/2 -translate-x-1/2"
+                style={{
+                  top: 16,
+                  width: 5,
+                  height: 0,
+                  background: `linear-gradient(to bottom, #22c55e 40%, ${lastStep?.color || "#22c55e"} 100%)`,
+                  zIndex: 2,
+                  borderRadius: 10,
+                }}
+                animate={{ height: (timeline.findIndex(s=>s.active) <= 0 ? 0 : (32 + 18) * timeline.findIndex(s=>s.active)) }}
+                transition={{ duration: 1, ease: "easeInOut" }}
+              />
+              {/* الأيقونات */}
+              {timeline.map((step, idx) => {
+                const Icon = step.icon;
+                return (
+                  <div className="flex flex-col items-center relative z-10" key={step.key}>
+                    <motion.div
+                      initial={{ scale: 1 }}
+                      animate={step.active ? { scale: [1, 1.13, 1] } : { scale: 1 }}
+                      transition={
+                        step.active
+                          ? { repeat: Infinity, duration: 1.1, ease: "easeInOut" }
+                          : { duration: 0.2 }
+                      }
+                      className="flex items-center justify-center rounded-full border-2 shadow-md"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        marginBottom: idx === timeline.length - 1 ? 0 : 18,
+                        background: step.active
+                          ? step.color
+                          : step.done
+                          ? "#d1fae5"
+                          : "#fff",
+                        borderColor: step.color,
+                        color: step.active
+                          ? "#fff"
+                          : step.done
+                          ? step.color
+                          : "#bdbdbd",
+                        boxShadow: step.active ? `0 0 0 7px ${step.color}33` : "0 1px 3px #05966910",
+                        fontWeight: step.active ? 700 : 500,
+                        zIndex: 5,
+                        fontSize: 18,
+                        transition: "all 0.18s"
+                      }}
+                    >
+                      <Icon size={16} />
+                    </motion.div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* أسماء الحالات */}
+            <div className="flex flex-col justify-between pl-4 py-2 w-full">
+              {timeline.map((step, idx) => (
+                <div key={step.key} className="flex items-center min-h-[40px] mb-2">
+                  <span
+                    className="text-xs font-bold"
                     style={{
-                      width: 30,
-                      height: 30,
-                      background: step.active
-                        ? step.color
-                        : step.done
-                        ? "#d1fae5"
-                        : "#fff",
-                      borderColor: step.color,
                       color: step.active
-                        ? "#fff"
+                        ? step.color
                         : step.done
                         ? step.color
                         : "#bdbdbd",
-                      boxShadow: step.active ? `0 0 0 6px ${step.color}33` : "0 1px 3px #05966910",
-                      fontWeight: step.active ? 700 : 500,
-                      zIndex: 2,
-                      transition: "all 0.18s"
+                      fontWeight: step.active ? 800 : 500,
+                      background: step.active ? "#fff" : "transparent",
+                      borderRadius: step.active ? 6 : 0,
+                      padding: step.active ? "0.13em 0.7em" : "0.05em 0.5em",
+                      transition: "all 0.2s",
+                      minWidth: 120,
+                      boxShadow: step.active ? "0 2px 8px #05966922" : undefined,
                     }}
                   >
-                    <Icon size={15} />
-                  </motion.div>
-                  {idx < timeline.length - 1 && (
-                    <div
-                      style={{
-                        width: 4,
-                        height: 28,
-                        background: lineColor,
-                        borderRadius: 6,
-                        marginTop: 0,
-                        zIndex: 1,
-                        boxShadow: "0 0 3px #05966922,0 12px 30px #0ea5e933",
-                      }}
-                    />
-                  )}
+                    {isArabic ? step.labelAr : step.labelEn}
+                  </span>
                 </div>
-                <span
-                  className="text-xs font-bold ml-2"
-                  style={{
-                    color: step.active
-                      ? step.color
-                      : step.done
-                      ? step.color
-                      : "#bdbdbd",
-                    minWidth: 84,
-                    fontWeight: step.active ? 800 : 500,
-                    letterSpacing: "0.01em",
-                    filter: step.active ? "drop-shadow(0 2px 4px #05966922)" : undefined,
-                    background: step.active ? "#fff" : "transparent",
-                    borderRadius: step.active ? 6 : 0,
-                    padding: step.active ? "0.1em 0.4em" : "0",
-                    transition: "all 0.2s",
-                    marginRight: isArabic ? 0 : "0.25rem",
-                    marginLeft: isArabic ? "0.25rem" : 0,
-                  }}
-                >
-                  {isArabic ? step.labelAr : step.labelEn}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex-1 flex flex-col justify-between min-w-0 z-10">
-          <div className="flex items-center gap-1 mb-1">
-            <span className="text-emerald-700 font-bold text-xs">{t("رقم:", "No.")}</span>
-            <span className="font-mono text-emerald-900 text-xs">{trackingNumber}</span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-gray-700 text-xs font-semibold">
-              {t("آخر حالة:", "Status:")}
-              <span
-                style={{
-                  color: lastStep?.color,
-                  fontWeight: "bold",
-                  margin: "0 4px",
-                }}
-              >
-                {isArabic
-                  ? lastStep?.labelAr
-                  : lastStep?.labelEn}
-              </span>
-            </span>
-            <span className="text-gray-400 text-[11px]">
-              {t("آخر تحديث:", "Last update:")}{" "}
-              {lastUpdate ? new Date(lastUpdate).toLocaleString(isArabic ? "ar-EG" : "en-US") : "-"}
-            </span>
-          </div>
-          {isPendingReq && (
-            <div className="mt-2 flex flex-col gap-2">
-              <div className="bg-yellow-50 text-yellow-700 text-xs rounded px-2 py-1 font-semibold border border-yellow-200">
-                {isArabic ? "ملاحظة الموظف:" : "Staff Note:"} {note}
-              </div>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow transition flex items-center gap-2"
-              >
-                <FaUpload />
-                {isArabic ? "رفع المستند المطلوب" : "Upload Required Document"}
-              </button>
-              <ClientOrdersTrackingModal
-                show={showUploadModal}
-                onClose={() => setShowUploadModal(false)}
-                note={note}
-                isArabic={isArabic}
-                orderId={trackingNumber}
-              />
+              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* بيانات الطلب */}
+        <div className="w-full flex flex-col gap-1 z-10">
+          <span className="text-gray-700 text-xs font-semibold">
+            {t("آخر حالة:","Status:")}
+            <span
+              style={{
+                color: lastStep?.color || hiddenStep?.color,
+                fontWeight: "bold",
+                margin: "0 4px",
+              }}
+            >
+              {(isPendingReq || isRejected)
+                ? (isArabic ? hiddenStep?.labelAr : hiddenStep?.labelEn)
+                : (isArabic ? lastStep?.labelAr : lastStep?.labelEn)}
+            </span>
+          </span>
+          <span className="text-gray-400 text-[11px]">
+            {t("آخر تحديث:","Last update:")}{" "}
+            {lastUpdate ? new Date(lastUpdate).toLocaleString(isArabic ? "ar-EG" : "en-US") : "-"}
+          </span>
         </div>
+
+        {/* الحالات المخفية */}
+        {(isPendingReq || isRejected) && (
+          <div className="mt-2 flex flex-col gap-2 w-full">
+            <div
+              className={`rounded px-2 py-1 text-xs font-semibold border text-center ${
+                isPendingReq
+                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                  : "bg-red-50 text-red-700 border-red-200"
+              }`}
+            >
+              <span className="flex items-center justify-center gap-1">
+                {hiddenStep.icon && <hiddenStep.icon className="inline mr-1" />}
+                {isArabic ? hiddenStep.labelAr : hiddenStep.labelEn}
+              </span>
+              {lastNote && (
+                <div
+                  className={`mt-1 text-xs rounded px-2 py-1 border ${
+                    isPendingReq
+                      ? "bg-yellow-100 text-yellow-900 border-yellow-200"
+                      : "bg-red-100 text-red-800 border-red-200"
+                  }`}
+                >
+                  {t("ملاحظة الموظف:","Staff Note:")} {lastNote}
+                </div>
+              )}
+              {isPendingReq && (
+                <button
+                  className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-full font-bold text-xs shadow transition"
+                  onClick={() => setShowUploadModal(true)}
+                >
+                  {t("رفع المستند المطلوب","Upload Required Document")}
+                </button>
+              )}
+              {/* مودال رفع المستند */}
+              {showUploadModal && (
+                <ClientOrdersTrackingModal
+                  show={showUploadModal}
+                  onClose={() => setShowUploadModal(false)}
+                  note={lastNote}
+                  isArabic={isArabic}
+                  orderId={trackingNumber}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
 }
 
-// الكومبوننت الرئيسي للطلبات
-function ClientOrdersTracking({ clientId, lang = "ar", orders = [] }) {
+// الكومبوننت الرئيسي: يجلب الطلبات من فايرستور ويعرضها
+export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true);
+      try {
+        const db = getFirestore(app);
+        // غير "requests" لو اسم المجموعة مختلف
+        const q = query(collection(db, "requests"), where("clientId", "==", clientId));
+        const snapshot = await getDocs(q);
+        setOrders(
+          snapshot.docs.map(doc => ({
+            trackingNumber: doc.data().trackingNumber || doc.id,
+            statusHistory: doc.data().statusHistory || [],
+            lastUpdate: doc.data().lastUpdated || doc.data().createdAt,
+            orderId: doc.id,
+            orderName: doc.data().orderName || doc.data().serviceType || "", // ضع هنا اسم الطلب حسب بياناتك
+          }))
+        );
+      } catch (error) {
+        setOrders([]);
+      }
+      setLoading(false);
+    }
+    if (clientId) fetchOrders();
+  }, [clientId]);
+
+  if (loading) {
+    return (
+      <div className="w-full flex justify-center py-8">
+        <GlobalLoader text={lang === "ar" ? "جار التحميل..." : "Loading..."} />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full flex flex-col items-center mt-2 mb-8">
       <span className="text-emerald-900 text-lg font-bold mb-4 tracking-tight">
@@ -228,44 +340,17 @@ function ClientOrdersTracking({ clientId, lang = "ar", orders = [] }) {
         ) : (
           orders.map((order, idx) => (
             <ClientOrderTrackingCard
-              key={order.trackingNumber || order.requestId || idx}
-              trackingNumber={order.trackingNumber || order.requestId}
-              statusHistory={order.statusHistory || []}
-              lastUpdate={order.lastUpdated || order.createdAt}
+              key={order.trackingNumber || order.orderId || idx}
+              trackingNumber={order.trackingNumber}
+              statusHistory={order.statusHistory}
+              lastUpdate={order.lastUpdate}
               isArabic={lang === "ar"}
-              orderId={order.trackingNumber || order.requestId}
+              orderId={order.trackingNumber}
+              orderName={order.orderName}
             />
           ))
         )}
       </div>
     </div>
-  );
-}
-
-// الكومبوننت الداخلي للصفحة NotFound
-function NotFoundContent(props) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-8">الصفحة غير موجودة</p>
-        <button 
-          onClick={() => window.history.back()}
-          className="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition"
-        >
-          العودة للخلف
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// الكومبوننت الرئيسي للصفحة NotFound
-export default ClientOrdersTracking;
-function NotFoundPage(props) {
-  return (
-    <Suspense fallback={null}>
-      <NotFoundContent {...props} />
-    </Suspense>
   );
 }
