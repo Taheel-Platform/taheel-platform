@@ -1,11 +1,15 @@
-import { createWorker } from "tesseract.js";
 import { promises as fs } from "fs";
 import formidable from "formidable";
-import path from "path";
+import vision from "@google-cloud/vision";
 
 export const config = {
   api: { bodyParser: false },
 };
+
+// إعداد عميل Google Vision باستخدام متغير البيئة
+const client = new vision.ImageAnnotatorClient({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
+});
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -41,9 +45,12 @@ export default async function handler(req, res) {
     }
 
     const fileBuffer = await fs.readFile(file.filepath);
-    const worker = await createWorker("eng+ara");
-    const { data: { text } } = await worker.recognize(fileBuffer);
-    await worker.terminate();
+
+    // -------- Google Vision API OCR --------
+    const [result] = await client.textDetection({ image: { content: fileBuffer } });
+    const detections = result.textAnnotations;
+    const text = detections[0]?.description || "";
+    // -------- END GOOGLE VISION --------
 
     const cleanedText = text?.trim() || "";
     const upperText = cleanedText.toUpperCase();
