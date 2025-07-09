@@ -12,8 +12,15 @@ import {
   FaCheck,
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import ServiceUploadModal from "./ServiceUploadModal";
+
+// رقم الطلب الفريد
+function generateOrderNumber() {
+  const part1 = Math.floor(1000 + Math.random() * 9000);
+  const part2 = Math.floor(1000 + Math.random() * 9000);
+  return `ORD-${part1}-${part2}`;
+}
 
 const CATEGORY_STYLES = {
   company: {
@@ -76,6 +83,7 @@ export default function ServiceProfileCard({
   onPaid,
   allowPaperCount = false,
   pricePerPage,
+  userEmail, // يجب تمرير إيميل المستخدم (تحتاج تمريره من الأعلى)
 }) {
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
@@ -119,8 +127,8 @@ export default function ServiceProfileCard({
 
   // تحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
-  !requireUpload ||
-  (uploadedDocs["main"] && uploadedDocs["main"].type === "application/pdf");
+    !requireUpload ||
+    (uploadedDocs["main"] && uploadedDocs["main"].type === "application/pdf");
 
   // تحقق من تحديد عدد الأوراق
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
@@ -150,6 +158,43 @@ export default function ServiceProfileCard({
     setShowCoinDiscountModal(true);
     setShowPayModal(false);
     setPayMsg("");
+  }
+
+  // إرسال إشعار (Firestore notifications)
+  async function sendNotification({ userId, orderNumber, orderName }) {
+    try {
+      await addDoc(collection(firestore, "notifications"), {
+        body: `تم تقديم طلبك بنجاح. رقم الطلب: ${orderNumber}`,
+        isRead: false,
+        notificationId: `notif-${Date.now()}`,
+        relatedRequest: orderNumber,
+        targetId: userId,
+        timestamp: new Date().toISOString(),
+        title: "تحديث حالة الطلب",
+        type: "status",
+        orderName: orderName,
+      });
+    } catch (err) {
+      // log notification error if needed
+    }
+  }
+
+  // إرسال إيميل (استدعاء API backend أو cloud function)
+  async function sendOrderEmail({ to, orderNumber, serviceName, price }) {
+    try {
+      await fetch("/api/sendOrderEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to,
+          orderNumber,
+          serviceName,
+          price,
+        }),
+      });
+    } catch (err) {
+      // log email error if needed
+    }
   }
 
   async function handlePayment(method, withCoinDiscount = false) {
@@ -216,26 +261,68 @@ export default function ServiceProfileCard({
 
       // Gateway code here if needed
 
+      // === إنشاء الطلب بعد الدفع الناجح ===
+      // رقم الطلب هو نفسه رقم التتبع
+      const orderNumber = generateOrderNumber();
+
+      // إضافة الطلب في Collection "requests"
+      await addDoc(collection(firestore, "requests"), {
+        trackingNumber: orderNumber, // رقم التتبع = رقم الطلب
+        orderNumber: orderNumber,
+        clientId: userId,
+        orderName: name,
+        serviceId: serviceId,
+        quantity: repeatable ? quantity : 1,
+        price: totalServicePrice,
+        statusHistory: [
+          {
+            status: "submitted",
+            timestamp: new Date().toISOString(),
+            note: "",
+          },
+        ],
+        lastUpdated: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        uploadedDocs: uploadedDocs || {},
+        paperCount: allowPaperCount ? paperCount : undefined,
+        paymentMethod: method,
+        lang: lang,
+      });
+
+      // إرسال إشعار للعميل (Firestore notifications)
+      await sendNotification({
+        userId,
+        orderNumber,
+        orderName: name,
+      });
+
+      // إرسال إيميل للعميل (تحتاج ضبط endpoint)
+      if (userEmail) {
+        await sendOrderEmail({
+          to: userEmail,
+          orderNumber,
+          serviceName: name,
+          price: totalServicePrice,
+        });
+      }
+
       setPayMsg(
         <span className="text-green-700 font-bold">
           {lang === "ar"
-            ? withCoinDiscount
-              ? `تم الدفع بنجاح مع خصم 10% مقابل 100 كوين!`
-              : `تم الدفع بنجاح! وتمت إضافة ${coins * (repeatable ? quantity : 1)} كوين لرصيدك.`
-            : withCoinDiscount
-            ? `Payment successful with 10% discount using 100 coins!`
-            : `Payment successful! ${coins * (repeatable ? quantity : 1)} coins added to your balance.`}
+            ? `تم الدفع بنجاح! رقم الطلب/التتبع: ${orderNumber}`
+            : `Payment successful! Order/Tracking Number: ${orderNumber}`}
         </span>
       );
 
       if (onPaid)
         onPaid(method, repeatable ? quantity : 1, uploadedDocs, paperCount);
       setIsPaying(false);
+
       setTimeout(() => {
         setShowPayModal(false);
         setShowCoinDiscountModal(false);
         setPayMsg("");
-      }, 1500);
+      }, 1800);
     } catch (err) {
       setPayMsg(
         <span className="text-red-600 font-bold">
