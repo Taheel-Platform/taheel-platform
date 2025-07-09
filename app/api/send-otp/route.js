@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { saveOtp, getOtp } from "@/lib/otpDb";
 import { sendMail } from "@/lib/sendMail";
@@ -26,7 +26,8 @@ export async function POST(req) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     await saveOtp(cleanEmail, otpCode, Date.now() + 10 * 60 * 1000);
 
-    const mailResult = await sendMail(cleanEmail, otpCode);
+    // هنا التصحيح
+    const mailResult = await sendMail(cleanEmail, "otp", { code: otpCode });
     if (!mailResult.success) {
       console.error("SEND OTP MAIL ERROR:", mailResult.error);
       return NextResponse.json(
@@ -37,7 +38,7 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, message: "تم إرسال رمز التحقق" });
   } catch (error) {
-    console.error("OTP SEND ERROR:", error);
+    console.error("OTP SEND ERROR:", error, error?.stack);
     return NextResponse.json(
       { success: false, message: "حدث خطأ أثناء معالجة الطلب. حاول لاحقاً." },
       { status: 500 }
