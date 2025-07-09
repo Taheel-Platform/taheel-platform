@@ -1,4 +1,4 @@
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { saveOtp, getOtp } from "@/lib/otpDb";
 import { sendMail } from "@/lib/sendMail";
@@ -26,7 +26,7 @@ export async function POST(req) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     await saveOtp(cleanEmail, otpCode, Date.now() + 10 * 60 * 1000);
 
-    // هنا التصحيح
+    // إرسال الإيميل عبر Resend فقط
     const mailResult = await sendMail(cleanEmail, "otp", { code: otpCode });
     if (!mailResult.success) {
       console.error("SEND OTP MAIL ERROR:", mailResult.error);
