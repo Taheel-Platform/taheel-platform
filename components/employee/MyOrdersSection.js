@@ -600,16 +600,7 @@ function MyOrdersSection({ lang = "ar" }) {
   return (
     <div style={{fontFamily:"Cairo,Tajawal,Segoe UI,Arial", background:"linear-gradient(135deg,#e3f0ff 0%,#c9e6ff 100%) min-h-screen"}} className="relative p-4 md:p-8">
       <div style={{...glassStyle, background:"rgba(210,234,255,0.8)", color: "#114477", padding: "12px", borderRadius: "18px", marginBottom: "18px", fontWeight: 700}}>
-        <span>تشخيص سريع:</span>
-        <br />
-        <span>userId الحالي: <b>{currentEmployee.userId || "-"}</b></span>
-        <br />
-        <span>عدد الطلبات المحملة: <b>{orders.length}</b></span>
-        <br />
-        <span>
-          راجع الكونسول (console) لترى معلومات كل طلب محمل من فايرستور.<br/>
-          إذا كانت الطلبات هنا صفر أو في الكونسول صفر، المشكلة غالبا في userId أو الداتا نفسها.
-        </span>
+        <div className="text-lg font-bold mb-2">إدارة الطلبات</div>
       </div>
       {/* Tabs */}
       <div className="flex gap-2 mb-4">

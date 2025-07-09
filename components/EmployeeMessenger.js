@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   getDatabase,
   ref as dbRef,
-  set,
   push,
   onValue,
   update,
@@ -15,7 +14,6 @@ import {
   FaMicrophone,
   FaPaperclip,
   FaImage,
-  FaFileAlt,
   FaSmile,
 } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
@@ -31,7 +29,7 @@ function blobToBase64(blob) {
 }
 
 // جلب الشاتات المعينة أو المنتظرة (مراقبة حيّة)
-function listenEmployeeChats(employeeId, setChats, setSelectedChat) {
+function listenEmployeeChats(userId, setChats, setSelectedChat) {
   const db = getDatabase();
   const chatsRef = dbRef(db, "chats");
   return onValue(chatsRef, (snap) => {
@@ -40,7 +38,7 @@ function listenEmployeeChats(employeeId, setChats, setSelectedChat) {
       const c = { ...room.val(), id: room.key };
       if (
         c.status === "open" &&
-        (c.assignedTo === employeeId ||
+        (c.assignedTo === userId ||
           (c.waitingForAgent && !c.assignedTo))
       ) {
         list.push(c);
@@ -49,7 +47,6 @@ function listenEmployeeChats(employeeId, setChats, setSelectedChat) {
     // ترتيب تنازلي حسب createdAt
     list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     setChats(list);
-    // بإمكانك هنا اختيار أول شات تلقائي لو حبيت
   });
 }
 
@@ -62,13 +59,13 @@ async function deleteChatRoomAndMessages(roomId) {
   } catch {}
 }
 
-export default function EmployeeChatWidget({ employeeId, employeeName }) {
+export default function EmployeeMessenger({ userId, lang }) {
   const db = getDatabase();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [imagePreview, setImagePreview] = useState(null); // base64 string
+  const [imagePreview, setImagePreview] = useState(null);
   const [audioBlob, setAudioBlob] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -79,14 +76,33 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
   const [chatClosed, setChatClosed] = useState(false);
   const inputRef = useRef(null);
   const chatEndRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  // غلق الـ Emoji picker عند الضغط خارجها
+  useEffect(() => {
+    if (!showEmoji) return;
+    function handleClickOutside(event) {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target)
+      ) {
+        setShowEmoji(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmoji]);
 
   // مراقبة الشاتات
   useEffect(() => {
-    const unsub = listenEmployeeChats(employeeId, setChats, setSelectedChat);
+    if (!userId) return;
+    const unsub = listenEmployeeChats(userId, setChats, setSelectedChat);
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [employeeId]);
+  }, [userId]);
 
   // مراقبة الرسائل وحالة الشات الحالي
   useEffect(() => {
@@ -98,7 +114,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
     }
     (async () => {
       if (selectedChat.clientId) {
-        // جلب بيانات العميل من الـ Realtime Database لو مخزنة، أو تجاهل إذا مش موجودة
         const userSnap = await get(dbRef(db, "users/" + selectedChat.clientId));
         setClientInfo(userSnap.exists() ? userSnap.val() : null);
       }
@@ -112,7 +127,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
       });
       msgs.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       setMessages(msgs);
-      // هل تم اغلاق المحادثة؟
       const closedMsg = msgs.find(
         (msg) =>
           msg.type === "system" &&
@@ -123,14 +137,12 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 120);
     });
 
-    // مراقبة حالة الشات: إذا أغلق من أحد الطرفين، امسحه بعد ثانيتين
     const chatRef = dbRef(db, `chats/${selectedChat.id}`);
     const unsubChat = onValue(chatRef, async (d) => {
       const room = d.val();
       if (!room) return;
       const status = room.status;
       if (status === "closed_by_client" || status === "closed_by_employee") {
-        // أضف رسالة سيستم إذا لم توجد
         const msgsSnap = await get(dbRef(db, `chats/${selectedChat.id}/messages`));
         let closedMsg = false;
         msgsSnap.forEach((m) => {
@@ -154,7 +166,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
           });
         }
         setChatClosed(true);
-        // حذف غرفة الشات بعد ثانيتين لأي طرف أغلقها (دمج مباشر)
         setTimeout(async () => {
           await deleteChatRoomAndMessages(selectedChat.id);
           setSelectedChat(null);
@@ -176,8 +187,8 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
     if (!selectedChat) return;
     setUploading(true);
     let data = {
-      senderId: employeeId || "unknown",
-      senderName: employeeName || "موظف",
+      senderId: userId || "unknown",
+      senderName: "موظف",
       senderType: "employee",
       createdAt: Date.now(),
       type,
@@ -248,24 +259,27 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
 
   // استلام الشات (لو منتظر)
   async function handleAcceptChat(chatId) {
+    if (!userId) {
+      alert("حدث خطأ: معرف الموظف غير متوفر! يرجى إعادة تحميل الصفحة أو التواصل مع الدعم.");
+      console.error("userId is undefined/null in handleAcceptChat");
+      return;
+    }
     await update(dbRef(db, `chats/${chatId}`), {
       waitingForAgent: false,
-      assignedTo: employeeId,
+      assignedTo: userId,
       agentAccepted: true,
-      agentName: employeeName || "موظف",
+      agentName: "موظف",
     });
   }
 
   // إنهاء الشات (من الموظف)
   async function handleCloseChat() {
     if (!selectedChat) return;
-    // أرسل رسالة سيستم أولًا
     await push(dbRef(db, `chats/${selectedChat.id}/messages`), {
       text: "تم اغلاق المحادثة من طرف الموظف",
       type: "system",
       createdAt: Date.now(),
     });
-    // عدل الحالة
     await update(dbRef(db, `chats/${selectedChat.id}`), { status: "closed_by_employee" });
     setSelectedChat(null);
     setClientInfo(null);
@@ -279,32 +293,88 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
   };
 
   function renderMsgBubble(msg) {
-    let bubbleClass =
-      "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
-    let self = msg.senderId === employeeId;
-    if (msg.type === "system") {
-      bubbleClass += " bg-yellow-50 text-blue-800 border border-blue-200 mx-auto";
-    } else if (self) {
-      bubbleClass += " bg-gradient-to-br from-blue-500 to-blue-400 text-white ml-auto self-end";
-    } else {
-      bubbleClass += " bg-white text-blue-900 border border-blue-200 self-start";
-    }
-    return (
-      <div className={bubbleClass} key={msg.id}>
-        {["text", "system"].includes(msg.type) && <span>{msg.text}</span>}
-        {msg.type === "image" && (
-          <img src={msg.imageBase64} alt="img" className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
-        )}
-        {msg.type === "audio" && (
+  let bubbleClass = "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
+  let self = msg.senderId === userId;
+  if (msg.type === "system") {
+    bubbleClass += " bg-yellow-50 text-blue-800 border border-blue-200 mx-auto";
+  } else if (self) {
+    bubbleClass += " bg-gradient-to-br from-blue-500 to-blue-400 text-white ml-auto self-end";
+  } else {
+    bubbleClass += " bg-white text-blue-900 border border-blue-200 self-start";
+  }
+  return (
+    <div className={bubbleClass} key={msg.id}>
+      {/* نص */}
+      {["text", "system"].includes(msg.type) && <span>{msg.text}</span>}
+
+      {/* صورة */}
+      {msg.type === "image" && (
+        <a
+          href={msg.imageBase64}
+          download={`image_${msg.id}.jpg`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="تحميل الصورة"
+          style={{ display: "inline-block", marginTop: 4 }}
+        >
+          <img
+            src={msg.imageBase64}
+            alt="img"
+            className="max-w-[160px] max-h-[160px] rounded-lg border mt-1"
+            style={{ cursor: "pointer" }}
+          />
+        </a>
+      )}
+
+      {/* صوت */}
+      {msg.type === "audio" && (
+        <div>
           <audio controls src={msg.audioBase64} className="mt-1" />
-        )}
-        <div className="text-[10px] text-blue-400 mt-1 text-left ltr:text-left rtl:text-right">
-          {msg.type !== "system" ? msg.senderName : "النظام"}
-          {" · "}
-          {msg.createdAt
-            ? new Date(msg.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })
-            : ""}
+          <a
+            href={msg.audioBase64}
+            download={`voice_${msg.id}.webm`}
+            className="text-blue-500 underline text-xs ml-2"
+            style={{ display: "inline-block", marginTop: 4 }}
+            title="تحميل الصوت"
+          >
+            تحميل الصوت
+          </a>
         </div>
+      )}
+
+      {/* ملف أو مستند عام */}
+      {msg.type === "file" && (
+        <div className="mt-2">
+          <a
+            href={msg.fileBase64 || msg.fileUrl}
+            download={msg.fileName || `file_${msg.id}`}
+            className="text-blue-600 underline font-bold"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="تحميل الملف"
+          >
+            <FaPaperclip className="inline mr-1" />
+            {msg.fileName || "تحميل الملف"}
+          </a>
+        </div>
+      )}
+
+      <div className="text-[10px] text-blue-400 mt-1 text-left ltr:text-left rtl:text-right">
+        {msg.type !== "system" ? msg.senderName : "النظام"}
+        {" · "}
+        {msg.createdAt
+          ? new Date(msg.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })
+          : ""}
+      </div>
+    </div>
+  );
+}
+
+  // لا ترسم إلا إذا كان userId موجود (حماية إضافية)
+  if (!userId) {
+    return (
+      <div className="text-center py-8 text-blue-500">
+        لا يمكن تحميل المحادثات: معرف الموظف غير متوفر.
       </div>
     );
   }
@@ -384,7 +454,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
             )}
             {selectedChat && (
               <>
-                {/* بيانات العميل وزر إنهاء */}
                 <div className="border-b px-6 py-3 flex items-center justify-between bg-blue-50">
                   <div>
                     <span className="font-bold text-lg text-blue-700">{clientInfo?.name || selectedChat.clientId}</span>
@@ -400,7 +469,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
                     إنهاء الشات
                   </button>
                 </div>
-                {/* الرسائل */}
                 <div className="flex-1 px-5 py-4 overflow-y-auto flex flex-col-reverse chat-bg-grad" style={{ direction: "rtl" }}>
                   <div ref={chatEndRef} />
                   {chatClosed ? (
@@ -411,7 +479,6 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
                     messages.slice().reverse().map(renderMsgBubble)
                   )}
                 </div>
-                {/* إدخال رسالة */}
                 {!chatClosed && (
                   <form onSubmit={handleSend} className="p-3 border-t flex items-center gap-2 bg-white">
                     <div className="relative">
@@ -425,7 +492,10 @@ export default function EmployeeChatWidget({ employeeId, employeeName }) {
                         <FaSmile size={22} />
                       </button>
                       {showEmoji && (
-                        <div className="fixed bottom-28 right-8 z-[9999]">
+                        <div
+                          className="fixed bottom-28 right-8 z-[9999]"
+                          ref={emojiPickerRef}
+                        >
                           <Picker
                             data={emojiData}
                             onEmojiSelect={handleSelectEmoji}
