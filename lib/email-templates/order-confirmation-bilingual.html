@@ -6,45 +6,45 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
       body {
-        background: #f6faf8;
+        background: #eaf5f2;
         font-family: 'Tajawal', Arial, sans-serif;
         margin: 0;
         padding: 0;
       }
       .container {
         max-width: 440px;
-        margin: 36px auto;
+        margin: 30px auto;
         background: #fff;
-        border-radius: 22px;
+        border-radius: 24px;
         overflow: hidden;
         box-shadow: 0 8px 32px #0001;
         border: 1.5px solid #0d9468;
       }
       .header {
         background: linear-gradient(90deg, #0d9468 60%, #1d4d40 100%);
-        padding: 36px 0 20px 0;
+        padding: 32px 0 20px 0;
         text-align: center;
       }
       .logo-circle {
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
       .logo-circle-inner {
         background: #fff;
         border-radius: 50%;
-        width: 92px;
-        height: 92px;
+        width: 72px;
+        height: 72px;
         box-shadow: 0 3px 18px #0002;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 3px solid #f6faf8;
+        border: 3px solid #eaf5f2;
       }
       .logo-circle img {
-        width: 62px;
-        height: 62px;
+        width: 48px;
+        height: 48px;
         display: block;
         border-radius: 50%;
         background: #fff;
@@ -54,36 +54,41 @@
       .header h2 {
         width: 100%;
         text-align: center;
+        margin: 0;
       }
       .header h1 {
         color: #fff;
-        margin: 0 0 3px 0;
-        font-size: 1.58rem;
+        font-size: 1.5rem;
         font-weight: bold;
         letter-spacing: 1px;
+        margin-bottom: 3px;
       }
       .header h2 {
         color: #e7fffa;
-        margin: 0 0 0 0;
-        font-size: 1.13rem;
+        font-size: 1.08rem;
         font-weight: normal;
         letter-spacing: 0.5px;
       }
       .content {
-        padding: 38px 30px 20px 30px;
+        padding: 32px 32px 24px 32px;
         text-align: center;
       }
-      .desc,
-      .thanks {
-        color: #222;
-        font-size: 1.11rem;
-        margin-bottom: 18px;
+      .desc, .thanks, .desc-en, .thanks-en {
+        color: #333;
+        font-size: 1.07rem;
+        margin-bottom: 12px;
         line-height: 1.8;
         font-weight: 500;
         text-align: center;
       }
-      .order-info,
-      .order-info-en {
+      .desc-en, .thanks-en {
+        color: #444;
+        font-size: 1.01rem;
+        direction: ltr;
+        font-family: Arial, 'Tajawal', sans-serif;
+        line-height: 1.7;
+      }
+      .order-info, .order-info-en {
         background: #f9fdfc;
         border: 1px solid #d6ede5;
         border-radius: 16px;
@@ -94,8 +99,7 @@
         max-width: 340px;
         text-align: center;
       }
-      .order-info p,
-      .order-info-en p {
+      .order-info p, .order-info-en p {
         margin: 8px 0;
         font-size: 1.07rem;
         color: #153b31;
@@ -103,24 +107,13 @@
         text-align: center;
         direction: ltr;
       }
-      .order-info span,
-      .order-info-en span {
+      .order-info span, .order-info-en span {
         font-weight: 700;
         color: #107e5b;
       }
-      .desc-en,
-      .thanks-en {
-        color: #444;
-        font-size: 1.05rem;
-        margin-bottom: 13px;
-        direction: ltr;
-        text-align: center;
-        font-family: Arial, 'Tajawal', sans-serif;
-        line-height: 1.7;
-      }
       .footer {
         background: #f3f7f5;
-        font-size: 0.98rem;
+        font-size: 0.95rem;
         color: #59776a;
         padding: 20px 12px 15px 12px;
         border-top: 1px solid #d6ede5;
@@ -132,18 +125,9 @@
         font-weight: 500;
       }
       @media (max-width: 520px) {
-        .container {
-          max-width: 99vw;
-          border-radius: 11px;
-        }
-        .content {
-          padding: 16px 4vw 13px 4vw;
-        }
-        .order-info,
-        .order-info-en {
-          min-width: 120px;
-          max-width: 99vw;
-        }
+        .container { max-width: 99vw; border-radius: 10px; }
+        .content { padding: 18px 7vw 15px 7vw; }
+        .order-info, .order-info-en { min-width: 90px; font-size: 1rem;}
       }
     </style>
   </head>
