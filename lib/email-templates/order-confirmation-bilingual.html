@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>تأكيد الطلب - منصة تأهيل | Order Confirmation - Taheel Platform</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body {
+        background: #f6faf8;
+        font-family: 'Tajawal', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 440px;
+        margin: 36px auto;
+        background: #fff;
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px #0001;
+        border: 1.5px solid #0d9468;
+      }
+      .header {
+        background: linear-gradient(90deg, #0d9468 60%, #1d4d40 100%);
+        padding: 24px 0 12px 0;
+        text-align: center;
+      }
+      .logo-circle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 9px;
+      }
+      .logo-circle-inner {
+        background: #fff;
+        border-radius: 50%;
+        width: 74px;
+        height: 74px;
+        box-shadow: 0 3px 18px #0002;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid #f6faf8;
+      }
+      .logo-circle img {
+        width: 52px;
+        height: 52px;
+        display: block;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .header h1 {
+        color: #fff;
+        margin: 0 0 2px 0;
+        font-size: 1.48rem;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      .header h2 {
+        color: #e7fffa;
+        margin: 0;
+        font-size: 1.09rem;
+        font-weight: normal;
+        letter-spacing: 0.5px;
+      }
+      .content {
+        padding: 36px 30px 20px 30px;
+      }
+      .desc, .thanks {
+        color: #222;
+        font-size: 1.07rem;
+        margin-bottom: 14px;
+        line-height: 1.8;
+        font-weight: 500;
+        text-align: right;
+      }
+      .desc-en, .thanks-en {
+        color: #444;
+        font-size: 1.01rem;
+        margin-bottom: 13px;
+        direction: ltr;
+        text-align: left;
+        font-family: Arial, 'Tajawal', sans-serif;
+        line-height: 1.7;
+      }
+      .order-info, .order-info-en {
+        background: #f9fdfc;
+        border: 1px solid #d6ede5;
+        border-radius: 16px;
+        padding: 18px 14px;
+        margin-bottom: 18px;
+      }
+      .order-info {
+        text-align: right;
+        direction: rtl;
+      }
+      .order-info-en {
+        text-align: left;
+        direction: ltr;
+      }
+      .order-info p, .order-info-en p {
+        margin: 8px 0;
+        font-size: 1.03rem;
+        color: #153b31;
+        font-weight: 500;
+      }
+      .order-info span, .order-info-en span {
+        font-weight: 700;
+        color: #107e5b;
+      }
+      .footer {
+        background: #f3f7f5;
+        font-size: 0.95rem;
+        color: #59776a;
+        padding: 20px 12px 15px 12px;
+        border-top: 1px solid #d6ede5;
+        text-align: center;
+      }
+      .footer a {
+        color: #107e5b;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      @media (max-width: 520px) {
+        .container { max-width: 99vw; border-radius: 11px; }
+        .content { padding: 16px 4vw 13px 4vw; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo-circle">
+          <div class="logo-circle-inner">
+            <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل | Taheel Logo" />
+          </div>
+        </div>
+        <h1>منصة تأهيل</h1>
+        <h2>Taheel Platform</h2>
+      </div>
+      <div class="content">
+        <div class="desc">
+          شكرًا لاستخدامك <b>منصة تأهيل</b>!<br>
+          تم استلام طلبك بنجاح وتأكيد عملية الدفع.
+        </div>
+        <div class="order-info">
+          <p>رقم الطلب: <span>{{ORDER_NUMBER}}</span></p>
+          <p>الخدمة: <span>{{SERVICE_NAME}}</span></p>
+          <p>المبلغ المدفوع: <span>{{PRICE}} درهم</span></p>
+        </div>
+        <div class="thanks">
+          سنقوم بمعالجة طلبك في أقرب وقت.<br>
+          لمتابعة حالته يمكنك زيارة حسابك على المنصة.<br>
+          لأي استفسار تواصل معنا عبر البريد أدناه.
+        </div>
+        <div class="desc-en">
+          Thank you for using <b>Taheel Platform</b>!<br>
+          We have received your order and payment successfully.
+        </div>
+        <div class="order-info-en">
+          <p>Order No.: <span>{{ORDER_NUMBER}}</span></p>
+          <p>Service: <span>{{SERVICE_NAME}}</span></p>
+          <p>Paid: <span>{{PRICE}} AED</span></p>
+        </div>
+        <div class="thanks-en">
+          We will process your order as soon as possible.<br>
+          You can follow up on your order status via your account.<br>
+          For any inquiry, contact us by email below.
+        </div>
+      </div>
+      <div class="footer">
+        &copy; 2025 تأهيل | Taheel. جميع الحقوق محفوظة.<br>
+        <a href="https://taheel.ae">taheel.ae</a> |
+        للتواصل: <a href="mailto:info@taheel.ae">info@taheel.ae</a>
+      </div>
+    </div>
+  </body>
+</html>
