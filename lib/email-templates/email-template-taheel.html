@@ -4,165 +4,67 @@
     <meta charset="UTF-8" />
     <title>رمز التحقق - منصة تأهيل | Verification Code - Taheel Platform</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-      body {
-        background: #eaf5f2;
-        font-family: 'Tajawal', Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-      }
-      .container {
-        max-width: 420px;
-        margin: 30px auto;
-        background: #fff;
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: 0 8px 32px #0001;
-        border: 1.5px solid #0d9468;
-      }
-      .header {
-        background: linear-gradient(90deg, #0d9468 60%, #1d4d40 100%);
-        padding: 32px 0 20px 0;
-        text-align: center;
-      }
-      .logo-circle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 14px;
-      }
-      .logo-circle-inner {
-        background: #fff;
-        border-radius: 50%;
-        width: 72px;
-        height: 72px;
-        box-shadow: 0 3px 18px #0002;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid #eaf5f2;
-      }
-      .logo-circle img {
-        width: 48px;
-        height: 48px;
-        display: block;
-        border-radius: 50%;
-        background: #fff;
-        object-fit: contain;
-      }
-      .header h1,
-      .header h2 {
-        width: 100%;
-        text-align: center;
-        margin: 0;
-      }
-      .header h1 {
-        color: #fff;
-        font-size: 1.5rem;
-        font-weight: bold;
-        letter-spacing: 1px;
-        margin-bottom: 3px;
-      }
-      .header h2 {
-        color: #e7fffa;
-        font-size: 1.08rem;
-        font-weight: normal;
-        letter-spacing: 0.5px;
-      }
-      .content {
-        padding: 32px 32px 24px 32px;
-        text-align: center;
-      }
-      .code {
-        font-size: 2.1rem;
-        font-family: 'Roboto Mono', monospace;
-        font-weight: bold;
-        color: #107e5b;
-        background: #eaf5f2;
-        border-radius: 10px;
-        letter-spacing: 6px;
-        margin: 24px auto 14px auto;
-        direction: ltr;
-        padding: 10px 0;
-        width: fit-content;
-        min-width: 130px;
-      }
-      .desc, .desc-en {
-        color: #333;
-        font-size: 1.07rem;
-        margin-bottom: 12px;
-        line-height: 1.8;
-        font-weight: 500;
-        text-align: center;
-      }
-      .desc-en {
-        color: #444;
-        font-size: 1.01rem;
-        margin-bottom: 10px;
-        direction: ltr;
-        font-family: Arial, 'Tajawal', sans-serif;
-        line-height: 1.7;
-      }
-      .note-ar {
-        font-size: 0.99rem;
-        color: #c22;
-        margin-top: 10px;
-        margin-bottom: 3px;
-        line-height: 1.6;
-        text-align: center;
-      }
-      .footer {
-        background: #f3f7f5;
-        font-size: 0.95rem;
-        color: #59776a;
-        padding: 20px 12px 15px 12px;
-        border-top: 1px solid #d6ede5;
-        text-align: center;
-      }
-      .footer a {
-        color: #107e5b;
-        text-decoration: none;
-        font-weight: 500;
-      }
-      @media (max-width: 520px) {
-        .container { max-width: 99vw; border-radius: 10px; }
-        .content { padding: 18px 7vw 15px 7vw; }
-        .code { min-width: 90px; font-size: 1.5rem;}
-      }
-    </style>
   </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <div class="logo-circle">
-          <div class="logo-circle-inner">
-            <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل | Taheel Logo" />
-          </div>
-        </div>
-        <h1>منصة تأهيل</h1>
-        <h2>Taheel Platform</h2>
-      </div>
-      <div class="content">
-        <div class="desc">
-          مرحبًا بك في <b>منصة تأهيل</b>!<br>
-          رمز التحقق الخاص بك هو:
-        </div>
-        <div class="code">{{CODE}}</div>
-        <div class="desc-en">
-          Welcome to <b>Taheel Platform</b>!<br>
-          Your verification code is above.<br>
-          This code will expire after 10 minutes.
-        </div>
-        <div class="note-ar">
-          إذا لم تطلب رمز التحقق، تجاهل هذه الرسالة.<br>
-          رمز التحقق صالح لمدة 10 دقائق فقط.
-        </div>
-      </div>
-      <div class="footer">
-        &copy; 2025 تأهيل | Taheel. جميع الحقوق محفوظة.<br>
-        <a href="https://taheel.ae">taheel.ae</a> |
-        للتواصل: <a href="mailto:info@taheel.ae">info@taheel.ae</a>
-      </div>
-    </div>
+  <body style="margin:0;background:#eaf5f2;font-family:'Tajawal',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eaf5f2;">
+      <tr>
+        <td align="center">
+          <table width="420" cellpadding="0" cellspacing="0" border="0" style="max-width:420px;background:#fff;border-radius:24px;box-shadow:0 8px 32px #0001;border:1.5px solid #0d9468;overflow:hidden;">
+            <!-- Logo Section -->
+            <tr>
+              <td align="center" style="padding:24px 0 12px 0;background:linear-gradient(90deg,#0d9468 60%,#1d4d40 100%);">
+                <table cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="center" style="background:#fff;border-radius:50%;width:64px;height:64px;">
+                      <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل" width="48" height="48" style="display:block;border-radius:50%;background:#fff;margin:8px auto;" />
+                    </td>
+                  </tr>
+                  <tr><td height="8"></td></tr>
+                  <tr>
+                    <td align="center" style="color:#fff;font-size:1.5rem;font-weight:bold;letter-spacing:1px;font-family:'Tajawal',Arial,sans-serif;">
+                      منصة تأهيل
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="color:#e7fffa;font-size:1.08rem;font-weight:normal;letter-spacing:0.5px;font-family:'Tajawal',Arial,sans-serif;">
+                      Taheel Platform
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Content Section -->
+            <tr>
+              <td align="center" style="padding:32px 24px 24px 24px;">
+                <div style="color:#333;font-size:1.07rem;margin-bottom:14px;font-weight:500;line-height:1.8;">
+                  مرحبًا بك في <b>منصة تأهيل</b>!<br>
+                  رمز التحقق الخاص بك هو:
+                </div>
+                <div style="font-size:2.1rem;font-family:'Roboto Mono',monospace;font-weight:bold;color:#107e5b;background:#eaf5f2;letter-spacing:6px;border-radius:10px;direction:ltr;display:inline-block;padding:12px 24px;margin:18px 0;">
+                  {{CODE}}
+                </div>
+                <div style="color:#444;font-size:1rem;margin:16px 0 10px 0;direction:ltr;text-align:center;line-height:1.7;">
+                  Welcome to <b>Taheel Platform</b>!<br>
+                  Your verification code is above.<br>
+                  <span style="color:#c22;">This code will expire after 10 minutes.</span>
+                </div>
+                <div style="color:#c22;font-size:0.99rem;margin-top:10px;margin-bottom:3px;line-height:1.6;text-align:center;">
+                  إذا لم تطلب رمز التحقق، تجاهل هذه الرسالة.<br>
+                  رمز التحقق صالح لمدة 10 دقائق فقط.
+                </div>
+              </td>
+            </tr>
+            <!-- Footer Section -->
+            <tr>
+              <td align="center" style="background:#f3f7f5;font-size:0.96rem;color:#59776a;padding:20px 12px 15px 12px;border-top:1px solid #d6ede5;text-align:center;">
+                &copy; 2025 تأهيل | Taheel. جميع الحقوق محفوظة.<br>
+                <a href="https://taheel.ae" style="color:#107e5b;text-decoration:none;font-weight:500;">taheel.ae</a> |
+                للتواصل: <a href="mailto:info@taheel.ae" style="color:#107e5b;text-decoration:none;font-weight:500;">info@taheel.ae</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
