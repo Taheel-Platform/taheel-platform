@@ -22,98 +22,69 @@
       }
       .header {
         background: linear-gradient(90deg, #0d9468 60%, #1d4d40 100%);
-        padding: 32px 0 20px 0;
+        padding: 24px 0 16px 0;
         text-align: center;
       }
-      .logo-circle {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 14px;
-      }
-      .logo-circle-inner {
-        background: #fff;
-        border-radius: 50%;
-        width: 72px;
-        height: 72px;
-        box-shadow: 0 3px 18px #0002;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid #eaf5f2;
-      }
-      .logo-circle img {
-        width: 48px;
-        height: 48px;
-        display: block;
+      .header img {
+        width: 64px;
+        height: 64px;
         border-radius: 50%;
         background: #fff;
-        object-fit: contain;
-      }
-      .header h1,
-      .header h2 {
-        width: 100%;
-        text-align: center;
-        margin: 0;
+        box-shadow: 0 2px 14px #0002;
+        margin-bottom: 8px;
       }
       .header h1 {
         color: #fff;
+        margin: 0;
         font-size: 1.5rem;
         font-weight: bold;
         letter-spacing: 1px;
-        margin-bottom: 3px;
       }
       .header h2 {
         color: #e7fffa;
+        margin: 0;
         font-size: 1.08rem;
         font-weight: normal;
         letter-spacing: 0.5px;
       }
       .content {
         padding: 32px 32px 24px 32px;
-        text-align: center;
       }
-      .desc, .thanks, .desc-en, .thanks-en {
-        color: #333;
-        font-size: 1.07rem;
-        margin-bottom: 12px;
-        line-height: 1.8;
-        font-weight: 500;
-        text-align: center;
-      }
-      .desc-en, .thanks-en {
-        color: #444;
-        font-size: 1.01rem;
-        direction: ltr;
-        font-family: Arial, 'Tajawal', sans-serif;
-        line-height: 1.7;
-      }
-      .order-info, .order-info-en {
+      .order-info {
         background: #f9fdfc;
         border: 1px solid #d6ede5;
         border-radius: 16px;
         padding: 18px 14px;
-        margin: 0 auto 18px auto;
-        display: inline-block;
-        min-width: 210px;
-        max-width: 340px;
-        text-align: center;
+        margin-bottom: 18px;
+        text-align: right;
       }
-      .order-info p, .order-info-en p {
-        margin: 8px 0;
-        font-size: 1.07rem;
+      .order-info p {
+        margin: 7px 0;
+        font-size: 1.03rem;
         color: #153b31;
         font-weight: 500;
-        text-align: center;
-        direction: ltr;
       }
-      .order-info span, .order-info-en span {
+      .order-info span {
         font-weight: 700;
         color: #107e5b;
       }
+      .desc, .thanks {
+        color: #333;
+        font-size: 1.05rem;
+        margin-bottom: 10px;
+        line-height: 1.7;
+        text-align: right;
+      }
+      .desc-en, .thanks-en {
+        color: #444;
+        font-size: 0.98rem;
+        margin-bottom: 8px;
+        direction: ltr;
+        text-align: left;
+      }
       .footer {
         background: #f3f7f5;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         color: #59776a;
         padding: 20px 12px 15px 12px;
         border-top: 1px solid #d6ede5;
@@ -127,18 +98,13 @@
       @media (max-width: 520px) {
         .container { max-width: 99vw; border-radius: 10px; }
         .content { padding: 18px 7vw 15px 7vw; }
-        .order-info, .order-info-en { min-width: 90px; font-size: 1rem;}
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <div class="logo-circle">
-          <div class="logo-circle-inner">
-            <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل | Taheel Logo" />
-          </div>
-        </div>
+        <img src="https://taheel.ae/logo-transparent-large.png" alt="شعار تأهيل | Taheel Logo" />
         <h1>منصة تأهيل</h1>
         <h2>Taheel Platform</h2>
       </div>
@@ -161,7 +127,7 @@
           Thank you for using <b>Taheel Platform</b>!<br>
           We have received your order and payment successfully.
         </div>
-        <div class="order-info-en">
+        <div class="order-info" style="direction:ltr;text-align:left;">
           <p>Order No.: <span>{{ORDER_NUMBER}}</span></p>
           <p>Service: <span>{{SERVICE_NAME}}</span></p>
           <p>Paid: <span>{{PRICE}} AED</span></p>
