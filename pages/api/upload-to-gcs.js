@@ -13,6 +13,11 @@ const serviceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
   : null;
 
+// التعديل المهم هنا:
+if (serviceAccount && serviceAccount.private_key) {
+  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+}
+
 const storage = serviceAccount ? new Storage({
   projectId: "taheel-platform-v2",
   credentials: {

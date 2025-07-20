@@ -6,10 +6,21 @@ export const config = {
   api: { bodyParser: false },
 };
 
-// إعداد عميل Google Vision باستخدام متغير البيئة
-const client = new vision.ImageAnnotatorClient({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-});
+let credentials;
+try {
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY is undefined. تحقق من ملف البيئة .env");
+  }
+  // التعديل المهم هنا:
+  const rawCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+  rawCreds.private_key = rawCreds.private_key.replace(/\\n/g, '\n');
+  credentials = rawCreds;
+} catch (err) {
+  console.error("Google Service Account Key Error:", err);
+  throw new Error("خطأ في قراءة GOOGLE_SERVICE_ACCOUNT_KEY من ملف البيئة. تأكد من وجوده وصيغته الصحيحة.");
+}
+
+const client = new vision.ImageAnnotatorClient({ credentials });
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -36,15 +47,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: "الملف أو نوع المستند غير موجود" });
     }
 
-    // ✅ السماح فقط بالصور للرخصة التجارية
-    if (docType === "license" && !file.mimetype.startsWith("image/")) {
+    // تحقق من نوع وصيغة الصورة
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.mimetype)) {
       return res.status(400).json({
         success: false,
-        message: "❌ يجب رفع الرخصة التجارية بصيغة صورة فقط (JPG, PNG...).",
+        message: "❌ فقط صور JPG أو PNG مدعومة.",
       });
     }
 
     const fileBuffer = await fs.readFile(file.filepath);
+
+    // تحقق من أن الملف غير فارغ
+    if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "الصورة غير صالحة أو فارغة، أعد رفع الملف.",
+      });
+    }
 
     // -------- Google Vision API OCR --------
     const [result] = await client.textDetection({ image: { content: fileBuffer } });
@@ -73,12 +93,10 @@ export default async function handler(req, res) {
         upperText.includes("EXPIRY DATE")
       ];
       isValid = indicators.filter(Boolean).length >= 2;
-
     } else if (docType === "eidBack" || docType === "ownerIdBack") {
       isValid =
         upperText.includes("OCCUPATION") &&
         upperText.includes("EMPLOYER");
-
     } else if (docType === "passport") {
       const mrzMatch = upperText.match(/P<([A-Z]{3})([A-Z<]+)<<([A-Z<]+)[\s\S]+?([A-Z0-9]{6,})[A-Z]{3}/);
       if (mrzMatch) {
@@ -94,7 +112,6 @@ export default async function handler(req, res) {
           fullName: `${surname} ${givenNames}`.replace(/\s+/g, " ").trim()
         };
       }
-
     } else if (docType === "license") {
       const licenseIndicators = [
         upperText.includes("LICENSE") || upperText.includes("رخصة"),

@@ -16,21 +16,46 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import countries from "@/lib/countries-ar-en";
 import PHONE_CODES from "@/lib/phone-codes";
 
-
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
 // Force dynamic rendering to prevent static export issues
 export const dynamicConfig = 'force-dynamic';
 import React from "react";
 
-// لف Field خارج RegisterPage وبـ React.memo
-const Field = React.memo(function Field({ label, name, placeholder, value, onChange, lang, ...rest }) {
+// ------ التعديلات المطلوبة (دوال التحقق والتنسيق) ------
+function validateEmail(email) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+}
+function validatePassword(password) {
+  return (
+    /[A-Z]/.test(password) &&
+    /\d/.test(password) &&
+    /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password) &&
+    password.length >= 8
+  );
+}
+function formatEID(eid) {
+  let digits = eid.replace(/[^\d]/g, "");
+  let out = "";
+  if (digits.length > 0) out += digits.slice(0, 3);
+  if (digits.length > 3) out += "-" + digits.slice(3, 7);
+  if (digits.length > 7) out += "-" + digits.slice(7, 14);
+  if (digits.length > 14) out += "-" + digits.slice(14, 15);
+  return out;
+}
+function formatPhone(phone) {
+  return phone.replace(/[^\d]/g, "");
+}
+
+// Field component
+const Field = React.memo(function Field({ label, name, placeholder, value, onChange, lang, type = "text", ...rest }) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={name} className="font-semibold text-gray-800 leading-5">{label}</label>
       <input
         id={name}
         name={name}
+        type={type}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
@@ -222,8 +247,6 @@ function RegisterPageInner() {
   const searchParams = useSearchParams();
   const [lang, setLang] = useState(searchParams.get("lang") === "en" ? "en" : "ar");
   const t = LANGUAGES[lang];
-  
-
 
   const { executeRecaptcha } = useGoogleReCaptcha();
 
@@ -282,6 +305,7 @@ function RegisterPageInner() {
     eidNumber: "",
     passportNumber: "",
     licenseNumber: "",
+    ownerIdNumber: "",
     email: "",
     emailConfirm: "",
     phone: "",
@@ -324,6 +348,14 @@ function RegisterPageInner() {
 
     if (e && e.target) {
       ({ name, value, type, checked, files } = e.target);
+
+      // رقم التليفون: أرقام فقط
+      if (name === "phone") value = formatPhone(value);
+
+      // رقم الإقامة: فورمات تلقائي
+      if (name === "eidNumber") value = formatEID(value);
+
+      // كلمة السر: لا تفقد التركيز بعد أول حرف (لا حاجة لتغيير)
     } else if (e && e.name && e.value !== undefined) {
       name = e.name;
       value = e.value;
@@ -336,9 +368,16 @@ function RegisterPageInner() {
 
     setForm(prev => {
       const updated = { ...prev };
-      if (prev[name] === newValue) return prev;
-
       updated[name] = newValue;
+
+      // عند تغيير الإيميل أو تأكيد الإيميل يرجع حالة otp
+      if (name === "email" || name === "emailConfirm") {
+        setEmailOtpSent(false);
+        setEmailVerified(false);
+        setOtpError("");
+        setOtpSentMsg("");
+        setEmailOtpCode("");
+      }
 
       if (name === "district" && value !== "__other") updated.districtCustom = "";
       if (name === "emirate") {
@@ -365,14 +404,20 @@ function RegisterPageInner() {
     setDocsStatus((prev) => ({ ...prev, [docType]: false }));
   };
 
-  // تحقق توافق الإيميلين
-  const emailsMatch = form.email && form.email === form.emailConfirm;
+  // تحقق توافق الإيميلين + تحقق صحة الإيميل
+  const emailsMatch = form.email && form.email === form.emailConfirm && validateEmail(form.email);
 
   // إرسال كود التحقق
   const handleSendOtp = async () => {
     setOtpError("");
     setOtpSentMsg("");
     setEmailOtpVerifying(true);
+
+    if (!validateEmail(form.email)) {
+      setOtpError(lang === "ar" ? "يرجى إدخال بريد إلكتروني صحيح" : "Enter a valid email");
+      setEmailOtpVerifying(false);
+      return;
+    }
     const res = await sendVerificationCode(form.email);
     setEmailOtpVerifying(false);
     if (res.success) {
@@ -397,13 +442,17 @@ function RegisterPageInner() {
     }
   };
 
-  // منع التسجيل بدون تفعيل الإيميل
+  // تحقق جميع الشروط قبل التسجيل
   const canRegister = (() => {
     const req = REQUIRED_DOCS[form.accountType] || [];
     if (!form.agreeTerms || !form.agreePrivacy || !form.agreeEAuth) return false;
-    if (!form.email || !form.password || form.password !== form.passwordConfirm) return false;
+    if (!form.email || !emailsMatch) return false;
+    if (!validatePassword(form.password) || form.password !== form.passwordConfirm) return false;
     if (!emailVerified) return false;
     if (req.length === 0) return false;
+    if ((form.accountType === "resident" && form.eidNumber.replace(/-/g, "").length !== 15) ||
+        (form.accountType === "resident" && !/^784-\d{4}-\d{7}-\d{1}$/.test(form.eidNumber))) return false;
+    if (form.phone.length < 8) return false;
     return req.every(doc => docsStatus[doc.docType]);
   })();
 
@@ -421,10 +470,8 @@ function RegisterPageInner() {
         return;
       }
 
-      // هنا التعديل: احصل على التوكن من reCAPTCHA فعليًا
       const recaptchaToken = await executeRecaptcha("register");
 
-      // تحقق من الكابتشا في API
       const captchaRes = await fetch("/api/recaptcha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -453,7 +500,10 @@ function RegisterPageInner() {
         role: "client",
         type: form.accountType
       };
-      // استخدم firestore بدل db
+      // لا ترسل كلمة السر ل firestore
+      delete userObj.password;
+      delete userObj.passwordConfirm;
+
       await setDoc(doc(firestore, "users", userId), userObj, { merge: true });
 
       for (const d of Object.values(docs)) {
@@ -466,7 +516,7 @@ function RegisterPageInner() {
 
       setRegSuccess(true);
     } catch (err) {
-      setRegError(t.regError);
+      setRegError(err?.message || t.regError);
     }
     setRegLoading(false);
   };
@@ -500,6 +550,14 @@ function RegisterPageInner() {
       >
         {show ? <FaEyeSlash /> : <FaEye />}
       </button>
+      {/* تحقق قوة كلمة السر */}
+      {name === "password" && value && !validatePassword(value) && (
+        <div className="text-xs text-red-600 font-bold mt-1">
+          {lang === "ar"
+            ? "يجب أن تحتوي كلمة المرور على حرف كبير، رقم، رمز وطول 8 أحرف أو أكثر"
+            : "Password must contain an uppercase letter, a number, a symbol, and be at least 8 characters"}
+        </div>
+      )}
     </div>
   );
 
@@ -597,189 +655,179 @@ function RegisterPageInner() {
             </h3>
             <Select label={t.accountType} name="accountType" options={ACCOUNT_TYPES} value={form.accountType} onChange={handleChange} />
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <div className="flex flex-col gap-1">
-                <label className="font-semibold text-gray-800 leading-5">{t.firstName}</label>
-                <input
-                  name="firstName"
-                  value={form.firstName}
-                  onChange={(e) => setForm(prev => ({ ...prev, firstName: e.target.value }))}
-                  className="rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-gray-900"
-                />
-              </div>
+              <Field label={t.firstName} name="firstName" value={form.firstName} placeholder={t.firstName} onChange={handleChange} lang={lang} />
               <Field label={t.middleName} name="middleName" value={form.middleName} placeholder={t.middleName} onChange={handleChange} lang={lang} />
               <Field label={t.lastName} name="lastName" value={form.lastName} placeholder={t.lastName} onChange={handleChange} lang={lang} />
             </div>
             <Field label={t.nameEn} name="nameEn" value={form.nameEn} placeholder={t.nameEn} onChange={handleChange} lang={lang} />
             <Field label={t.birthDate} name="birthDate" type="date" value={form.birthDate} onChange={handleChange} lang={lang} />
-{/* ======= حقول رقم الإقامة/الباسبور/الرخصة حسب نوع الحساب ======= */}
-{form.accountType === "resident" && (
-  <>
-    <Field
-  label={lang === "ar" ? "رقم الإقامة" : "Residence ID Number"}
-  name="eidNumber"
-  value={form.eidNumber}
-  placeholder={lang === "ar" ? "784-0000-0000000-0" : "784-0000-0000000-0"}
-  pattern="784-\d{4}-\d{7}-\d"
-  onChange={handleChange}
-  lang={lang}
-  required
-/>
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
-      name="idExpiry"
-      type="date"
-      value={form.idExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      name="passportNumber"
-      value={form.passportNumber}
-      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-      name="passportExpiry"
-      type="date"
-      value={form.passportExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-  </>
-)}
-{form.accountType === "nonresident" && (
-  <>
-    <Field
-      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      name="passportNumber"
-      value={form.passportNumber}
-      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-      name="passportExpiry"
-      type="date"
-      value={form.passportExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-  </>
-)}
-{form.accountType === "company" && (
-  <>
-    <Field
-      label={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
-      name="ownerIdNumber"
-      value={form.ownerIdNumber}
-      placeholder={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء هوية صاحب الشركة" : "Owner ID Expiry Date"}
-      name="ownerIdExpiry"
-      type="date"
-      value={form.ownerIdExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "رقم الرخصة" : "License Number"}
-      name="licenseNumber"
-      value={form.licenseNumber}
-      placeholder={lang === "ar" ? "رقم الرخصة" : "License Number"}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء الرخصة" : "License Expiry Date"}
-      name="licenseExpiry"
-      type="date"
-      value={form.licenseExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      name="passportNumber"
-      value={form.passportNumber}
-      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-      onChange={handleChange}
-      lang={lang}
-    />
-    <Field
-      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-      name="passportExpiry"
-      type="date"
-      value={form.passportExpiry}
-      onChange={handleChange}
-      lang={lang}
-    />
-  </>
-)}
+            {/* ======= حقول رقم الإقامة/الباسبور/الرخصة حسب نوع الحساب ======= */}
+            {form.accountType === "resident" && (
+              <>
+                <Field
+                  label={lang === "ar" ? "رقم الإقامة" : "Residence ID Number"}
+                  name="eidNumber"
+                  value={form.eidNumber}
+                  placeholder={lang === "ar" ? "784-0000-0000000-0" : "784-0000-0000000-0"}
+                  onChange={handleChange}
+                  lang={lang}
+                  required
+                  maxLength={19}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
+                  name="idExpiry"
+                  type="date"
+                  value={form.idExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  name="passportNumber"
+                  value={form.passportNumber}
+                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+                  name="passportExpiry"
+                  type="date"
+                  value={form.passportExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+              </>
+            )}
+            {form.accountType === "nonresident" && (
+              <>
+                <Field
+                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  name="passportNumber"
+                  value={form.passportNumber}
+                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+                  name="passportExpiry"
+                  type="date"
+                  value={form.passportExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+              </>
+            )}
+            {form.accountType === "company" && (
+              <>
+                <Field
+                  label={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
+                  name="ownerIdNumber"
+                  value={form.ownerIdNumber}
+                  placeholder={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء هوية صاحب الشركة" : "Owner ID Expiry Date"}
+                  name="ownerIdExpiry"
+                  type="date"
+                  value={form.ownerIdExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "رقم الرخصة" : "License Number"}
+                  name="licenseNumber"
+                  value={form.licenseNumber}
+                  placeholder={lang === "ar" ? "رقم الرخصة" : "License Number"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء الرخصة" : "License Expiry Date"}
+                  name="licenseExpiry"
+                  type="date"
+                  value={form.licenseExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  name="passportNumber"
+                  value={form.passportNumber}
+                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field
+                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+                  name="passportExpiry"
+                  type="date"
+                  value={form.passportExpiry}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+              </>
+            )}
 
-
-            {/* CountrySelect nationality */}
             <CountrySelect
-  value={form.nationality}
-  onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
-/>
+              value={form.nationality}
+              onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
+            />
             <Select label={t.gender} name="gender" options={GENDERS} value={form.gender} onChange={handleChange} />
           </section>
-<section className="rounded-2xl border border-sky-100 bg-sky-50/30 px-4 py-5 flex flex-col gap-8">
-  <h3 className="font-extrabold text-sky-700 mb-3 text-lg flex items-center gap-2">
-    <span>{t.address}</span>
-    <span className="flex-1 border-b border-sky-200 opacity-30"></span>
-  </h3>
-  {(form.accountType === "resident" || form.accountType === "company") ? (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-      <Select
-        label={t.emirate}
-        name="emirate"
-        options={UAE_EMIRATES}
-        value={form.emirate}
-        onChange={handleChange}
-      />
-      <Field
-        label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
-        name="district"
-        value={form.district}
-        placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
-        onChange={handleChange}
-        lang={lang}
-      />
-      <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
-      <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
-      <Field label={t.floor} name="floor" value={form.floor} placeholder={t.floor} onChange={handleChange} lang={lang} />
-      <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
-    </div>
-  ) : (
-    <>
-      <CountrySelect
-  value={form.country}
-  onChange={opt => handleChange({ name: "country", value: opt?.value })}
-/>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <Field
-          label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
-          name="district"
-          value={form.district}
-          placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
-          onChange={handleChange}
-          lang={lang}
-        />
-        <Field label={t.state} name="state" value={form.state} placeholder={t.state} onChange={handleChange} lang={lang} />
-        <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
-        <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
-        <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
-      </div>
-    </>
-  )}
+          <section className="rounded-2xl border border-sky-100 bg-sky-50/30 px-4 py-5 flex flex-col gap-8">
+            <h3 className="font-extrabold text-sky-700 mb-3 text-lg flex items-center gap-2">
+              <span>{t.address}</span>
+              <span className="flex-1 border-b border-sky-200 opacity-30"></span>
+            </h3>
+            {(form.accountType === "resident" || form.accountType === "company") ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <Select
+                  label={t.emirate}
+                  name="emirate"
+                  options={UAE_EMIRATES}
+                  value={form.emirate}
+                  onChange={handleChange}
+                />
+                <Field
+                  label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
+                  name="district"
+                  value={form.district}
+                  placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
+                  onChange={handleChange}
+                  lang={lang}
+                />
+                <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
+                <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
+                <Field label={t.floor} name="floor" value={form.floor} placeholder={t.floor} onChange={handleChange} lang={lang} />
+                <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
+              </div>
+            ) : (
+              <>
+                <CountrySelect
+                  value={form.country}
+                  onChange={opt => handleChange({ name: "country", value: opt?.value })}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <Field
+                    label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
+                    name="district"
+                    value={form.district}
+                    placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
+                    onChange={handleChange}
+                    lang={lang}
+                  />
+                  <Field label={t.state} name="state" value={form.state} placeholder={t.state} onChange={handleChange} lang={lang} />
+                  <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
+                  <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
+                  <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
+                </div>
+              </>
+            )}
           </section>
           {form.accountType && (
             <section className="rounded-2xl border border-yellow-100 bg-yellow-50/30 px-4 py-5 flex flex-col gap-8">
@@ -899,11 +947,10 @@ function RegisterPageInner() {
             <div className="grid grid-cols-3 gap-3 items-end">
               <div>
                 <label className="font-semibold text-gray-800">{t.phoneCode}</label>
-                {/* PhoneCodeSelect التعديل هنا فقط */}
                 <PhoneCodeSelect
-  value={form.phoneCode}
-  onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
-/>
+                  value={form.phoneCode}
+                  onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
+                />
               </div>
               <div className="col-span-2">
                 <Field label={t.phone} name="phone" type="tel" value={form.phone} placeholder={t.phone} onChange={handleChange} lang={lang} />
