@@ -6,12 +6,12 @@ export const config = {
   api: { bodyParser: false },
 };
 
+// إعداد بيانات الخدمة بشكل آمن
 let credentials;
 try {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
     throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY is undefined. تحقق من ملف البيئة .env");
   }
-  // التعديل المهم هنا:
   const rawCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
   rawCreds.private_key = rawCreds.private_key.replace(/\\n/g, '\n');
   credentials = rawCreds;
@@ -37,28 +37,38 @@ export default async function handler(req, res) {
       });
     });
 
-    const fileRaw = files.file;
+    const fileRaw = files?.file;
     const file = Array.isArray(fileRaw) ? fileRaw[0] : fileRaw;
 
-    const docTypeRaw = fields.docType;
+    const docTypeRaw = fields?.docType;
     const docType = Array.isArray(docTypeRaw) ? docTypeRaw[0] : docTypeRaw;
 
-    if (!file?.filepath || !docType) {
+    if (!file?.filepath || typeof docType !== "string" || !docType.trim()) {
       return res.status(400).json({ success: false, message: "الملف أو نوع المستند غير موجود" });
     }
 
-    // تحقق من نوع وصيغة الصورة
+    // تحقق من نوع وصيغة الصورة بشكل آمن
     const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
-    if (!allowedTypes.includes(file.mimetype)) {
+    const fileMimetype = typeof file?.mimetype === "string" ? file.mimetype : "";
+    if (!allowedTypes.includes(fileMimetype)) {
       return res.status(400).json({
         success: false,
         message: "❌ فقط صور JPG أو PNG مدعومة.",
       });
     }
 
-    const fileBuffer = await fs.readFile(file.filepath);
+    // قراءة الملف من النظام
+    let fileBuffer;
+    try {
+      fileBuffer = await fs.readFile(file.filepath);
+    } catch (readErr) {
+      return res.status(400).json({
+        success: false,
+        message: "تعذر قراءة الملف، أعد رفعه.",
+      });
+    }
 
-    // تحقق من أن الملف غير فارغ
+    // تحقق أن الملف غير فارغ
     if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
       return res.status(400).json({
         success: false,
@@ -67,13 +77,25 @@ export default async function handler(req, res) {
     }
 
     // -------- Google Vision API OCR --------
-    const [result] = await client.textDetection({ image: { content: fileBuffer } });
-    const detections = result.textAnnotations;
-    const text = detections[0]?.description || "";
+    let result;
+    try {
+      [result] = await client.textDetection({ image: { content: fileBuffer } });
+    } catch (visionErr) {
+      console.error("Google Vision OCR Error:", visionErr);
+      return res.status(500).json({
+        success: false,
+        message: "خطأ في خدمة OCR من Google Vision",
+        error: visionErr?.message || "Unknown Vision API error",
+      });
+    }
+
+    const detections = Array.isArray(result?.textAnnotations) ? result.textAnnotations : [];
+    const text = (detections[0]?.description && typeof detections[0].description === "string") ? detections[0].description : "";
+
     // -------- END GOOGLE VISION --------
 
-    const cleanedText = text?.trim() || "";
-    const upperText = cleanedText.toUpperCase();
+    const cleanedText = (typeof text === "string" ? text : "").trim();
+    const upperText = cleanedText ? cleanedText.toUpperCase() : "";
 
     if (cleanedText.length < 15) {
       return res.status(200).json({
@@ -86,19 +108,21 @@ export default async function handler(req, res) {
     let isValid = false;
     let extractedData = {};
 
+    // تحقق من نوع المستند وأمان فحص النص
     if (docType === "eidFront" || docType === "ownerIdFront") {
       const indicators = [
-        upperText.includes("NATIONALITY"),
-        upperText.includes("ISSUING DATE"),
-        upperText.includes("EXPIRY DATE")
+        typeof upperText === "string" && upperText.includes("NATIONALITY"),
+        typeof upperText === "string" && upperText.includes("ISSUING DATE"),
+        typeof upperText === "string" && upperText.includes("EXPIRY DATE")
       ];
       isValid = indicators.filter(Boolean).length >= 2;
     } else if (docType === "eidBack" || docType === "ownerIdBack") {
       isValid =
+        typeof upperText === "string" &&
         upperText.includes("OCCUPATION") &&
         upperText.includes("EMPLOYER");
     } else if (docType === "passport") {
-      const mrzMatch = upperText.match(/P<([A-Z]{3})([A-Z<]+)<<([A-Z<]+)[\s\S]+?([A-Z0-9]{6,})[A-Z]{3}/);
+      const mrzMatch = typeof upperText === "string" ? upperText.match(/P<([A-Z]{3})([A-Z<]+)<<([A-Z<]+)[\s\S]+?([A-Z0-9]{6,})[A-Z]{3}/) : null;
       if (mrzMatch) {
         isValid = true;
         const countryCode = mrzMatch[1];
@@ -114,23 +138,23 @@ export default async function handler(req, res) {
       }
     } else if (docType === "license") {
       const licenseIndicators = [
-        upperText.includes("LICENSE") || upperText.includes("رخصة"),
-        upperText.includes("TRADE") || upperText.includes("تجاري"),
-        upperText.includes("COMMERCIAL") || upperText.includes("اقتصادية"),
-        upperText.includes("ECONOMIC") || upperText.includes("الاقتصادية"),
-        upperText.includes("DEPARTMENT") || upperText.includes("دائرة"),
-        upperText.includes("LICENSE NO") || upperText.includes("رقم الرخصة"),
-        upperText.includes("EXPIRY DATE") || upperText.includes("تاريخ الانتهاء") || upperText.includes("تاريخ الإنتهاء"),
-        upperText.includes("ISSUE DATE") || upperText.includes("تاريخ الاصدار") || upperText.includes("تاريخ الإصدار"),
-        upperText.includes("TRADE NAME") || upperText.includes("الاسم التجاري") || upperText.includes("اسم النشاط")
+        typeof upperText === "string" && (upperText.includes("LICENSE") || upperText.includes("رخصة")),
+        typeof upperText === "string" && (upperText.includes("TRADE") || upperText.includes("تجاري")),
+        typeof upperText === "string" && (upperText.includes("COMMERCIAL") || upperText.includes("اقتصادية")),
+        typeof upperText === "string" && (upperText.includes("ECONOMIC") || upperText.includes("الاقتصادية")),
+        typeof upperText === "string" && (upperText.includes("DEPARTMENT") || upperText.includes("دائرة")),
+        typeof upperText === "string" && (upperText.includes("LICENSE NO") || upperText.includes("رقم الرخصة")),
+        typeof upperText === "string" && (upperText.includes("EXPIRY DATE") || upperText.includes("تاريخ الانتهاء") || upperText.includes("تاريخ الإنتهاء")),
+        typeof upperText === "string" && (upperText.includes("ISSUE DATE") || upperText.includes("تاريخ الاصدار") || upperText.includes("تاريخ الإصدار")),
+        typeof upperText === "string" && (upperText.includes("TRADE NAME") || upperText.includes("الاسم التجاري") || upperText.includes("اسم النشاط"))
       ];
 
       isValid = licenseIndicators.filter(Boolean).length >= 3;
 
-      const licenseNumberMatch = upperText.match(/(?:LICENSE\s*NO|رخصة\s*رقم|رقم\s*الرخصة)[:\s\-]*([A-Z0-9\-]+)/);
-      const issueDateMatch = upperText.match(/(?:ISSUE\s*DATE|تاريخ\s*الإصدار|تاريخ\s*الاصدار)[:\s\-]*([\d\/\-]+)/);
-      const expiryDateMatch = upperText.match(/(?:EXPIR[YI]\s*DATE|تاريخ\s*الانتهاء|تاريخ\s*الإنتهاء)[:\s\-]*([\d\/\-]+)/);
-      const tradeNameMatch = upperText.match(/(?:TRADE\s*NAME|الاسم\s*التجاري|اسم\s*النشاط|اسم\s*الشركة)[:\s\-]*([A-Z\s\u0600-\u06FF]+)/);
+      const licenseNumberMatch = typeof upperText === "string" ? upperText.match(/(?:LICENSE\s*NO|رخصة\s*رقم|رقم\s*الرخصة)[:\s\-]*([A-Z0-9\-]+)/) : null;
+      const issueDateMatch = typeof upperText === "string" ? upperText.match(/(?:ISSUE\s*DATE|تاريخ\s*الإصدار|تاريخ\s*الاصدار)[:\s\-]*([\d\/\-]+)/) : null;
+      const expiryDateMatch = typeof upperText === "string" ? upperText.match(/(?:EXPIR[YI]\s*DATE|تاريخ\s*الانتهاء|تاريخ\s*الإنتهاء)[:\s\-]*([\d\/\-]+)/) : null;
+      const tradeNameMatch = typeof upperText === "string" ? upperText.match(/(?:TRADE\s*NAME|الاسم\s*التجاري|اسم\s*النشاط|اسم\s*الشركة)[:\s\-]*([A-Z\s\u0600-\u06FF]+)/) : null;
 
       extractedData = {
         licenseNumber: licenseNumberMatch?.[1] || null,
@@ -160,7 +184,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       success: false,
       message: "OCR Server Error",
-      error: error.message,
+      error: error?.message || "Unknown error",
     });
   }
 }

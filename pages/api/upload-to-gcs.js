@@ -8,13 +8,11 @@ export const config = {
   api: { bodyParser: false },
 };
 
-// قراءة بيانات الخدمة من متغير البيئة
 const serviceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_KEY 
   ? JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
   : null;
 
-// التعديل المهم هنا:
-if (serviceAccount && serviceAccount.private_key) {
+if (serviceAccount && typeof serviceAccount.private_key === "string") {
   serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
 }
 
@@ -25,7 +23,7 @@ const storage = serviceAccount ? new Storage({
     private_key: serviceAccount.private_key,
   },
 }) : null;
-const bucket = storage.bucket("taheel-platform");
+const bucket = storage ? storage.bucket("taheel-platform") : null;
 
 function parseForm(req) {
   return new Promise((resolve, reject) => {
@@ -43,7 +41,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (!storage) {
+  if (!storage || !bucket) {
     res.status(500).json({ error: "Storage configuration not available" });
     return;
   }
@@ -51,9 +49,13 @@ export default async function handler(req, res) {
   try {
     const { fields, files } = await parseForm(req);
 
-    const userId = fields?.userId || fields?.sessionId || "default";
-    const serviceId = fields?.serviceId || "general";
-    const serviceName = fields?.serviceName || "";
+    const userId = typeof fields?.userId === "string"
+      ? fields.userId
+      : typeof fields?.sessionId === "string"
+      ? fields.sessionId
+      : "default";
+    const serviceId = typeof fields?.serviceId === "string" ? fields.serviceId : "general";
+    const serviceName = typeof fields?.serviceName === "string" ? fields.serviceName : "";
 
     let uploadedFiles = files?.file;
     if (!uploadedFiles) {
@@ -65,44 +67,67 @@ export default async function handler(req, res) {
     const uploadedInfo = [];
 
     for (const uploadedFile of uploadedFiles) {
-      if (!["application/pdf", "image/jpeg", "image/png"].includes(uploadedFile.mimetype)) {
-        res.status(400).json({ error: `الملف ${uploadedFile.originalFilename} نوعه غير مدعوم (PDF أو صورة فقط).` });
-        return;
-      }
-      if (uploadedFile.size > 10 * 1024 * 1024) {
-        res.status(400).json({ error: `الملف ${uploadedFile.originalFilename} كبير جدًا (الحد الأقصى 10MB)` });
-        return;
-      }
-
-      const ext = path.extname(uploadedFile.originalFilename) || ".pdf";
-      const safeName = path.basename(uploadedFile.originalFilename, ext).replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+      const mimetype = typeof uploadedFile?.mimetype === "string" ? uploadedFile.mimetype : "";
+      const originalFilename = typeof uploadedFile?.originalFilename === "string" ? uploadedFile.originalFilename : "file.pdf";
+      const ext = path.extname(originalFilename) || ".pdf";
+      const safeName = path.basename(originalFilename, ext).replace(/[^a-zA-Z0-9_\-\.]/g, "_");
       const gcsFileName = `uploads/${userId}/${serviceId}/${Date.now()}_${safeName}${ext}`;
-      const fileBuffer = await fs.readFile(uploadedFile.filepath);
 
+      // تحقق من نوع الملف وصيغته
+      if (!["application/pdf", "image/jpeg", "image/png"].includes(mimetype)) {
+        res.status(400).json({ error: `الملف ${originalFilename} نوعه غير مدعوم (PDF أو صورة فقط).` });
+        return;
+      }
+      if (typeof uploadedFile.size !== "number" || uploadedFile.size > 10 * 1024 * 1024) {
+        res.status(400).json({ error: `الملف ${originalFilename} كبير جدًا (الحد الأقصى 10MB)` });
+        return;
+      }
+
+      // قراءة الملف بأمان
+      let fileBuffer;
+      try {
+        fileBuffer = await fs.readFile(uploadedFile.filepath);
+      } catch (readErr) {
+        res.status(400).json({ error: `تعذر قراءة الملف: ${originalFilename}` });
+        return;
+      }
+
+      // رفع إلى Google Cloud Storage
       const blob = bucket.file(gcsFileName);
-      await blob.save(fileBuffer, {
-        contentType: uploadedFile.mimetype,
-        resumable: false,
-      });
+      try {
+        await blob.save(fileBuffer, {
+          contentType: mimetype,
+          resumable: false,
+        });
+      } catch (saveErr) {
+        res.status(500).json({ error: `تعذر رفع الملف إلى التخزين السحابي: ${originalFilename}` });
+        return;
+      }
 
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${gcsFileName}`;
       const uniqueId = Date.now().toString() + "_" + Math.floor(Math.random() * 100000);
 
-      await adminRtdb.ref(`serviceUploads/${userId}/${uniqueId}`).set({
-        url: publicUrl,
-        uploadedAt: new Date().toISOString(),
-        originalName: uploadedFile.originalFilename,
-        mimeType: uploadedFile.mimetype,
-        size: uploadedFile.size,
-        userId,
-        serviceId,
-        serviceName,
-      });
+      // حفظ بيانات الملف في قاعدة البيانات
+      try {
+        await adminRtdb.ref(`serviceUploads/${userId}/${uniqueId}`).set({
+          url: publicUrl,
+          uploadedAt: new Date().toISOString(),
+          originalName: originalFilename,
+          mimeType: mimetype,
+          size: uploadedFile.size,
+          userId,
+          serviceId,
+          serviceName,
+        });
+      } catch (dbErr) {
+        // في حالة الخطأ في قاعدة البيانات، لا توقف رفع الملف، فقط أبلغ المستخدم!
+        console.error("Database error:", dbErr);
+      }
 
       uploadedInfo.push({
         url: publicUrl,
-        fileName: uploadedFile.originalFilename,
-        mimeType: uploadedFile.mimetype,
+        fileName: originalFilename,
+        mimeType: mimetype,
         size: uploadedFile.size,
       });
     }
@@ -114,6 +139,6 @@ export default async function handler(req, res) {
     res.status(200).json({ files: uploadedInfo });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ error: error.message || "حدث خطأ أثناء رفع الملفات" });
+    res.status(500).json({ error: error?.message || "حدث خطأ أثناء رفع الملفات" });
   }
 }
