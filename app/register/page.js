@@ -565,11 +565,11 @@ const handleRegister = async (e) => {
         : "Network error. Please check your connection.");
     } else {
       setRegError(
-        (lang === "ar"
-          ? "حدث خطأ أثناء التسجيل: "
-          : "Registration error: ") +
-        (message || t.regError)
-      );
+  (lang === "ar"
+    ? "حدث خطأ أثناء التسجيل: "
+    : "Registration error: ") +
+  (typeof message === "string" ? message : t.regError)
+);
     }
   }
   setRegLoading(false);
