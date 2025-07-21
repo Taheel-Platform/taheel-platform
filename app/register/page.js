@@ -532,6 +532,8 @@ const handleRegister = async (e) => {
     }, 1500);
 
   } catch (err) {
+      console.log("خطأ أثناء التسجيل:", err);
+  console.log("err.message:", err?.message);
     const code = err && typeof err === "object" ? err.code : "";
     const message = err && typeof err === "object" ? err.message : "";
 
