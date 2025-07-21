@@ -37,13 +37,11 @@ function parseForm(req) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   if (!storage || !bucket) {
-    res.status(500).json({ error: "Storage configuration not available" });
-    return;
+    return res.status(500).json({ error: "Storage configuration not available" });
   }
 
   try {
@@ -59,14 +57,14 @@ export default async function handler(req, res) {
 
     let uploadedFiles = files?.file;
     if (!uploadedFiles) {
-      res.status(400).json({ error: "لا يوجد ملفات" });
-      return;
+      return res.status(400).json({ error: "لا يوجد ملفات" });
     }
     if (!Array.isArray(uploadedFiles)) uploadedFiles = [uploadedFiles];
 
     const uploadedInfo = [];
 
     for (const uploadedFile of uploadedFiles) {
+      // تحقق من بيانات الملف
       const mimetype = typeof uploadedFile?.mimetype === "string" ? uploadedFile.mimetype : "";
       const originalFilename = typeof uploadedFile?.originalFilename === "string" ? uploadedFile.originalFilename : "file.pdf";
       const ext = path.extname(originalFilename) || ".pdf";
@@ -75,12 +73,13 @@ export default async function handler(req, res) {
 
       // تحقق من نوع الملف وصيغته
       if (!["application/pdf", "image/jpeg", "image/png"].includes(mimetype)) {
-        res.status(400).json({ error: `الملف ${originalFilename} نوعه غير مدعوم (PDF أو صورة فقط).` });
-        return;
+        return res.status(400).json({ error: `الملف ${originalFilename} نوعه غير مدعوم (PDF أو صورة فقط).` });
       }
       if (typeof uploadedFile.size !== "number" || uploadedFile.size > 10 * 1024 * 1024) {
-        res.status(400).json({ error: `الملف ${originalFilename} كبير جدًا (الحد الأقصى 10MB)` });
-        return;
+        return res.status(400).json({ error: `الملف ${originalFilename} كبير جدًا (الحد الأقصى 10MB)` });
+      }
+      if (typeof uploadedFile.filepath !== "string" || !uploadedFile.filepath) {
+        return res.status(400).json({ error: `مسار الملف ${originalFilename} غير صحيح.` });
       }
 
       // قراءة الملف بأمان
@@ -88,8 +87,12 @@ export default async function handler(req, res) {
       try {
         fileBuffer = await fs.readFile(uploadedFile.filepath);
       } catch (readErr) {
-        res.status(400).json({ error: `تعذر قراءة الملف: ${originalFilename}` });
-        return;
+        return res.status(400).json({ error: `تعذر قراءة الملف: ${originalFilename}` });
+      }
+
+      // تحقق نهائي من صحة الملف قبل رفعه للمكتبة الخارجية
+      if (!fileBuffer || !(Buffer.isBuffer(fileBuffer) || typeof fileBuffer === "string")) {
+        return res.status(400).json({ error: `الملف ${originalFilename} غير صالح أو لم يتم قراءته بشكل صحيح.` });
       }
 
       // رفع إلى Google Cloud Storage
@@ -100,8 +103,7 @@ export default async function handler(req, res) {
           resumable: false,
         });
       } catch (saveErr) {
-        res.status(500).json({ error: `تعذر رفع الملف إلى التخزين السحابي: ${originalFilename}` });
-        return;
+        return res.status(500).json({ error: `تعذر رفع الملف إلى التخزين السحابي: ${originalFilename}` });
       }
 
       const publicUrl = `https://storage.googleapis.com/${bucket.name}/${gcsFileName}`;
@@ -120,7 +122,7 @@ export default async function handler(req, res) {
           serviceName,
         });
       } catch (dbErr) {
-        // في حالة الخطأ في قاعدة البيانات، لا توقف رفع الملف، فقط أبلغ المستخدم!
+        // في حالة الخطأ في قاعدة البيانات، فقط سجل الخطأ ولا توقف رفع الملف
         console.error("Database error:", dbErr);
       }
 
@@ -133,12 +135,11 @@ export default async function handler(req, res) {
     }
 
     if (uploadedInfo.length === 1) {
-      res.status(200).json({ url: uploadedInfo[0].url });
-      return;
+      return res.status(200).json({ url: uploadedInfo[0].url });
     }
-    res.status(200).json({ files: uploadedInfo });
+    return res.status(200).json({ files: uploadedInfo });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ error: error?.message || "حدث خطأ أثناء رفع الملفات" });
+    return res.status(500).json({ error: error?.message || "حدث خطأ أثناء رفع الملفات" });
   }
 }
