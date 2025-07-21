@@ -4,7 +4,7 @@ import PHONE_CODES from "@/lib/phone-codes";
 import 'flag-icons/css/flag-icons.min.css';
 
 // Custom Option for dropdown list
-const customOption = (props) => (
+const CustomOption = (props) => (
   <div
     {...props.innerProps}
     ref={props.innerRef}
@@ -29,7 +29,7 @@ const customOption = (props) => (
   </div>
 );
 
-const customSingleValue = (props) => (
+const CustomSingleValue = (props) => (
   <div className="flex items-center gap-1" dir="rtl" style={{maxWidth:"100%",overflow:"hidden"}}>
     <span className={`fi fi-${props.data.flag}`} style={{
       width: 16,
@@ -55,11 +55,18 @@ const customSingleValue = (props) => (
   </div>
 );
 
-function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode", ...rest }) {
-  // تحسين: دعم القيمة كـ string أو كائن
-  const selectedOption = typeof value === "string"
-    ? PHONE_CODES.find(c => c.code === value) || null
-    : value || null;
+function PhoneCodeSelect({
+  value,           // يمكن أن يكون string (مثل "+971") أو object من الخيارات
+  onChange,
+  required = false,
+  name = "phoneCode",
+  ...rest
+}) {
+  // دائماً اجعل القيمة المختارة عبارة عن object من قائمة PHONE_CODES
+  const selectedOption =
+    typeof value === "string"
+      ? PHONE_CODES.find(c => c.code === value) || null
+      : value || null;
 
   return (
     <Select
@@ -70,16 +77,16 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
       required={required}
       placeholder="اختر كود الدولة"
       isSearchable
-      classNamePrefix="country-select"
+      classNamePrefix="phone-code-select"
       components={{
-        Option: customOption,
-        SingleValue: customSingleValue,
+        Option: CustomOption,
+        SingleValue: CustomSingleValue,
       }}
       styles={{
-        control: (base) => ({
+        control: (base, state) => ({
           ...base,
           borderRadius: "14px",
-          borderColor: "#d1d5db",
+          borderColor: state.isFocused ? "#10b981" : "#d1d5db",
           background: "#f9fafb",
           fontWeight: "bold",
           fontSize: "0.91rem",
@@ -88,7 +95,7 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
           direction: "rtl",
           paddingRight: 10,
           maxWidth: "100%",
-          boxShadow: "none",
+          boxShadow: state.isFocused ? "0 0 0 2px #6ee7b7" : "none",
           display: "flex",
           alignItems: "center",
         }),
@@ -157,6 +164,13 @@ function PhoneCodeSelect({ value, onChange, required = false, name = "phoneCode"
         menu: (base) => ({
           ...base,
           zIndex: 99,
+        }),
+        placeholder: (base) => ({
+          ...base,
+          color: "#7c7c7c",
+          fontWeight: "bold",
+          direction: "rtl",
+          fontSize: "0.91rem",
         }),
       }}
       {...rest}

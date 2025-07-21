@@ -991,7 +991,7 @@ const handleRegister = async (e) => {
     <div>
       <label className="font-semibold text-gray-800">{t.phoneCode}</label>
       <PhoneCodeSelect
-  value={PHONE_CODES.find(c => c.value === form.phoneCode) || null}
+  value={form.phoneCode} // فقط string مثل "+971"
   onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
 />
     </div>
