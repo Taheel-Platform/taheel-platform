@@ -1,9 +1,7 @@
-'use client';
-
 import { Suspense } from "react";
 import "./globals.css";
 import ForceLangWrapper from "./ForceLangWrapper";
-import { GoogleReCaptchaProvider } from "react-google-recaptcha-v3";
+import ClientProviders from "./ClientProviders"; // استيراد المكون الجديد
 
 // Use fallback fonts when Google Fonts is unavailable
 const fontFallbacks = {
@@ -35,15 +33,12 @@ export default function RootLayout({ children }) {
           '--font-cairo': fontFallbacks.cairo
         }}
       >
-        <GoogleReCaptchaProvider
-          reCaptchaKey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
-          scriptProps={{ async: true, defer: true }}
-        >
+        <ClientProviders>
           <Suspense fallback={null}>
             <ForceLangWrapper defaultLang="ar" />
           </Suspense>
           {children}
-        </GoogleReCaptchaProvider>
+        </ClientProviders>
       </body>
     </html>
   );
