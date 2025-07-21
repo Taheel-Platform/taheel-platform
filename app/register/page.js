@@ -20,11 +20,13 @@ import { deleteUser } from "firebase/auth";
 
 export const dynamicConfig = 'force-dynamic';
 
-// ------ التعديلات المطلوبة (دوال التحقق والتنسيق) ------
+// ------ دوال تحقق آمنة ------
 function validateEmail(email) {
+  if (typeof email !== "string") return false;
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 function validatePassword(password) {
+  if (typeof password !== "string") return false;
   return (
     /[A-Z]/.test(password) &&
     /\d/.test(password) &&
@@ -33,6 +35,7 @@ function validatePassword(password) {
   );
 }
 function formatEID(eid) {
+  if (typeof eid !== "string") return "";
   let digits = eid.replace(/[^\d]/g, "");
   let out = "";
   if (digits.length > 0) out += digits.slice(0, 3);
@@ -42,6 +45,7 @@ function formatEID(eid) {
   return out;
 }
 function formatPhone(phone) {
+  if (typeof phone !== "string") return "";
   return phone.replace(/[^\d]/g, "");
 }
 
@@ -68,7 +72,7 @@ const Field = React.memo(function Field({ label, name, placeholder, value, onCha
         name={name}
         type={type}
         placeholder={placeholder}
-        value={value}
+        value={typeof value === "string" ? value : ""}
         onChange={onChange}
         className="rounded-xl bg-gray-50 border border-gray-300 focus:border-emerald-500 focus:ring-emerald-300 text-gray-900 font-medium px-3 py-2 outline-none transition-all placeholder:text-gray-400 shadow-sm"
         dir={lang === "ar" ? "rtl" : "ltr"}
@@ -80,6 +84,7 @@ const Field = React.memo(function Field({ label, name, placeholder, value, onCha
 
 // إرسال الكود
 async function sendVerificationCode(email) {
+  if (!validateEmail(email)) return { success: false, message: "Invalid email" };
   const res = await fetch("/api/send-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -90,6 +95,7 @@ async function sendVerificationCode(email) {
 
 // تحقق الكود
 async function verifyCode(email, code) {
+  if (!validateEmail(email) || typeof code !== "string") return { success: false };
   const res = await fetch("/api/verify-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -696,300 +702,301 @@ const handleRegister = async (e) => {
               <span>{t.mainInfo}</span>
               <span className="flex-1 border-b border-emerald-200 opacity-30"></span>
             </h3>
-            <Select label={t.accountType} name="accountType" options={ACCOUNT_TYPES} value={form.accountType} onChange={handleChange} />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              <Field label={t.firstName} name="firstName" value={form.firstName} placeholder={t.firstName} onChange={handleChange} lang={lang} />
-              <Field label={t.middleName} name="middleName" value={form.middleName} placeholder={t.middleName} onChange={handleChange} lang={lang} />
-              <Field label={t.lastName} name="lastName" value={form.lastName} placeholder={t.lastName} onChange={handleChange} lang={lang} />
-            </div>
-            <Field label={t.nameEn} name="nameEn" value={form.nameEn} placeholder={t.nameEn} onChange={handleChange} lang={lang} />
-            <Field label={t.birthDate} name="birthDate" type="date" value={form.birthDate} onChange={handleChange} lang={lang} />
-            {form.accountType === "resident" && (
-              <>
-                <Field
-                  label={lang === "ar" ? "رقم الإقامة" : "Residence ID Number"}
-                  name="eidNumber"
-                  value={form.eidNumber}
-                  placeholder={lang === "ar" ? "784-0000-0000000-0" : "784-0000-0000000-0"}
-                  onChange={handleChange}
-                  lang={lang}
-                  required
-                  maxLength={19}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
-                  name="idExpiry"
-                  type="date"
-                  value={form.idExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  name="passportNumber"
-                  value={form.passportNumber}
-                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-                  name="passportExpiry"
-                  type="date"
-                  value={form.passportExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-              </>
-            )}
-            {form.accountType === "nonresident" && (
-              <>
-                <Field
-                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  name="passportNumber"
-                  value={form.passportNumber}
-                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-                  name="passportExpiry"
-                  type="date"
-                  value={form.passportExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-              </>
-            )}
-            {form.accountType === "company" && (
-              <>
-                <Field
-                  label={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
-                  name="ownerIdNumber"
-                  value={form.ownerIdNumber}
-                  placeholder={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء هوية صاحب الشركة" : "Owner ID Expiry Date"}
-                  name="ownerIdExpiry"
-                  type="date"
-                  value={form.ownerIdExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "رقم الرخصة" : "License Number"}
-                  name="licenseNumber"
-                  value={form.licenseNumber}
-                  placeholder={lang === "ar" ? "رقم الرخصة" : "License Number"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء الرخصة" : "License Expiry Date"}
-                  name="licenseExpiry"
-                  type="date"
-                  value={form.licenseExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  name="passportNumber"
-                  value={form.passportNumber}
-                  placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field
-                  label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
-                  name="passportExpiry"
-                  type="date"
-                  value={form.passportExpiry}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-              </>
-            )}
+<Select label={t.accountType} name="accountType" options={ACCOUNT_TYPES} value={typeof form.accountType === "string" ? form.accountType : ""} onChange={handleChange} />
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+  <Field label={t.firstName} name="firstName" value={typeof form.firstName === "string" ? form.firstName : ""} placeholder={t.firstName} onChange={handleChange} lang={lang} />
+  <Field label={t.middleName} name="middleName" value={typeof form.middleName === "string" ? form.middleName : ""} placeholder={t.middleName} onChange={handleChange} lang={lang} />
+  <Field label={t.lastName} name="lastName" value={typeof form.lastName === "string" ? form.lastName : ""} placeholder={t.lastName} onChange={handleChange} lang={lang} />
+</div>
+<Field label={t.nameEn} name="nameEn" value={typeof form.nameEn === "string" ? form.nameEn : ""} placeholder={t.nameEn} onChange={handleChange} lang={lang} />
+<Field label={t.birthDate} name="birthDate" type="date" value={typeof form.birthDate === "string" ? form.birthDate : ""} onChange={handleChange} lang={lang} />
+{form.accountType === "resident" && (
+  <>
+    <Field
+      label={lang === "ar" ? "رقم الإقامة" : "Residence ID Number"}
+      name="eidNumber"
+      value={typeof form.eidNumber === "string" ? form.eidNumber : ""}
+      placeholder={lang === "ar" ? "784-0000-0000000-0" : "784-0000-0000000-0"}
+      onChange={handleChange}
+      lang={lang}
+      required
+      maxLength={19}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
+      name="idExpiry"
+      type="date"
+      value={typeof form.idExpiry === "string" ? form.idExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      name="passportNumber"
+      value={typeof form.passportNumber === "string" ? form.passportNumber : ""}
+      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+      name="passportExpiry"
+      type="date"
+      value={typeof form.passportExpiry === "string" ? form.passportExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+  </>
+)}
+{form.accountType === "nonresident" && (
+  <>
+    <Field
+      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      name="passportNumber"
+      value={typeof form.passportNumber === "string" ? form.passportNumber : ""}
+      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+      name="passportExpiry"
+      type="date"
+      value={typeof form.passportExpiry === "string" ? form.passportExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+  </>
+)}
+{form.accountType === "company" && (
+  <>
+    <Field
+      label={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
+      name="ownerIdNumber"
+      value={typeof form.ownerIdNumber === "string" ? form.ownerIdNumber : ""}
+      placeholder={lang === "ar" ? "رقم هوية صاحب الشركة" : "Owner ID Number"}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء هوية صاحب الشركة" : "Owner ID Expiry Date"}
+      name="ownerIdExpiry"
+      type="date"
+      value={typeof form.ownerIdExpiry === "string" ? form.ownerIdExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "رقم الرخصة" : "License Number"}
+      name="licenseNumber"
+      value={typeof form.licenseNumber === "string" ? form.licenseNumber : ""}
+      placeholder={lang === "ar" ? "رقم الرخصة" : "License Number"}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء الرخصة" : "License Expiry Date"}
+      name="licenseExpiry"
+      type="date"
+      value={typeof form.licenseExpiry === "string" ? form.licenseExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      name="passportNumber"
+      value={typeof form.passportNumber === "string" ? form.passportNumber : ""}
+      placeholder={lang === "ar" ? "رقم الباسبور" : "Passport Number"}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={lang === "ar" ? "تاريخ انتهاء الباسبور" : "Passport Expiry Date"}
+      name="passportExpiry"
+      type="date"
+      value={typeof form.passportExpiry === "string" ? form.passportExpiry : ""}
+      onChange={handleChange}
+      lang={lang}
+    />
+  </>
+)}
 
-            <CountrySelect
-              value={form.nationality}
-              onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
-            />
-            <Select label={t.gender} name="gender" options={GENDERS} value={form.gender} onChange={handleChange} />
-          </section>
-          <section className="rounded-2xl border border-sky-100 bg-sky-50/30 px-4 py-5 flex flex-col gap-8">
-            <h3 className="font-extrabold text-sky-700 mb-3 text-lg flex items-center gap-2">
-              <span>{t.address}</span>
-              <span className="flex-1 border-b border-sky-200 opacity-30"></span>
-            </h3>
-            {(form.accountType === "resident" || form.accountType === "company") ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Select
-                  label={t.emirate}
-                  name="emirate"
-                  options={UAE_EMIRATES}
-                  value={form.emirate}
-                  onChange={handleChange}
-                />
-                <Field
-                  label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
-                  name="district"
-                  value={form.district}
-                  placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
-                  onChange={handleChange}
-                  lang={lang}
-                />
-                <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
-                <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
-                <Field label={t.floor} name="floor" value={form.floor} placeholder={t.floor} onChange={handleChange} lang={lang} />
-                <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
-              </div>
-            ) : (
-              <>
-                <CountrySelect
-                  value={form.country}
-                  onChange={opt => handleChange({ name: "country", value: opt?.value })}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field
-                    label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
-                    name="district"
-                    value={form.district}
-                    placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
-                    onChange={handleChange}
-                    lang={lang}
-                  />
-                  <Field label={t.state} name="state" value={form.state} placeholder={t.state} onChange={handleChange} lang={lang} />
-                  <Field label={t.street} name="street" value={form.street} placeholder={t.street} onChange={handleChange} lang={lang} />
-                  <Field label={t.building} name="building" value={form.building} placeholder={t.building} onChange={handleChange} lang={lang} />
-                  <Field label={t.apartment} name="apartment" value={form.apartment} placeholder={t.apartment} onChange={handleChange} lang={lang} />
-                </div>
-              </>
-            )}
-          </section>
-          {form.accountType && (
-            <section className="rounded-2xl border border-yellow-100 bg-yellow-50/30 px-4 py-5 flex flex-col gap-8">
-              <h3 className="font-extrabold text-yellow-700 mb-3 text-lg flex items-center gap-2">
-                <span>{t.attachments}</span>
-                <span className="flex-1 border-b border-yellow-200 opacity-30"></span>
-              </h3>
-              {renderDocsFields()}
-            </section>
-          )}
-          <section className="rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-5 flex flex-col gap-8">
-            <h3 className="font-extrabold text-gray-700 mb-3 text-lg flex items-center gap-2">
-              <span>{t.commSafe}</span>
-              <span className="flex-1 border-b border-gray-200 opacity-30"></span>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Field
-                label={t.email}
-                name="email"
-                type="email"
-                value={form.email}
-                placeholder={t.email}
-                onChange={handleChange}
-                lang={lang}
-              />
-              <Field
-                label={t.emailConfirm}
-                name="emailConfirm"
-                type="email"
-                value={form.emailConfirm}
-                placeholder={t.emailConfirm}
-                onChange={handleChange}
-                lang={lang}
-              />
-            </div>
-            {emailsMatch && !emailVerified && (
-              <div className="flex flex-row items-center gap-2 mt-2">
-                <button
-                  type="button"
-                  className="rounded bg-emerald-600 text-white font-bold px-3 py-1 shadow hover:bg-emerald-700 transition text-sm"
-                  onClick={handleSendOtp}
-                  disabled={emailOtpVerifying}
-                  style={{ cursor: emailOtpVerifying ? "wait" : "pointer", minWidth: 95 }}
-                >
-                  {emailOtpVerifying ? (
-                    <span className="animate-pulse">{t.verifying}</span>
-                  ) : (
-                    <span>{t.sendOtp}</span>
-                  )}
-                </button>
-                {otpSentMsg && <span className="text-green-600 text-xs">{otpSentMsg}</span>}
-                {otpError && <span className="text-red-600 text-xs">{otpError}</span>}
-              </div>
-            )}
-            {emailOtpSent && !emailVerified && (
-              <div className="flex flex-row items-center gap-2 mt-2">
-                <input
-                  type="text"
-                  value={emailOtpCode}
-                  onChange={e => setEmailOtpCode(e.target.value)}
-                  placeholder={t.enterCode}
-                  className="rounded-lg border px-3 py-1 bg-black text-white font-bold tracking-widest sm:text-base text-center w-20 outline-none focus:ring-2 focus:ring-emerald-500 transition"
-                  maxLength={6}
-                  style={{ letterSpacing: 4, direction: "ltr" }}
-                />
-                <button
-                  type="button"
-                  className="rounded bg-emerald-600 text-white font-bold px-3 py-1 shadow hover:bg-emerald-700 transition text-sm"
-                  onClick={handleVerifyCode}
-                  disabled={emailOtpVerifying}
-                  style={{ cursor: emailOtpVerifying ? "wait" : "pointer", minWidth: 75 }}
-                >
-                  {emailOtpVerifying ? t.verifying : t.verify}
-                </button>
-                <button
-                  type="button"
-                  className="text-xs underline text-emerald-700 ml-1"
-                  onClick={handleSendOtp}
-                  style={{ cursor: "pointer" }}
-                >
-                  {t.resend}
-                </button>
-                {otpError && <span className="text-red-600 text-xs">{otpError}</span>}
-              </div>
-            )}
-            {emailVerified && (
-              <div className="text-green-700 font-bold flex items-center gap-2 mt-2">
-                <span>{t.verified}</span>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <PasswordField
-                label={t.password}
-                name="password"
-                value={form.password}
-                show={showPass}
-                onChange={handleChange}
-                toggleShow={() => setShowPass(s => !s)}
-              />
-              <PasswordField
-                label={t.passwordConfirm}
-                name="passwordConfirm"
-                value={form.passwordConfirm}
-                show={showPassC}
-                onChange={handleChange}
-                toggleShow={() => setShowPassC(s => !s)}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3 items-end">
-              <div>
-                <label className="font-semibold text-gray-800">{t.phoneCode}</label>
-                <PhoneCodeSelect
-                  value={form.phoneCode}
-                  onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
-                />
-              </div>
-              <div className="col-span-2">
-                <Field label={t.phone} name="phone" type="tel" value={form.phone} placeholder={t.phone} onChange={handleChange} lang={lang} />
-              </div>
-            </div>
+<CountrySelect
+  value={typeof form.nationality === "string" ? form.nationality : ""}
+  onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
+/>
+<Select label={t.gender} name="gender" options={GENDERS} value={typeof form.gender === "string" ? form.gender : ""} onChange={handleChange} />
+
+</section>
+<section className="rounded-2xl border border-sky-100 bg-sky-50/30 px-4 py-5 flex flex-col gap-8">
+  <h3 className="font-extrabold text-sky-700 mb-3 text-lg flex items-center gap-2">
+    <span>{t.address}</span>
+    <span className="flex-1 border-b border-sky-200 opacity-30"></span>
+  </h3>
+  {(form.accountType === "resident" || form.accountType === "company") ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <Select
+        label={t.emirate}
+        name="emirate"
+        options={UAE_EMIRATES}
+        value={typeof form.emirate === "string" ? form.emirate : ""}
+        onChange={handleChange}
+      />
+      <Field
+        label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
+        name="district"
+        value={typeof form.district === "string" ? form.district : ""}
+        placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
+        onChange={handleChange}
+        lang={lang}
+      />
+      <Field label={t.street} name="street" value={typeof form.street === "string" ? form.street : ""} placeholder={t.street} onChange={handleChange} lang={lang} />
+      <Field label={t.building} name="building" value={typeof form.building === "string" ? form.building : ""} placeholder={t.building} onChange={handleChange} lang={lang} />
+      <Field label={t.floor} name="floor" value={typeof form.floor === "string" ? form.floor : ""} placeholder={t.floor} onChange={handleChange} lang={lang} />
+      <Field label={t.apartment} name="apartment" value={typeof form.apartment === "string" ? form.apartment : ""} placeholder={t.apartment} onChange={handleChange} lang={lang} />
+    </div>
+  ) : (
+    <>
+      <CountrySelect
+        value={typeof form.country === "string" ? form.country : ""}
+        onChange={opt => handleChange({ name: "country", value: opt?.value })}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <Field
+          label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
+          name="district"
+          value={typeof form.district === "string" ? form.district : ""}
+          placeholder={lang === "ar" ? "اكتب اسم الحي أو المنطقة" : "Enter district or area name"}
+          onChange={handleChange}
+          lang={lang}
+        />
+        <Field label={t.state} name="state" value={typeof form.state === "string" ? form.state : ""} placeholder={t.state} onChange={handleChange} lang={lang} />
+        <Field label={t.street} name="street" value={typeof form.street === "string" ? form.street : ""} placeholder={t.street} onChange={handleChange} lang={lang} />
+        <Field label={t.building} name="building" value={typeof form.building === "string" ? form.building : ""} placeholder={t.building} onChange={handleChange} lang={lang} />
+        <Field label={t.apartment} name="apartment" value={typeof form.apartment === "string" ? form.apartment : ""} placeholder={t.apartment} onChange={handleChange} lang={lang} />
+      </div>
+    </>
+  )}
+</section>
+{form.accountType && (
+  <section className="rounded-2xl border border-yellow-100 bg-yellow-50/30 px-4 py-5 flex flex-col gap-8">
+    <h3 className="font-extrabold text-yellow-700 mb-3 text-lg flex items-center gap-2">
+      <span>{t.attachments}</span>
+      <span className="flex-1 border-b border-yellow-200 opacity-30"></span>
+    </h3>
+    {renderDocsFields()}
+  </section>
+)}
+<section className="rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-5 flex flex-col gap-8">
+  <h3 className="font-extrabold text-gray-700 mb-3 text-lg flex items-center gap-2">
+    <span>{t.commSafe}</span>
+    <span className="flex-1 border-b border-gray-200 opacity-30"></span>
+  </h3>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <Field
+      label={t.email}
+      name="email"
+      type="email"
+      value={typeof form.email === "string" ? form.email : ""}
+      placeholder={t.email}
+      onChange={handleChange}
+      lang={lang}
+    />
+    <Field
+      label={t.emailConfirm}
+      name="emailConfirm"
+      type="email"
+      value={typeof form.emailConfirm === "string" ? form.emailConfirm : ""}
+      placeholder={t.emailConfirm}
+      onChange={handleChange}
+      lang={lang}
+    />
+  </div>
+  {emailsMatch && !emailVerified && (
+    <div className="flex flex-row items-center gap-2 mt-2">
+      <button
+        type="button"
+        className="rounded bg-emerald-600 text-white font-bold px-3 py-1 shadow hover:bg-emerald-700 transition text-sm"
+        onClick={handleSendOtp}
+        disabled={emailOtpVerifying}
+        style={{ cursor: emailOtpVerifying ? "wait" : "pointer", minWidth: 95 }}
+      >
+        {emailOtpVerifying ? (
+          <span className="animate-pulse">{t.verifying}</span>
+        ) : (
+          <span>{t.sendOtp}</span>
+        )}
+      </button>
+      {otpSentMsg && <span className="text-green-600 text-xs">{otpSentMsg}</span>}
+      {otpError && <span className="text-red-600 text-xs">{otpError}</span>}
+    </div>
+  )}
+  {emailOtpSent && !emailVerified && (
+    <div className="flex flex-row items-center gap-2 mt-2">
+      <input
+        type="text"
+        value={typeof emailOtpCode === "string" ? emailOtpCode : ""}
+        onChange={e => setEmailOtpCode(e.target.value)}
+        placeholder={t.enterCode}
+        className="rounded-lg border px-3 py-1 bg-black text-white font-bold tracking-widest sm:text-base text-center w-20 outline-none focus:ring-2 focus:ring-emerald-500 transition"
+        maxLength={6}
+        style={{ letterSpacing: 4, direction: "ltr" }}
+      />
+      <button
+        type="button"
+        className="rounded bg-emerald-600 text-white font-bold px-3 py-1 shadow hover:bg-emerald-700 transition text-sm"
+        onClick={handleVerifyCode}
+        disabled={emailOtpVerifying}
+        style={{ cursor: emailOtpVerifying ? "wait" : "pointer", minWidth: 75 }}
+      >
+        {emailOtpVerifying ? t.verifying : t.verify}
+      </button>
+      <button
+        type="button"
+        className="text-xs underline text-emerald-700 ml-1"
+        onClick={handleSendOtp}
+        style={{ cursor: "pointer" }}
+      >
+        {t.resend}
+      </button>
+      {otpError && <span className="text-red-600 text-xs">{otpError}</span>}
+    </div>
+  )}
+  {emailVerified && (
+    <div className="text-green-700 font-bold flex items-center gap-2 mt-2">
+      <span>{t.verified}</span>
+    </div>
+  )}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <PasswordField
+      label={t.password}
+      name="password"
+      value={typeof form.password === "string" ? form.password : ""}
+      show={showPass}
+      onChange={handleChange}
+      toggleShow={() => setShowPass(s => !s)}
+    />
+    <PasswordField
+      label={t.passwordConfirm}
+      name="passwordConfirm"
+      value={typeof form.passwordConfirm === "string" ? form.passwordConfirm : ""}
+      show={showPassC}
+      onChange={handleChange}
+      toggleShow={() => setShowPassC(s => !s)}
+    />
+  </div>
+  <div className="grid grid-cols-3 gap-3 items-end">
+    <div>
+      <label className="font-semibold text-gray-800">{t.phoneCode}</label>
+      <PhoneCodeSelect
+        value={typeof form.phoneCode === "string" ? form.phoneCode : ""}
+        onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
+      />
+    </div>
+    <div className="col-span-2">
+      <Field label={t.phone} name="phone" type="tel" value={typeof form.phone === "string" ? form.phone : ""} placeholder={t.phone} onChange={handleChange} lang={lang} />
+    </div>
+  </div>
             <div className="flex flex-col gap-2 mt-2">
               <label className="flex gap-2 items-center text-sm text-gray-900 font-semibold">
                 <input type="checkbox" name="agreeTerms" checked={form.agreeTerms} onChange={handleChange}
