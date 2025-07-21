@@ -16,6 +16,7 @@ import countries from "@/lib/countries-ar-en";
 import PHONE_CODES from "@/lib/phone-codes";
 import React, { useRef } from "react";
 import PasswordField from "@/components/PasswordField";
+import { deleteUser } from "firebase/auth";
 
 export const dynamicConfig = 'force-dynamic';
 
@@ -465,6 +466,8 @@ const handleRegister = async (e) => {
   setRegLoading(true);
   setRegSuccess(false);
 
+  let cred; // مهم يكون خارج try
+
   try {
     if (!executeRecaptcha) {
       setRegError("reCAPTCHA لم يتم تحميله بعد، أعد تحميل الصفحة أو حاول مرة أخرى");
@@ -486,9 +489,11 @@ const handleRegister = async (e) => {
       return;
     }
 
-    // أكمل التسجيل بعد نجاح الكابتشا
-    const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+    // تسجيل المستخدم في Firebase Auth
+    cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
     const userId = cred.user.uid;
+
+    // بناء بيانات المستخدم وتنظيفها
     const userObj = {
       ...form,
       userId,
@@ -502,13 +507,16 @@ const handleRegister = async (e) => {
       role: "client",
       type: form.accountType
     };
-    // لا ترسل كلمة السر ل firestore
     delete userObj.password;
     delete userObj.passwordConfirm;
 
-    // استخدم deepClean هنا!
-    await setDoc(doc(firestore, "users", userId), deepClean(userObj), { merge: true });
+    // تنظيف البيانات قبل الحفظ
+    const cleanUserObj = deepClean(userObj);
 
+    // حفظ بيانات المستخدم في Firestore
+    await setDoc(doc(firestore, "users", userId), cleanUserObj, { merge: true });
+
+    // حفظ الوثائق
     for (const d of Object.values(docs)) {
       await setDoc(doc(firestore, "documents", d.documentId), deepClean({
         ...d,
@@ -517,39 +525,51 @@ const handleRegister = async (e) => {
       }), { merge: true });
     }
 
+    // نجاح التسجيل وتوجيه المستخدم
     setRegSuccess(true);
-setTimeout(() => {
-  router.push("/dashboard/client/profile");
-}, 1500); // ثانية ونصف (أو الرقم اللي تريده)
-} catch (err) {
-  const code = err && typeof err === "object" ? err.code : "";
-  const message = err && typeof err === "object" ? err.message : "";
+    setTimeout(() => {
+      router.push("/dashboard/client/profile");
+    }, 1500);
 
-  if (code === 'auth/email-already-in-use') {
-    setRegError(lang === "ar"
-      ? `البريد الإلكتروني "${form.email}" مُستخدم بالفعل.`
-      : `The email "${form.email}" is already in use.`);
-  } else if (code === 'auth/invalid-email') {
-    setRegError(lang === "ar"
-      ? `البريد الإلكتروني "${form.email}" غير صالح.`
-      : `The email "${form.email}" is invalid.`);
-  } else if (code === 'auth/weak-password') {
-    setRegError(lang === "ar"
-      ? "كلمة المرور ضعيفة جداً."
-      : "Password is too weak.");
-  } else if (code === 'auth/network-request-failed') {
-    setRegError(lang === "ar"
-      ? "حدث خطأ في الاتصال بالإنترنت."
-      : "Network error. Please check your connection.");
-  } else {
-    setRegError(
-      (lang === "ar"
-        ? "حدث خطأ أثناء التسجيل: "
-        : "Registration error: ") +
-      (message || t.regError)
-    );
+  } catch (err) {
+    const code = err && typeof err === "object" ? err.code : "";
+    const message = err && typeof err === "object" ? err.message : "";
+
+    // حذف المستخدم من Auth لو فشل الحفظ في Firestore
+    if (cred && cred.user) {
+      try {
+        await deleteUser(cred.user);
+      } catch (delErr) {
+        // تجاهل خطأ الحذف لو حدث
+      }
+    }
+
+    // رسائل الخطأ للمستخدم
+    if (code === 'auth/email-already-in-use') {
+      setRegError(lang === "ar"
+        ? `البريد الإلكتروني "${form.email}" مُستخدم بالفعل.`
+        : `The email "${form.email}" is already in use.`);
+    } else if (code === 'auth/invalid-email') {
+      setRegError(lang === "ar"
+        ? `البريد الإلكتروني "${form.email}" غير صالح.`
+        : `The email "${form.email}" is invalid.`);
+    } else if (code === 'auth/weak-password') {
+      setRegError(lang === "ar"
+        ? "كلمة المرور ضعيفة جداً."
+        : "Password is too weak.");
+    } else if (code === 'auth/network-request-failed') {
+      setRegError(lang === "ar"
+        ? "حدث خطأ في الاتصال بالإنترنت."
+        : "Network error. Please check your connection.");
+    } else {
+      setRegError(
+        (lang === "ar"
+          ? "حدث خطأ أثناء التسجيل: "
+          : "Registration error: ") +
+        (message || t.regError)
+      );
+    }
   }
-}
   setRegLoading(false);
 };
 
