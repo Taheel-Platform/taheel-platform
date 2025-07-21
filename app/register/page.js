@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from "react";
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,12 +14,11 @@ import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import countries from "@/lib/countries-ar-en";
 import PHONE_CODES from "@/lib/phone-codes";
+import React, { useRef } from "react";
+import PasswordField from "@/components/PasswordField";
 
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-
-// Force dynamic rendering to prevent static export issues
 export const dynamicConfig = 'force-dynamic';
-import React from "react";
+
 
 // ------ التعديلات المطلوبة (دوال التحقق والتنسيق) ------
 function validateEmail(email) {
@@ -91,8 +89,6 @@ const PhoneCodeSelect = dynamic(() => import("@/components/PhoneCodeSelect"), { 
 const CountrySelect = dynamic(() => import("@/components/CountrySelect"), { ssr: false });
 
 const LANGUAGES = {
-  // ... نفس تعريف LANGUAGES كما بالكود السابق
-  // أبقيه كما هو
   ar: {
     back: "الرجوع للموقع",
     createAccount: "إنشاء حساب",
@@ -166,7 +162,6 @@ const LANGUAGES = {
     nonresident: "غير مقيم",
     regError: "حدث خطأ أثناء التسجيل"
   },
-  // ... الإنجليزية كما في السابق
   en: {
     back: "Back to site",
     createAccount: "Create Account",
@@ -242,10 +237,18 @@ const LANGUAGES = {
   }
 };
 
-function RegisterPageInner() {
-  const router = useRouter();
+// مكون الصفحة الرئيسي
+export default function RegisterPage() {
+  // فقط هنا نقرأ searchParams ونمررها كـ prop
   const searchParams = useSearchParams();
-  const [lang, setLang] = useState(searchParams.get("lang") === "en" ? "en" : "ar");
+  const langParam = searchParams.get("lang") === "en" ? "en" : "ar";
+  return <RegisterPageInner initialLang={langParam} />;
+}
+
+// مكون الصفحة الداخلية
+function RegisterPageInner({ initialLang }) {
+  const router = useRouter();
+  const [lang, setLang] = useState(initialLang);
   const t = LANGUAGES[lang];
 
   const { executeRecaptcha } = useGoogleReCaptcha();
@@ -345,17 +348,10 @@ function RegisterPageInner() {
   // دالة handleChange: تدعم onChange من react-select كـ ({ name, value })
   const handleChange = useCallback((e) => {
     let name, value, type, checked, files;
-
     if (e && e.target) {
       ({ name, value, type, checked, files } = e.target);
-
-      // رقم التليفون: أرقام فقط
       if (name === "phone") value = formatPhone(value);
-
-      // رقم الإقامة: فورمات تلقائي
       if (name === "eidNumber") value = formatEID(value);
-
-      // كلمة السر: لا تفقد التركيز بعد أول حرف (لا حاجة لتغيير)
     } else if (e && e.name && e.value !== undefined) {
       name = e.name;
       value = e.value;
@@ -363,14 +359,10 @@ function RegisterPageInner() {
     } else {
       return;
     }
-
     const newValue = type === "checkbox" ? checked : type === "file" ? files[0] : value;
-
     setForm(prev => {
       const updated = { ...prev };
       updated[name] = newValue;
-
-      // عند تغيير الإيميل أو تأكيد الإيميل يرجع حالة otp
       if (name === "email" || name === "emailConfirm") {
         setEmailOtpSent(false);
         setEmailVerified(false);
@@ -378,7 +370,6 @@ function RegisterPageInner() {
         setOtpSentMsg("");
         setEmailOtpCode("");
       }
-
       if (name === "district" && value !== "__other") updated.districtCustom = "";
       if (name === "emirate") {
         updated.district = "";
@@ -391,7 +382,6 @@ function RegisterPageInner() {
         updated.nonUaeDistrict = "";
         updated.districtCustom = "";
       }
-
       return updated;
     });
   }, []);
@@ -523,43 +513,20 @@ function RegisterPageInner() {
 
   function handleLang(lng) {
     setLang(lng);
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams();
     params.set("lang", lng);
     router.replace(`?${params.toString()}`);
   }
 
   // حقل الباسورد المحسن
-  const PasswordField = ({ label, name, value, show, toggle }) => (
-    <div className="flex flex-col gap-1 relative">
-      <label htmlFor={name} className="font-semibold text-gray-800 leading-5">{label}</label>
-      <input
-        id={name}
-        name={name}
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={toggle.inputChange}
-        className="rounded-xl bg-gray-50 border border-gray-300 focus:border-emerald-500 focus:ring-emerald-300 text-gray-900 font-medium px-3 py-2 outline-none transition-all pr-10 shadow-sm"
-        autoComplete="new-password"
-      />
-      <button
-        type="button"
-        className="absolute top-8 left-2 text-emerald-400"
-        tabIndex={-1}
-        onClick={toggle.toggleShow}
-        style={{ cursor: "pointer" }}
-      >
-        {show ? <FaEyeSlash /> : <FaEye />}
-      </button>
-      {/* تحقق قوة كلمة السر */}
-      {name === "password" && value && !validatePassword(value) && (
-        <div className="text-xs text-red-600 font-bold mt-1">
-          {lang === "ar"
-            ? "يجب أن تحتوي كلمة المرور على حرف كبير، رقم، رمز وطول 8 أحرف أو أكثر"
-            : "Password must contain an uppercase letter, a number, a symbol, and be at least 8 characters"}
-        </div>
-      )}
-    </div>
-  );
+  <PasswordField
+  label={t.password}
+  name="password"
+  value={form.password}
+  show={showPass}
+  onChange={handleChange}
+  toggleShow={() => setShowPass(s => !s)}
+/>
 
   const Select = ({ label, name, options, value, onChange, ...rest }) => (
     <div className="flex flex-col gap-1">
@@ -568,7 +535,7 @@ function RegisterPageInner() {
         id={name}
         name={name}
         value={value}
-        onChange={e => onChange({ name, value: e.target.value })}
+        onChange={(e) => onChange({ name, value: e.target.value })}
         className="rounded-xl bg-gray-50 border border-gray-300 focus:border-emerald-500 focus:ring-emerald-300 text-gray-900 font-medium px-3 py-2 outline-none transition-all shadow-sm"
         dir={lang === "ar" ? "rtl" : "ltr"}
         {...rest}
@@ -661,7 +628,6 @@ function RegisterPageInner() {
             </div>
             <Field label={t.nameEn} name="nameEn" value={form.nameEn} placeholder={t.nameEn} onChange={handleChange} lang={lang} />
             <Field label={t.birthDate} name="birthDate" type="date" value={form.birthDate} onChange={handleChange} lang={lang} />
-            {/* ======= حقول رقم الإقامة/الباسبور/الرخصة حسب نوع الحساب ======= */}
             {form.accountType === "resident" && (
               <>
                 <Field
@@ -844,7 +810,6 @@ function RegisterPageInner() {
               <span className="flex-1 border-b border-gray-200 opacity-30"></span>
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* حقلا الإيميل وتأكيده */}
               <Field
                 label={t.email}
                 name="email"
@@ -864,7 +829,6 @@ function RegisterPageInner() {
                 lang={lang}
               />
             </div>
-            {/* زر إرسال كود التفعيل */}
             {emailsMatch && !emailVerified && (
               <div className="flex flex-row items-center gap-2 mt-2">
                 <button
@@ -884,8 +848,6 @@ function RegisterPageInner() {
                 {otpError && <span className="text-red-600 text-xs">{otpError}</span>}
               </div>
             )}
-
-            {/* مربع إدخال الكود وزر التحقق (على سطر واحد) */}
             {emailOtpSent && !emailVerified && (
               <div className="flex flex-row items-center gap-2 mt-2">
                 <input
@@ -928,20 +890,16 @@ function RegisterPageInner() {
                 name="password"
                 value={form.password}
                 show={showPass}
-                toggle={{
-                  toggleShow: () => setShowPass(s => !s),
-                  inputChange: (e) => handleChange(e),
-                }}
+                onChange={handleChange}
+                toggleShow={() => setShowPass(s => !s)}
               />
               <PasswordField
                 label={t.passwordConfirm}
                 name="passwordConfirm"
                 value={form.passwordConfirm}
                 show={showPassC}
-                toggle={{
-                  toggleShow: () => setShowPassC(s => !s),
-                  inputChange: (e) => handleChange(e),
-                }}
+                onChange={handleChange}
+                toggleShow={() => setShowPassC(s => !s)}
               />
             </div>
             <div className="grid grid-cols-3 gap-3 items-end">
@@ -999,12 +957,5 @@ function RegisterPageInner() {
         </div>
       </footer>
     </div>
-  );
-}
-export default function RegisterPage() {
-  return (
-    <Suspense fallback={null}>
-      <RegisterPageInner />
-    </Suspense>
   );
 }
