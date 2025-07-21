@@ -19,7 +19,7 @@ import { deleteUser } from "firebase/auth";
 
 export const dynamicConfig = 'force-dynamic';
 
-// ------ دوال تحقق آمنة ------
+//------ دوال تحقق آمنة ------
 function validateEmail(email) {
   if (typeof email !== "string") return false;
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
@@ -257,7 +257,6 @@ const LANGUAGES = {
 
 // مكون الصفحة الرئيسي
 export default function RegisterPage() {
-  // فقط هنا نقرأ searchParams ونمررها كـ prop
   const searchParams = useSearchParams();
   const langParam = searchParams.get("lang") === "en" ? "en" : "ar";
   return <RegisterPageInner initialLang={langParam} />;
@@ -837,7 +836,7 @@ const handleRegister = async (e) => {
   </>
 )}
 
-// حقل الجنسية
+{/* حقل الجنسية */}
 <CountrySelect
   label={t.nationality}
   value={typeof form.nationality === "string" ? form.nationality : ""}
