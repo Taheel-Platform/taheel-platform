@@ -365,44 +365,46 @@ function RegisterPageInner({ initialLang }) {
 
   // دالة handleChange: تدعم onChange من react-select كـ ({ name, value })
   const handleChange = useCallback((e) => {
-    let name, value, type, checked, files;
-    if (e && e.target) {
-      ({ name, value, type, checked, files } = e.target);
-      if (name === "phone") value = formatPhone(value);
-      if (name === "eidNumber") value = formatEID(value);
-    } else if (e && e.name && e.value !== undefined) {
-      name = e.name;
-      value = e.value;
-      type = "custom";
-    } else {
-      return;
+  let name, value, type, checked, files;
+
+  if (e && e.target) {
+    ({ name, value, type, checked, files } = e.target);
+    if (name === "phone") value = formatPhone(value);
+    if (name === "eidNumber") value = formatEID(value);
+    value = type === "checkbox" ? checked
+          : type === "file" ? (files?.[0] || null)
+          : value;
+  } else if (e && typeof e === "object" && "name" in e && "value" in e) {
+    name = e.name;
+    value = e.value;
+  } else {
+    return;
+  }
+
+  setForm(prev => {
+    const updated = { ...prev, [name]: value };
+    if (name === "email" || name === "emailConfirm") {
+      updated.emailOtpSent = false;
+      updated.emailVerified = false;
+      updated.otpError = "";
+      updated.otpSentMsg = "";
+      updated.emailOtpCode = "";
     }
-    const newValue = type === "checkbox" ? checked : type === "file" ? files[0] : value;
-    setForm(prev => {
-      const updated = { ...prev };
-      updated[name] = newValue;
-      if (name === "email" || name === "emailConfirm") {
-        setEmailOtpSent(false);
-        setEmailVerified(false);
-        setOtpError("");
-        setOtpSentMsg("");
-        setEmailOtpCode("");
-      }
-      if (name === "district" && value !== "__other") updated.districtCustom = "";
-      if (name === "emirate") {
-        updated.district = "";
-        updated.districtCustom = "";
-      }
-      if (name === "country") {
-        updated.emirate = "";
-        updated.district = "";
-        updated.state = "";
-        updated.nonUaeDistrict = "";
-        updated.districtCustom = "";
-      }
-      return updated;
-    });
-  }, []);
+    if (name === "district" && value !== "__other") updated.districtCustom = "";
+    if (name === "emirate") {
+      updated.district = "";
+      updated.districtCustom = "";
+    }
+    if (name === "country") {
+      updated.emirate = "";
+      updated.district = "";
+      updated.state = "";
+      updated.nonUaeDistrict = "";
+      updated.districtCustom = "";
+    }
+    return updated;
+  });
+}, []);
 
   const handleDocVerified = (docType, data) => {
     setDocs((prev) => ({ ...prev, [docType]: data }));
@@ -821,9 +823,10 @@ const handleRegister = async (e) => {
 )}
 
 <CountrySelect
-  value={countries.find(c => c.value === form.country) || null}
+  value={form.country} // يجب أن يكون string فقط مثل "ae"
   onChange={opt => handleChange({ name: "country", value: opt?.value })}
 />
+
 <Select label={t.gender} name="gender" options={GENDERS} value={typeof form.gender === "string" ? form.gender : ""} onChange={handleChange} />
 
 </section>
