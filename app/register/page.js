@@ -532,8 +532,19 @@ const handleRegister = async (e) => {
     }, 1500);
 
   } catch (err) {
-      console.log("خطأ أثناء التسجيل:", err);
-  console.log("err.message:", err?.message);
+    // تتبع الخطأ بشكل واضح
+    console.error("خطأ أثناء التسجيل: ", err);
+    if (err && typeof err === "object") {
+      // لو فيه stacktrace اطبعه
+      if (err.stack) console.error("Stacktrace:", err.stack);
+      if (err.message) console.error("رسالة الخطأ:", err.message);
+      if (err.code) console.error("كود الخطأ:", err.code);
+      // لو فيه أي تفاصيل في الخطأ اطبعها
+      Object.keys(err).forEach(key => {
+        console.error(`خطأ.${key}:`, err[key]);
+      });
+    }
+
     const code = err && typeof err === "object" ? err.code : "";
     const message = err && typeof err === "object" ? err.message : "";
 
@@ -542,11 +553,11 @@ const handleRegister = async (e) => {
       try {
         await deleteUser(cred.user);
       } catch (delErr) {
-        // تجاهل خطأ الحذف لو حدث
+        console.error("فشل حذف المستخدم من Auth:", delErr);
       }
     }
 
-    // رسائل الخطأ للمستخدم
+    // رسائل الخطأ للمستخدم بشكل مفهوم فقط
     if (code === 'auth/email-already-in-use') {
       setRegError(lang === "ar"
         ? `البريد الإلكتروني "${form.email}" مُستخدم بالفعل.`
@@ -564,12 +575,13 @@ const handleRegister = async (e) => {
         ? "حدث خطأ في الاتصال بالإنترنت."
         : "Network error. Please check your connection.");
     } else {
+      // إظهار رسالة الخطأ فقط لو كانت نص واضح، غير كده رسالة عامة
       setRegError(
-  (lang === "ar"
-    ? "حدث خطأ أثناء التسجيل: "
-    : "Registration error: ") +
-  (typeof message === "string" ? message : t.regError)
-);
+        (lang === "ar"
+          ? "حدث خطأ أثناء التسجيل: "
+          : "Registration error: ") +
+        (typeof message === "string" ? message : t.regError)
+      );
     }
   }
   setRegLoading(false);
