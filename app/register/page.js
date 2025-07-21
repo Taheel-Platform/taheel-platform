@@ -860,7 +860,7 @@ const handleRegister = async (e) => {
   ) : (
     <>
       <CountrySelect
-  value={countries.find(c => c.value === form.country) || null}
+  value={form.country} // فقط string مثل "ae"
   onChange={opt => handleChange({ name: "country", value: opt?.value })}
 />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -991,7 +991,7 @@ const handleRegister = async (e) => {
     <div>
       <label className="font-semibold text-gray-800">{t.phoneCode}</label>
       <PhoneCodeSelect
-  value={form.phoneCode} // فقط string مثل "+971"
+  value={form.phoneCode} 
   onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
 />
     </div>
