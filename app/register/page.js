@@ -19,7 +19,6 @@ import PasswordField from "@/components/PasswordField";
 
 export const dynamicConfig = 'force-dynamic';
 
-
 // ------ التعديلات المطلوبة (دوال التحقق والتنسيق) ------
 function validateEmail(email) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
@@ -43,6 +42,19 @@ function formatEID(eid) {
 }
 function formatPhone(phone) {
   return phone.replace(/[^\d]/g, "");
+}
+
+// دالة تنظيف أي object من undefined (حتى لو nested)
+function deepClean(obj) {
+  if (Array.isArray(obj)) return obj.map(deepClean);
+  if (obj && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([_, v]) => v !== undefined)
+        .map(([k, v]) => [k, deepClean(v)])
+    );
+  }
+  return obj;
 }
 
 // Field component
@@ -447,69 +459,70 @@ function RegisterPageInner({ initialLang }) {
   })();
 
   // دمج reCAPTCHA في عملية التسجيل
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setRegError("");
-    setRegLoading(true);
-    setRegSuccess(false);
+const handleRegister = async (e) => {
+  e.preventDefault();
+  setRegError("");
+  setRegLoading(true);
+  setRegSuccess(false);
 
-    try {
-      if (!executeRecaptcha) {
-        setRegError("reCAPTCHA لم يتم تحميله بعد، أعد تحميل الصفحة أو حاول مرة أخرى");
-        setRegLoading(false);
-        return;
-      }
-
-      const recaptchaToken = await executeRecaptcha("register");
-
-      const captchaRes = await fetch("/api/recaptcha", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: recaptchaToken }),
-      });
-      const captchaData = await captchaRes.json();
-      if (!captchaData.success) {
-        setRegError("فشل التحقق من الكابتشا");
-        setRegLoading(false);
-        return;
-      }
-
-      // أكمل التسجيل بعد نجاح الكابتشا
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-      const userId = cred.user.uid;
-      const userObj = {
-        ...form,
-        userId,
-        documents: Object.values(docs).map(d => ({
-          documentId: d.documentId,
-          type: d.docType,
-          url: d.url,
-          uploadedAt: d.uploadedAt,
-        })),
-        registeredAt: new Date().toISOString(),
-        role: "client",
-        type: form.accountType
-      };
-      // لا ترسل كلمة السر ل firestore
-      delete userObj.password;
-      delete userObj.passwordConfirm;
-
-      await setDoc(doc(firestore, "users", userId), userObj, { merge: true });
-
-      for (const d of Object.values(docs)) {
-        await setDoc(doc(firestore, "documents", d.documentId), {
-          ...d,
-          ownerId: userId,
-          uploadedBy: userId,
-        }, { merge: true });
-      }
-
-      setRegSuccess(true);
-    } catch (err) {
-      setRegError(err?.message || t.regError);
+  try {
+    if (!executeRecaptcha) {
+      setRegError("reCAPTCHA لم يتم تحميله بعد، أعد تحميل الصفحة أو حاول مرة أخرى");
+      setRegLoading(false);
+      return;
     }
-    setRegLoading(false);
-  };
+
+    const recaptchaToken = await executeRecaptcha("register");
+
+    const captchaRes = await fetch("/api/recaptcha", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: recaptchaToken }),
+    });
+    const captchaData = await captchaRes.json();
+    if (!captchaData.success) {
+      setRegError("فشل التحقق من الكابتشا");
+      setRegLoading(false);
+      return;
+    }
+
+    // أكمل التسجيل بعد نجاح الكابتشا
+    const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
+    const userId = cred.user.uid;
+    const userObj = {
+      ...form,
+      userId,
+      documents: Object.values(docs).map(d => ({
+        documentId: d.documentId,
+        type: d.docType,
+        url: d.url,
+        uploadedAt: d.uploadedAt,
+      })),
+      registeredAt: new Date().toISOString(),
+      role: "client",
+      type: form.accountType
+    };
+    // لا ترسل كلمة السر ل firestore
+    delete userObj.password;
+    delete userObj.passwordConfirm;
+
+    // استخدم deepClean هنا!
+    await setDoc(doc(firestore, "users", userId), deepClean(userObj), { merge: true });
+
+    for (const d of Object.values(docs)) {
+      await setDoc(doc(firestore, "documents", d.documentId), deepClean({
+        ...d,
+        ownerId: userId,
+        uploadedBy: userId,
+      }), { merge: true });
+    }
+
+    setRegSuccess(true);
+  } catch (err) {
+    setRegError(err?.message || t.regError);
+  }
+  setRegLoading(false);
+};
 
   function handleLang(lng) {
     setLang(lng);
