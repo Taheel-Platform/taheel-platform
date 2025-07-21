@@ -518,31 +518,35 @@ const handleRegister = async (e) => {
     }
 
     setRegSuccess(true);
-  } catch (err) {
-  // Firebase Auth errors
-  if (err.code === 'auth/email-already-in-use') {
+setTimeout(() => {
+  router.push("/dashboard/client/profile");
+}, 1500); // ثانية ونصف (أو الرقم اللي تريده)
+} catch (err) {
+  const code = err && typeof err === "object" ? err.code : "";
+  const message = err && typeof err === "object" ? err.message : "";
+
+  if (code === 'auth/email-already-in-use') {
     setRegError(lang === "ar"
       ? `البريد الإلكتروني "${form.email}" مُستخدم بالفعل.`
       : `The email "${form.email}" is already in use.`);
-  } else if (err.code === 'auth/invalid-email') {
+  } else if (code === 'auth/invalid-email') {
     setRegError(lang === "ar"
       ? `البريد الإلكتروني "${form.email}" غير صالح.`
       : `The email "${form.email}" is invalid.`);
-  } else if (err.code === 'auth/weak-password') {
+  } else if (code === 'auth/weak-password') {
     setRegError(lang === "ar"
       ? "كلمة المرور ضعيفة جداً."
       : "Password is too weak.");
-  } else if (err.code === 'auth/network-request-failed') {
+  } else if (code === 'auth/network-request-failed') {
     setRegError(lang === "ar"
       ? "حدث خطأ في الاتصال بالإنترنت."
       : "Network error. Please check your connection.");
   } else {
-    // أخطاء أخرى
     setRegError(
       (lang === "ar"
         ? "حدث خطأ أثناء التسجيل: "
         : "Registration error: ") +
-      (err?.message || t.regError)
+      (message || t.regError)
     );
   }
 }
