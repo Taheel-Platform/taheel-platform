@@ -487,7 +487,7 @@ const handleRegister = async (e) => {
     setRegLoading(false);
     return;
   }
-  
+
   let cred; // مهم يكون خارج try
 
   try {
@@ -837,9 +837,11 @@ const handleRegister = async (e) => {
   </>
 )}
 
+// حقل الجنسية
 <CountrySelect
-  value={form.country} // يجب أن يكون string فقط مثل "ae"
-  onChange={opt => handleChange({ name: "country", value: opt?.value })}
+  label={t.nationality}
+  value={typeof form.nationality === "string" ? form.nationality : ""}
+  onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
 />
 
 <Select label={t.gender} name="gender" options={GENDERS} value={typeof form.gender === "string" ? form.gender : ""} onChange={handleChange} />
@@ -875,7 +877,8 @@ const handleRegister = async (e) => {
   ) : (
     <>
       <CountrySelect
-  value={form.country} // فقط string مثل "ae"
+  label={t.country}
+  value={typeof form.country === "string" ? form.country : ""}
   onChange={opt => handleChange({ name: "country", value: opt?.value })}
 />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

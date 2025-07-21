@@ -2,22 +2,19 @@ import React, { useRef } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import PropTypes from "prop-types";
 
-/**
- * PasswordField - احترافي ومتاح لإعادة الاستخدام، يدعم سهولة الوصول (accessibility)
- *
- * Props:
- * - label: نص عنوان الحقل (مطلوب)
- * - name: اسم الحقل (مطلوب)
- * - value: قيمة الحقل (مطلوب)
- * - show: إظهار الباسورد أم لا (مطلوب)
- * - onChange: دالة تغيير القيمة (مطلوب)
- * - toggleShow: دالة تبديل الإظهار/الإخفاء (مطلوب)
- * - placeholder: نص افتراضي للحقل (اختياري)
- * - lang: لغة الحقل ("ar" أو "en") (اختياري لتحسين الاتجاه)
- * - error: رسالة خطأ لعرضها أسفل الحقل (اختياري)
- * - required: هل الحقل مطلوب أم لا (اختياري)
- * - disabled: تعطيل الحقل (اختياري)
- */
+// دالة تحقق قوة الباسورد
+function getPasswordErrors(password) {
+  const errors = [];
+  if (typeof password !== "string" || password.length < 8)
+    errors.push("كلمة المرور يجب ألا تقل عن 8 أحرف.");
+  if (!/[A-Z]/.test(password))
+    errors.push("يجب أن تحتوي على حرف كبير واحد على الأقل.");
+  if (!/\d/.test(password))
+    errors.push("يجب أن تحتوي على رقم واحد على الأقل.");
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password))
+    errors.push("يجب أن تحتوي على رمز خاص واحد على الأقل.");
+  return errors;
+}
 
 const PasswordField = React.memo(function PasswordField({
   label,
@@ -31,6 +28,7 @@ const PasswordField = React.memo(function PasswordField({
   error = "",
   required = false,
   disabled = false,
+  passwordConfirm = "",     // كلمة المرور التأكيدية
   ...rest
 }) {
   const inputRef = useRef();
@@ -45,6 +43,14 @@ const PasswordField = React.memo(function PasswordField({
       }
     }, 0);
   };
+
+  // تحقق من مطابقة كلمة المرور والتأكيد
+  const matchError = passwordConfirm !== undefined && passwordConfirm !== "" && passwordConfirm !== value
+    ? "كلمة المرور وتأكيد كلمة المرور غير متطابقين."
+    : "";
+
+  // تحقق من قوة الباسورد
+  const passwordErrors = getPasswordErrors(value);
 
   return (
     <div className="flex flex-col gap-1 relative">
@@ -69,11 +75,11 @@ const PasswordField = React.memo(function PasswordField({
           required={required}
           disabled={disabled}
           aria-required={required}
-          aria-invalid={!!error}
+          aria-invalid={!!error || !!matchError || passwordErrors.length > 0}
           aria-label={label}
           dir={lang === "ar" ? "rtl" : "ltr"}
           className={`rounded-xl bg-gray-50 border px-3 py-2 pr-10 shadow-sm font-medium transition-all outline-none placeholder:text-gray-400
-            ${error ? "border-red-400 focus:border-red-500 focus:ring-red-300" : "border-gray-300 focus:border-emerald-500 focus:ring-emerald-300"}
+            ${(error || matchError || passwordErrors.length > 0) ? "border-red-400 focus:border-red-500 focus:ring-red-300" : "border-gray-300 focus:border-emerald-500 focus:ring-emerald-300"}
             ${disabled ? "opacity-60 cursor-not-allowed" : "text-gray-900"}
           `}
           {...rest}
@@ -91,11 +97,28 @@ const PasswordField = React.memo(function PasswordField({
           {show ? <FaEyeSlash /> : <FaEye />}
         </button>
       </div>
+      {/* رسائل الخطأ */}
       {error && (
         <span className="text-xs text-red-600 font-medium mt-1" role="alert">
           {error}
         </span>
       )}
+      {matchError && (
+        <span className="text-xs text-red-600 font-medium mt-1" role="alert">
+          {matchError}
+        </span>
+      )}
+      {passwordErrors.length > 0 && (
+        <ul className="text-xs text-red-600 font-medium mt-1" role="alert">
+          {passwordErrors.map((err, i) => (
+            <li key={i}>{err}</li>
+          ))}
+        </ul>
+      )}
+      {/* تعليمات أمان */}
+      <div className="text-xs text-gray-500 mt-1">
+        يجب أن تحتوي كلمة المرور على: حرف كبير، رقم، رمز خاص، وألا تقل عن 8 أحرف.
+      </div>
     </div>
   );
 });
@@ -112,6 +135,7 @@ PasswordField.propTypes = {
   error: PropTypes.string,
   required: PropTypes.bool,
   disabled: PropTypes.bool,
+  passwordConfirm: PropTypes.string, // أضف هذا
 };
 
 export default PasswordField;
