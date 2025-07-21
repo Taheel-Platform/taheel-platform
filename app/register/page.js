@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
 import dynamic from "next/dynamic";
 import { UAE_DISTRICTS } from "@/lib/uae-districts";
 import DocumentUploadField from "@/components/DocumentUploadField";
@@ -822,8 +821,8 @@ const handleRegister = async (e) => {
 )}
 
 <CountrySelect
-  value={typeof form.nationality === "string" ? form.nationality : ""}
-  onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
+  value={countries.find(c => c.value === form.country) || null}
+  onChange={opt => handleChange({ name: "country", value: opt?.value })}
 />
 <Select label={t.gender} name="gender" options={GENDERS} value={typeof form.gender === "string" ? form.gender : ""} onChange={handleChange} />
 
@@ -858,9 +857,9 @@ const handleRegister = async (e) => {
   ) : (
     <>
       <CountrySelect
-        value={typeof form.country === "string" ? form.country : ""}
-        onChange={opt => handleChange({ name: "country", value: opt?.value })}
-      />
+  value={countries.find(c => c.value === form.country) || null}
+  onChange={opt => handleChange({ name: "country", value: opt?.value })}
+/>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <Field
           label={lang === "ar" ? "الحي أو المنطقة" : "District / Area"}
@@ -989,9 +988,9 @@ const handleRegister = async (e) => {
     <div>
       <label className="font-semibold text-gray-800">{t.phoneCode}</label>
       <PhoneCodeSelect
-        value={typeof form.phoneCode === "string" ? form.phoneCode : ""}
-        onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
-      />
+  value={PHONE_CODES.find(c => c.value === form.phoneCode) || null}
+  onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
+/>
     </div>
     <div className="col-span-2">
       <Field label={t.phone} name="phone" type="tel" value={typeof form.phone === "string" ? form.phone : ""} placeholder={t.phone} onChange={handleChange} lang={lang} />
