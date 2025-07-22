@@ -104,9 +104,6 @@ async function verifyCode(email, code) {
   return await res.json();
 }
 
-const PhoneCodeSelect = dynamic(() => import("@/components/PhoneCodeSelect"), { ssr: false });
-const CountrySelect = dynamic(() => import("@/components/CountrySelect"), { ssr: false });
-
 const LANGUAGES = {
   ar: {
     back: "الرجوع للموقع",
