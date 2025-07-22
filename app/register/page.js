@@ -18,7 +18,6 @@ import SubmitStep from "@/components/register/SubmitStep";
 // اللغات (اختصرها حسب الحاجة)
 const LANGUAGES = {
   ar: {
-    // ... باقي الترجمة
     accountType: "نوع الحساب",
     resident: "مقيم",
     nonresident: "غير مقيم",
@@ -33,7 +32,6 @@ const LANGUAGES = {
     back: "الرجوع للموقع"
   },
   en: {
-    // ... باقي الترجمة
     accountType: "Account Type",
     resident: "Resident",
     nonresident: "Non Resident",
@@ -106,71 +104,77 @@ function RegisterPageInner({ initialLang }) {
     setRegLoading(false);
   };
 
-  // خطوات التسجيل
-const steps = [
-  <ClientTypeStep
-    value={form.accountType}
-    onChange={type => handleChange({ accountType: type })}
-    options={ACCOUNT_TYPES}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(1)}
-    // onBack (اختياري)
-  />,
-  <PersonalInfoStep
-    form={form}
-    onChange={handleChange}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(2)}
-    onBack={() => {
-      setForm(prev => ({ ...prev, accountType: "" }));
-      setStep(0);
-    }}
-  />,
-  <AddressStep
-    form={form}
-    onChange={handleChange}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(3)}
-    onBack={() => setStep(1)}
-  />,
-  <DocumentsStep
-    form={form}
-    onChange={handleChange}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(4)}
-    onBack={() => setStep(2)}
-  />,
-  <ContactStep
-    form={form}
-    onChange={handleChange}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(5)}
-    onBack={() => setStep(3)}
-  />,
-  <AgreementStep
-    form={form}
-    onChange={handleChange}
-    lang={lang}
-    t={t}
-    onNext={() => setStep(6)}
-    onBack={() => setStep(4)}
-  />,
-  <SubmitStep
-    form={form}
-    lang={lang}
-    t={t}
-    onBack={() => setStep(5)}
-    onRegister={handleRegister}
-    regError={regError}
-    regLoading={regLoading}
-    regSuccess={regSuccess}
-  />
-];
+  // خطوات التسجيل مع إضافة خاصية key لكل عنصر
+  const steps = [
+    <ClientTypeStep
+      key="step-0"
+      value={form.accountType}
+      onChange={type => handleChange({ accountType: type })}
+      options={ACCOUNT_TYPES}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(1)}
+    />,
+    <PersonalInfoStep
+      key="step-1"
+      form={form}
+      onChange={handleChange}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(2)}
+      onBack={() => {
+        setForm(prev => ({ ...prev, accountType: "" }));
+        setStep(0);
+      }}
+    />,
+    <AddressStep
+      key="step-2"
+      form={form}
+      onChange={handleChange}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(3)}
+      onBack={() => setStep(1)}
+    />,
+    <DocumentsStep
+      key="step-3"
+      form={form}
+      onChange={handleChange}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(4)}
+      onBack={() => setStep(2)}
+    />,
+    <ContactStep
+      key="step-4"
+      form={form}
+      onChange={handleChange}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(5)}
+      onBack={() => setStep(3)}
+    />,
+    <AgreementStep
+      key="step-5"
+      form={form}
+      onChange={handleChange}
+      lang={lang}
+      t={t}
+      onNext={() => setStep(6)}
+      onBack={() => setStep(4)}
+    />,
+    <SubmitStep
+      key="step-6"
+      form={form}
+      lang={lang}
+      t={t}
+      onBack={() => setStep(5)}
+      onRegister={handleRegister}
+      regError={regError}
+      regLoading={regLoading}
+      regSuccess={regSuccess}
+    />
+  ];
 
   // واجهة الصفحة الرئيسية
   return (
