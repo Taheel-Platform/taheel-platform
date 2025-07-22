@@ -469,11 +469,23 @@ const handleRegister = async (e) => {
   setRegError("");
   setRegLoading(true);
   setRegSuccess(false);
-// تحقق من صحة الدولة وكود الدولة قبل بدء التسجيل
-  if (!form.country || typeof form.country !== "string") {
+
+  // تحقق من صحة الدولة فقط إذا كان غير مقيم أو شركة
+  if (
+    (form.accountType === "nonresident" || form.accountType === "company") &&
+    (!form.country || typeof form.country !== "string")
+  ) {
     setRegError(lang === "ar"
       ? "يرجى اختيار الدولة بشكل صحيح."
       : "Please choose a valid country.");
+    setRegLoading(false);
+    return;
+  }
+
+  if (!form.phoneCode || typeof form.phoneCode !== "string") {
+    setRegError(lang === "ar"
+      ? "يرجى اختيار كود الدولة بشكل صحيح."
+      : "Please choose a valid country code.");
     setRegLoading(false);
     return;
   }
