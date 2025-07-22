@@ -837,7 +837,7 @@ const handleRegister = async (e) => {
 )}
 
 {/* حقل الجنسية */}
-<CountrySelect
+<NationalitySelect
   label={t.nationality}
   value={typeof form.nationality === "string" ? form.nationality : ""}
   onChange={opt => handleChange({ name: "nationality", value: opt?.value })}
