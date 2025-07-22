@@ -11,11 +11,12 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
-import countries from "@/lib/countries-ar-en";
-import PHONE_CODES from "@/lib/phone-codes";
 import React, { useRef } from "react";
 import PasswordField from "@/components/PasswordField";
 import { deleteUser } from "firebase/auth";
+import NationalitySelect from "@/components/NationalitySelect";
+import CountrySelect from "@/components/CountrySelect";
+import PhoneCodeSelect from "@/components/PhoneCodeSelect";
 
 export const dynamicConfig = 'force-dynamic';
 
