@@ -8,6 +8,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 /**
  * DocumentUploadField supports Arabic/English by passing `lang` prop ("ar" or "en").
  * All UI strings and messages will auto-switch language.
+ * Now with a world-class, modern upload UI (drag&drop, progress, icons, etc).
  */
 export default function DocumentUploadField({
   docType,
@@ -24,7 +25,6 @@ export default function DocumentUploadField({
   const inputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
 
-  // All translations
   const t = {
     ar: {
       uploadLabel: label || `ارفع مستند ${docType}`,
@@ -110,7 +110,7 @@ export default function DocumentUploadField({
     setMessage(t.verifying);
 
     try {
-      // OCR Verification
+      // OCR Verification (optional, can be disabled if not needed)
       const formData = new FormData();
       formData.append("file", file);
       formData.append("docType", docType);
@@ -185,12 +185,12 @@ export default function DocumentUploadField({
   // Dynamic icon per status
   const renderIcon = () => {
     if (status === "success")
-      return <FaCheckCircle className="text-green-500 text-xl mb-1" />;
+      return <FaCheckCircle className="text-green-500 text-lg mb-1" />;
     if (status === "error")
-      return <FaExclamationCircle className="text-red-500 text-xl mb-1" />;
+      return <FaExclamationCircle className="text-red-500 text-lg mb-1" />;
     if (status === "verifying" || status === "uploading")
-      return <FaSpinner className="text-blue-500 text-xl mb-1 animate-spin" />;
-    return <FaCloudUploadAlt className="text-blue-400 text-2xl mb-1" />;
+      return <FaSpinner className="text-blue-500 text-lg mb-1 animate-spin" />;
+    return <FaCloudUploadAlt className="text-blue-400 text-xl mb-1" />;
   };
 
   // Direction (rtl for Arabic, ltr for English)
@@ -198,18 +198,18 @@ export default function DocumentUploadField({
   const textAlign = lang === "ar" ? "text-right" : "text-left";
 
   return (
-    <div className={`w-full max-w-xs flex flex-col items-center mx-auto`} dir={dir}>
-      <label className={`block text-gray-900 font-semibold mb-2 text-base tracking-tight ${textAlign}`}>
+    <div className={`w-full max-w-[240px] flex flex-col items-center mx-auto`} dir={dir}>
+      <label className={`block text-gray-900 font-semibold mb-2 text-sm tracking-tight text-center w-full`}>
         {t.uploadLabel}
       </label>
 
-      {/* Main dropzone */}
+      {/* Main dropzone with drag & drop and clickable file input */}
       <div
         className={`
-          w-full flex flex-col items-center justify-center rounded-xl
-          border-2 border-dashed cursor-pointer transition-all
-          bg-gradient-to-br from-white via-blue-50 to-blue-100
-          shadow-sm py-6 px-4 min-h-[180px]
+          w-full flex flex-col items-center justify-center rounded-lg
+          border border-dashed cursor-pointer transition-all
+          bg-gradient-to-br from-white via-gray-50 to-gray-100
+          shadow-sm py-4 px-2 min-h-[110px]
           ${dragActive ? "border-blue-400 bg-blue-50" : "border-gray-200"}
           ${status === "error" ? "border-red-400" : ""}
           hover:border-blue-400
@@ -291,7 +291,7 @@ export default function DocumentUploadField({
         {/* Edit button only on success */}
         {status === "success" && (
           <button
-            className="mt-3 flex items-center gap-1 px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs transition"
+            className="mt-2 flex items-center gap-1 px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium text-xs transition"
             onClick={reset}
             type="button"
           >
