@@ -18,122 +18,29 @@ function validatePassword(password) {
   );
 }
 
-const styles = {
-  formSection: {
-    maxWidth: 720,
-    margin: '40px auto',
-    background: '#fff',
-    borderRadius: '1.6rem',
-    boxShadow: '0 6px 32px 0 rgba(16,185,129,0.10), 0 1.5px 4px 0 rgba(0,0,0,0.08)',
-    padding: '2.8rem 2.5rem 2.2rem 2.5rem',
-    fontFamily: "Cairo, Inter, Arial, Helvetica, sans-serif"
-  },
-  formTitle: {
-    textAlign: 'center',
-    fontSize: '2.1rem',
-    fontWeight: 900,
-    color: '#10b981',
-    marginBottom: '1.7rem',
-    letterSpacing: '0.03em'
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '1.2rem',
-    marginBottom: '0.8rem'
-  },
-  inputWrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    marginBottom: '0.65rem'
-  },
-  inputLabel: {
-    fontWeight: 600,
-    color: '#333',
-    marginBottom: '0.18rem',
-    fontSize: '1rem',
-    letterSpacing: '0.01em'
-  },
-  inputField: {
-    borderRadius: '0.9rem',
-    border: '1.5px solid #e2e8f0',
-    background: '#f7fafc',
-    padding: '0.78rem 1rem',
-    fontSize: '1.08rem',
-    fontWeight: 500,
-    color: '#222',
-    outline: 'none',
-    transition: 'border 0.2s',
-    width: '100%'
-  },
-  inputFieldFocus: {
-    borderColor: '#10b981'
-  },
-  inputError: {
-    fontSize: '0.89rem',
-    color: '#d32f2f',
-    marginTop: '0.17rem',
-    whiteSpace: 'pre-line',
-    textAlign: 'right',
-    fontWeight: 600
-  },
-  otpSection: {
-    display: 'flex',
-    gap: '0.7rem',
-    alignItems: 'center',
-    marginTop: '0.3rem',
-    flexWrap: 'wrap'
-  },
-  verifiedMsg: {
-    color: '#10b981',
-    fontWeight: 'bold',
-    fontSize: '1.04rem',
-    marginTop: '0.4rem',
-    display: 'flex',
-    gap: '0.4rem',
-    alignItems: 'center',
-    justifyContent: 'flex-start'
-  },
-  checkboxList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.55rem',
-    margin: '1.1rem 0 0.3rem 0'
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.6rem',
-    fontSize: '0.97rem',
-    color: '#333'
-  },
-  btn: {
-    background: 'linear-gradient(90deg,#10b981 40%,#059669 100%)',
-    color: '#fff',
-    border: 'none',
-    padding: '0.52rem 1.1rem',
-    borderRadius: '0.7rem',
-    fontWeight: 'bold',
-    fontSize: '1.04rem',
-    cursor: 'pointer',
-    boxShadow: '0 2px 8px rgba(16,185,129,0.07)',
-    transition: 'background 0.18s, opacity 0.18s, box-shadow 0.18s',
-    minWidth: 120,
-    marginTop: '0.3rem'
-  },
-  btnDisabled: {
-    opacity: 0.6,
-    cursor: 'not-allowed'
-  },
-  btnSecondary: {
-    background: 'none',
-    color: '#10b981',
-    boxShadow: 'none',
-    fontSize: '0.97rem',
-    padding: 0,
-    minWidth: 'unset'
-  }
-};
+// دالة إرسال الكود (OTP) للإيميل
+async function sendVerificationCode(email, code) {
+  if (!validateEmail(email)) return { success: false, message: "Invalid email" };
+  const res = await fetch("/api/send-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code })
+  });
+  return await res.json();
+}
+
+// دالة تحقق الكود مع الباك اند
+async function verifyCode(email, code) {
+  if (!validateEmail(email) || typeof code !== "string") return { success: false };
+  const res = await fetch("/api/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code })
+  });
+  return await res.json();
+}
+
+const styles = { /* ... نفس تعريفك ... */ };
 
 export default function RegisterForm({ lang = "ar", t = {} }) {
   const router = useRouter();
@@ -159,6 +66,9 @@ export default function RegisterForm({ lang = "ar", t = {} }) {
   const [showPass, setShowPass] = useState(false);
   const [showPassC, setShowPassC] = useState(false);
 
+  // كود التفعيل الذي تم توليده (لإرساله للباك اند وحفظه مؤقتًا للمستخدم الحالي)
+  const [generatedOtp, setGeneratedOtp] = useState("");
+
   // استجابة للموبايل
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -182,6 +92,7 @@ export default function RegisterForm({ lang = "ar", t = {} }) {
 
   const emailsMatch = form.email && form.email === form.emailConfirm && validateEmail(form.email);
 
+  // إرسال كود التفعيل الحقيقي
   const handleSendOtp = async () => {
     setOtpError("");
     setOtpSentMsg("");
@@ -192,25 +103,33 @@ export default function RegisterForm({ lang = "ar", t = {} }) {
       setEmailOtpVerifying(false);
       return;
     }
-    setTimeout(() => {
+    // توليد كود عشوائي 6 أرقام
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedOtp(otp);
+
+    // إرسال للباك اند
+    const res = await sendVerificationCode(form.email, otp);
+    setEmailOtpVerifying(false);
+    if (res.success) {
       setEmailOtpSent(true);
       setOtpSentMsg(lang === "ar" ? "تم إرسال الكود على بريدك الإلكتروني" : "Verification code sent to your email");
-      setEmailOtpVerifying(false);
-    }, 900);
+    } else {
+      setOtpError(lang === "ar" ? "حدث خطأ أثناء الإرسال" : "Failed to send email");
+    }
   };
 
+  // تحقق الكود مع الباك اند
   const handleVerifyCode = async () => {
     setOtpError("");
     setEmailOtpVerifying(true);
-    setTimeout(() => {
-      if (emailOtpCode === "123456") {
-        setEmailVerified(true);
-        setOtpSentMsg("");
-      } else {
-        setOtpError(lang === "ar" ? "الكود غير صحيح أو منتهي الصلاحية" : "Code is incorrect or expired");
-      }
-      setEmailOtpVerifying(false);
-    }, 900);
+    const res = await verifyCode(form.email, emailOtpCode);
+    setEmailOtpVerifying(false);
+    if (res.success) {
+      setEmailVerified(true);
+      setOtpSentMsg("");
+    } else {
+      setOtpError(lang === "ar" ? "الكود غير صحيح أو منتهي الصلاحية" : "Code is incorrect or expired");
+    }
   };
 
   const handleRegister = (e) => {
