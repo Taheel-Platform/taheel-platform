@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
-// Firebase imports (تأكد من وجود هذه الباكج في مشروعك)
-import { collection, addDoc } from "firebase/firestore";
+// Firebase imports
+import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
 // استدعاء الكومبوننتات المقسمة
@@ -15,6 +15,31 @@ import PersonalInfoStep from "@/components/register/PersonalInfoStep";
 import AddressStep from "@/components/register/AddressStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
 import ContactStep from "@/components/register/ContactStep";
+
+// دالة توليد رقم العميل
+function generateCustomerId(accountType, docId) {
+  let prefix = "";
+  let startArr = [];
+  if (accountType === "resident") {
+    prefix = "RES";
+    startArr = ["100", "200", "300"];
+  } else if (accountType === "company") {
+    prefix = "COM";
+    startArr = ["400", "500", "600"];
+  } else if (accountType === "nonresident") {
+    prefix = "NON";
+    startArr = ["700", "800", "900"];
+  } else {
+    prefix = "RES";
+    startArr = ["100"];
+  }
+  const first3 = startArr[Math.floor(Math.random() * startArr.length)];
+  let last4 = docId.replace(/\D/g, '').slice(-4);
+  if (last4.length < 4) {
+    last4 = (last4 + Date.now().toString().slice(-4)).slice(0, 4);
+  }
+  return `${prefix}-${first3}-${last4}`;
+}
 
 // اللغات
 const LANGUAGES = {
@@ -130,7 +155,7 @@ export default function RegisterPage() {
     router.replace(`?${params.toString()}`);
   }
 
-  // دالة التسجيل النهائية: تحفظ كل بيانات العميل في وثيقة واحدة وتحول على صفحة البروفايل
+  // دالة التسجيل النهائية: تحفظ كل بيانات العميل في وثيقة واحدة وتحول على صفحة البروفايل مع توليد رقم العميل
   const handleRegister = async () => {
     setRegError("");
     setRegLoading(true);
@@ -144,6 +169,12 @@ export default function RegisterPage() {
 
       // حفظ بيانات العميل في وثيقة واحدة (كولكشن users، كل مستخدم له وثيقة واحدة فيها كل بياناته)
       const docRef = await addDoc(collection(db, "users"), dataToSave);
+
+      // توليد رقم العميل بعد الحفظ
+      const customerId = generateCustomerId(form.accountType, docRef.id);
+
+      // تحديث الوثيقة برقم العميل
+      await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
 
       setRegSuccess(true);
 

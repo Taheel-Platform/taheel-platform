@@ -4,6 +4,31 @@ import { useState, useEffect } from "react";
 import PasswordField from "../PasswordField";
 import PhoneCodeSelect from "../PhoneCodeSelect";
 
+
+function generateCustomerId(accountType, docId) {
+  let prefix = "";
+  let startArr = [];
+  if (accountType === "resident") {
+    prefix = "RES";
+    startArr = ["100", "200", "300"];
+  } else if (accountType === "company") {
+    prefix = "COM";
+    startArr = ["400", "500", "600"];
+  } else if (accountType === "nonresident") {
+    prefix = "NON";
+    startArr = ["700", "800", "900"];
+  } else {
+    prefix = "RES";
+    startArr = ["100"];
+  }
+  const first3 = startArr[Math.floor(Math.random() * startArr.length)];
+  let last4 = docId.replace(/\D/g, '').slice(-4);
+  if (last4.length < 4) {
+    last4 = (last4 + Date.now().toString().slice(-4)).slice(0, 4);
+  }
+  return `${prefix}-${first3}-${last4}`;
+}
+
 function validateEmail(email) {
   if (typeof email !== "string") return false;
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
