@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import PasswordField from "../PasswordField";
 import PhoneCodeSelect from "../PhoneCodeSelect";
+import { useRouter } from "next/navigation";
+import { collection, addDoc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
 
 // دوال التحقق
 function validateEmail(email) {
@@ -156,6 +159,7 @@ const styles = {
 };
 
 export default function ContactStep({ lang = "ar", t = {} }) {
+  const router = useRouter();
   const [form, setForm] = useState({
     email: "",
     emailConfirm: "",
@@ -236,6 +240,33 @@ export default function ContactStep({ lang = "ar", t = {} }) {
       setOtpSentMsg("");
     } else {
       setOtpError(lang === "ar" ? "الكود غير صحيح أو منتهي الصلاحية" : "Code is incorrect or expired");
+    }
+  };
+
+  // دالة التسجيل الفعلي + التوجيه للبروفايل
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!canRegister) return;
+    try {
+      // إنشاء بيانات العميل الجديدة
+      const newUser = {
+        email: form.email,
+        phone: form.phoneCode + form.phone,
+        password: form.password, // يفضل تشفيرها أو استخدام Auth وليس تخزينها مباشرة!
+        createdAt: new Date().toISOString(),
+        agreeTerms: form.agreeTerms,
+        agreePrivacy: form.agreePrivacy,
+        agreeEAuth: form.agreeEAuth,
+        // يمكنك إضافة name أو أي بيانات أخرى لو لديك
+      };
+      // أضف العميل لقاعدة البيانات
+      const docRef = await addDoc(collection(db, "users"), newUser);
+
+      // توجيه المستخدم للبروفايل بعد نجاح التسجيل
+      router.push(`/dashboard/client/profile?userId=${docRef.id}`);
+    } catch (err) {
+      alert(lang === "ar" ? "حدث خطأ أثناء التسجيل، حاول مرة أخرى." : "An error occurred during registration, please try again.");
+      console.error(err);
     }
   };
 
@@ -448,10 +479,7 @@ export default function ContactStep({ lang = "ar", t = {} }) {
           marginTop: "1.3rem"
         }}
         disabled={!canRegister}
-        onClick={e => {
-          e.preventDefault();
-          // أضف منطق التسجيل هنا إذا أردت
-        }}
+        onClick={handleRegister}
       >
         {lang === "ar" ? "تسجيل حساب جديد" : "Register New Account"}
       </button>
