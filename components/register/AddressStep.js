@@ -8,10 +8,8 @@ import { firestore as db } from "@/lib/firebase.client";
 async function saveAddressInfo(userId, data) {
   try {
     await updateDoc(doc(db, "users", userId), {
-      address_info: {
-        ...data,
-        createdAt: new Date().toISOString()
-      }
+      ...data,
+      addressInfoUpdatedAt: new Date().toISOString()
     });
   } catch (err) {
     console.error("Firestore Error:", err);
@@ -47,7 +45,9 @@ export default function AddressStep({ form, onChange, onNext, onBack, lang, t, u
 
   // دالة حفظ ثم انتقال للخطوة التالية
   const handleNext = async () => {
-    await saveAddressInfo(userId, form); // يجب تمرير userId الخاص بالعميل هنا
+    if (userId) {
+      await saveAddressInfo(userId, form);
+    }
     onNext();
   };
 

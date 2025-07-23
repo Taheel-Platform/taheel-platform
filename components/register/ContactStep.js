@@ -185,7 +185,20 @@ function generateCustomerId(accountType, docId) {
   return `${prefix}-${first3}-${last4}`;
 }
 
-export default function ContactStep({ lang = "ar", t = {}, accountType }) {
+// دالة حفظ بيانات التواصل في نفس وثيقة المستخدم
+async function saveContactInfo(userId, data) {
+  try {
+    await updateDoc(firestoreDoc(db, "users", userId), {
+      ...data,
+      contactInfoUpdatedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Firestore Error:", err);
+    alert("حدث خطأ أثناء حفظ بيانات التواصل");
+  }
+}
+
+export default function ContactStep({ lang = "ar", t = {}, accountType, userId }) {
   const router = useRouter();
   const [form, setForm] = useState({
     email: "",
@@ -296,6 +309,9 @@ export default function ContactStep({ lang = "ar", t = {}, accountType }) {
 
       // تحديث الوثيقة برقم العميل بعد الحفظ
       await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
+
+      // حفظ بيانات التواصل في نفس الوثيقة
+      await saveContactInfo(docRef.id, newUser);
 
       // توجيه المستخدم للبروفايل بعد نجاح التسجيل
       router.push(`/dashboard/client/profile?userId=${docRef.id}`);

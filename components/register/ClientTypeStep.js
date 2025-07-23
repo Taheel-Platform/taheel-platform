@@ -33,15 +33,13 @@ const DESCRIPTIONS = {
   }
 };
 
-// حفظ نوع العميل داخل وثيقة المستخدم (وليس في كولكشن مستقل)
+// حفظ نوع العميل داخل وثيقة المستخدم في كولكشن users
 async function saveClientType(userId, clientType, lang) {
   try {
     await updateDoc(doc(db, "users", userId), {
-      client_type: {
-        type: clientType,
-        lang: lang || "ar",
-        updatedAt: new Date().toISOString()
-      }
+      accountType: clientType,
+      accountTypeLang: lang || "ar",
+      accountTypeUpdatedAt: new Date().toISOString()
     });
   } catch (err) {
     console.error("Firestore error saving client type:", err);
@@ -52,10 +50,8 @@ export default function ClientTypeStep({ value, onChange, options, lang, t, onNe
   // توجيه تلقائي بعد الاختيار + حفظ الاختيار داخل المستخدم
   useEffect(() => {
     if (value && userId) {
-      // الحفظ في الفايرستور داخل العميل
       saveClientType(userId, value, lang);
 
-      // التوجيه التلقائي بعد الاختيار
       const timer = setTimeout(onNext, 550);
       return () => clearTimeout(timer);
     }

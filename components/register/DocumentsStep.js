@@ -23,14 +23,12 @@ const REQUIRED_DOCS = {
   ]
 };
 
-// حفظ بيانات المستندات داخل وثيقة العميل
+// حفظ بيانات المستندات داخل نفس وثيقة العميل
 async function saveDocumentsInfo(userId, documents) {
   try {
     await updateDoc(doc(db, "users", userId), {
-      documents: {
-        ...documents,
-        updatedAt: new Date().toISOString()
-      }
+      ...documents,
+      documentsUpdatedAt: new Date().toISOString()
     });
   } catch (err) {
     console.error("Firestore Error:", err);
@@ -85,8 +83,10 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
         if (ocrJson.success) {
           const newDocs = { ...docs, [docType]: { ...data, fileUrl, ocr: ocrJson } };
           onChange({ documents: newDocs });
-          // 4- حفظ البيانات في فايرستور داخل المستخدم
-          await saveDocumentsInfo(userId, newDocs);
+          // 4- حفظ البيانات في فايرستور داخل نفس وثيقة المستخدم
+          if (userId) {
+            await saveDocumentsInfo(userId, { documents: newDocs });
+          }
         } else {
           setDocsStatus(prev => ({ ...prev, [docType]: false }));
           onChange({ documents: { ...docs, [docType]: null } });
@@ -99,7 +99,9 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
     } else {
       const newDocs = { ...docs, [docType]: data };
       onChange({ documents: newDocs });
-      await saveDocumentsInfo(userId, newDocs);
+      if (userId) {
+        await saveDocumentsInfo(userId, { documents: newDocs });
+      }
     }
   };
 
