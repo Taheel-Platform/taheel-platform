@@ -37,8 +37,122 @@ async function verifyCode(email, code) {
   return await res.json();
 }
 
+// تعريف الـ styles بالكامل
 const styles = {
-  // ... نفس تعريفك السابق ...
+  formSection: {
+    maxWidth: 720,
+    margin: '40px auto',
+    background: '#fff',
+    borderRadius: '1.6rem',
+    boxShadow: '0 6px 32px 0 rgba(16,185,129,0.10), 0 1.5px 4px 0 rgba(0,0,0,0.08)',
+    padding: '2.8rem 2.5rem 2.2rem 2.5rem',
+    fontFamily: "Cairo, Inter, Arial, Helvetica, sans-serif"
+  },
+  formTitle: {
+    textAlign: 'center',
+    fontSize: '2.1rem',
+    fontWeight: 900,
+    color: '#10b981',
+    marginBottom: '1.7rem',
+    letterSpacing: '0.03em'
+  },
+  formGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1.2rem',
+    marginBottom: '0.8rem'
+  },
+  inputWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    marginBottom: '0.65rem'
+  },
+  inputLabel: {
+    fontWeight: 600,
+    color: '#333',
+    marginBottom: '0.18rem',
+    fontSize: '1rem',
+    letterSpacing: '0.01em'
+  },
+  inputField: {
+    borderRadius: '0.9rem',
+    border: '1.5px solid #e2e8f0',
+    background: '#f7fafc',
+    padding: '0.78rem 1rem',
+    fontSize: '1.08rem',
+    fontWeight: 500,
+    color: '#222',
+    outline: 'none',
+    transition: 'border 0.2s',
+    width: '100%'
+  },
+  inputFieldFocus: {
+    borderColor: '#10b981'
+  },
+  inputError: {
+    fontSize: '0.89rem',
+    color: '#d32f2f',
+    marginTop: '0.17rem',
+    whiteSpace: 'pre-line',
+    textAlign: 'right',
+    fontWeight: 600
+  },
+  otpSection: {
+    display: 'flex',
+    gap: '0.7rem',
+    alignItems: 'center',
+    marginTop: '0.3rem',
+    flexWrap: 'wrap'
+  },
+  verifiedMsg: {
+    color: '#10b981',
+    fontWeight: 'bold',
+    fontSize: '1.04rem',
+    marginTop: '0.4rem',
+    display: 'flex',
+    gap: '0.4rem',
+    alignItems: 'center',
+    justifyContent: 'flex-start'
+  },
+  checkboxList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.55rem',
+    margin: '1.1rem 0 0.3rem 0'
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.6rem',
+    fontSize: '0.97rem',
+    color: '#333'
+  },
+  btn: {
+    background: 'linear-gradient(90deg,#10b981 40%,#059669 100%)',
+    color: '#fff',
+    border: 'none',
+    padding: '0.52rem 1.1rem',
+    borderRadius: '0.7rem',
+    fontWeight: 'bold',
+    fontSize: '1.04rem',
+    cursor: 'pointer',
+    boxShadow: '0 2px 8px rgba(16,185,129,0.07)',
+    transition: 'background 0.18s, opacity 0.18s, box-shadow 0.18s',
+    minWidth: 120,
+    marginTop: '0.3rem'
+  },
+  btnDisabled: {
+    opacity: 0.6,
+    cursor: 'not-allowed'
+  },
+  btnSecondary: {
+    background: 'none',
+    color: '#10b981',
+    boxShadow: 'none',
+    fontSize: '0.97rem',
+    padding: 0,
+    minWidth: 'unset'
+  }
 };
 
 export default function ContactStep({ lang = "ar", t = {} }) {
@@ -62,7 +176,6 @@ export default function ContactStep({ lang = "ar", t = {} }) {
   const [otpSentMsg, setOtpSentMsg] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [showPassC, setShowPassC] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState("");
 
   // استجابة للموبايل
   const [isMobile, setIsMobile] = useState(false);
@@ -100,7 +213,6 @@ export default function ContactStep({ lang = "ar", t = {} }) {
     }
     // توليد كود عشوائي 6 أرقام
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(otp);
 
     // إرسال إلى الباك اند ليرسل الكود فعليًا على الإيميل
     const res = await sendVerificationCode(form.email, otp);
@@ -139,8 +251,8 @@ export default function ContactStep({ lang = "ar", t = {} }) {
     <form
       style={{
         ...styles.formSection,
-        maxWidth: isMobile ? "98vw" : styles.formSection.maxWidth,
-        padding: isMobile ? "1.2rem 0.4rem" : styles.formSection.padding,
+        maxWidth: isMobile ? "98vw" : styles.formSection.maxWidth || "720px",
+        padding: isMobile ? "1.2rem 0.4rem" : styles.formSection.padding || "2.8rem 2.5rem 2.2rem 2.5rem",
         direction: lang === "ar" ? "rtl" : "ltr"
       }}
       lang={lang}
@@ -151,7 +263,7 @@ export default function ContactStep({ lang = "ar", t = {} }) {
 
       <div style={{
         ...styles.formGrid,
-        gridTemplateColumns: isMobile ? "1fr" : styles.formGrid.gridTemplateColumns
+        gridTemplateColumns: isMobile ? "1fr" : styles.formGrid.gridTemplateColumns || "1fr 1fr"
       }}>
         <div style={styles.inputWrapper}>
           <label style={styles.inputLabel}>{lang === "ar" ? "البريد الإلكتروني" : "Email"}</label>
@@ -246,7 +358,7 @@ export default function ContactStep({ lang = "ar", t = {} }) {
 
       <div style={{
         ...styles.formGrid,
-        gridTemplateColumns: isMobile ? "1fr" : styles.formGrid.gridTemplateColumns
+        gridTemplateColumns: isMobile ? "1fr" : styles.formGrid.gridTemplateColumns || "1fr 1fr"
       }}>
         <div style={styles.inputWrapper}>
           <PasswordField
