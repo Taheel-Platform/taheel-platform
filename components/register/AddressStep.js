@@ -1,22 +1,8 @@
 'use client';
 
 import CountrySelect from "@/components/CountrySelect";
-import { doc, updateDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
 
-// حفظ بيانات العنوان داخل وثيقة العميل في فايرستور
-async function saveAddressInfo(userId, data) {
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      ...data,
-      addressInfoUpdatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Firestore Error:", err);
-    alert("حدث خطأ أثناء حفظ العنوان");
-  }
-}
-
+// الإمارات
 const UAE_EMIRATES = [
   { value: "dubai", labelAr: "دبي", labelEn: "Dubai" },
   { value: "abudhabi", labelAr: "أبوظبي", labelEn: "Abu Dhabi" },
@@ -34,7 +20,7 @@ const accountTypeBadge = {
   company: { ar: "شركة", en: "Company", color: "yellow" }
 };
 
-export default function AddressStep({ form, onChange, onNext, onBack, lang, t, userId }) {
+export default function AddressStep({ form, onChange, onNext, onBack, lang, t }) {
   const inputClass =
     "w-full border border-gray-300 rounded-xl px-3 py-2 font-bold bg-gray-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200 outline-none shadow placeholder:text-gray-400 transition-all";
   const selectClass =
@@ -43,11 +29,8 @@ export default function AddressStep({ form, onChange, onNext, onBack, lang, t, u
   const isUae = form.accountType === "resident" || form.accountType === "company";
   const badge = accountTypeBadge[form.accountType];
 
-  // دالة حفظ ثم انتقال للخطوة التالية
-  const handleNext = async () => {
-    if (userId) {
-      await saveAddressInfo(userId, form);
-    }
+  // فقط انتقال للخطوة التالية بدون حفظ نهائي
+  const handleNext = () => {
     onNext();
   };
 

@@ -1,9 +1,8 @@
+'use client';
+
 import { useState, useEffect } from "react";
 import PasswordField from "../PasswordField";
 import PhoneCodeSelect from "../PhoneCodeSelect";
-import { useRouter } from "next/navigation";
-import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
 
 // دوال التحقق
 function validateEmail(email) {
@@ -158,61 +157,7 @@ const styles = {
   }
 };
 
-// دالة توليد رقم العميل حسب النوع وبداية الرقم
-function generateCustomerId(accountType, docId) {
-  let prefix = "";
-  let startArr = [];
-  if (accountType === "resident") {
-    prefix = "RES";
-    startArr = ["100", "200", "300"];
-  } else if (accountType === "company") {
-    prefix = "COM";
-    startArr = ["400", "500", "600"];
-  } else if (accountType === "nonresident") {
-    prefix = "NON";
-    startArr = ["700", "800", "900"];
-  } else {
-    prefix = "RES";
-    startArr = ["100"];
-  }
-  // اختار رقم عشوائي من المجموعة
-  const first3 = startArr[Math.floor(Math.random() * startArr.length)];
-  // استخرج آخر 4 أرقام من docId أو كمل من timestamp لو غير كافي
-  let last4 = docId.replace(/\D/g, '').slice(-4);
-  if (last4.length < 4) {
-    last4 = (last4 + Date.now().toString().slice(-4)).slice(0, 4);
-  }
-  return `${prefix}-${first3}-${last4}`;
-}
-
-// دالة حفظ بيانات التواصل في نفس وثيقة المستخدم
-async function saveContactInfo(userId, data) {
-  try {
-    await updateDoc(firestoreDoc(db, "users", userId), {
-      ...data,
-      contactInfoUpdatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Firestore Error:", err);
-    alert("حدث خطأ أثناء حفظ بيانات التواصل");
-  }
-}
-
-export default function ContactStep({ lang = "ar", t = {}, accountType, userId }) {
-  const router = useRouter();
-  const [form, setForm] = useState({
-    email: "",
-    emailConfirm: "",
-    password: "",
-    passwordConfirm: "",
-    phone: "",
-    phoneCode: "+971",
-    agreeTerms: false,
-    agreePrivacy: false,
-    agreeEAuth: false,
-    accountType: accountType || "resident"
-  });
-
+export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar", t = {} }) {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpCode, setEmailOtpCode] = useState("");
   const [emailOtpVerifying, setEmailOtpVerifying] = useState(false);
@@ -240,7 +185,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
       name = e.name;
       value = e.value;
     }
-    setForm((prev) => ({ ...prev, [name]: value }));
+    onChange({ [name]: value });
   };
 
   const emailsMatch = form.email && form.email === form.emailConfirm && validateEmail(form.email);
@@ -284,44 +229,14 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
     }
   };
 
-  // دالة التسجيل الفعلي + توليد رقم العميل + التوجيه للبروفايل
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    if (!canRegister) return;
-    try {
-      const type = form.accountType || accountType || "resident";
-      // إنشاء بيانات العميل الجديدة
-      const newUser = {
-        email: form.email,
-        phone: form.phoneCode + form.phone,
-        password: form.password, // يفضل تشفيرها أو استخدام Auth وليس تخزينها مباشرة!
-        createdAt: new Date().toISOString(),
-        agreeTerms: form.agreeTerms,
-        agreePrivacy: form.agreePrivacy,
-        agreeEAuth: form.agreeEAuth,
-        accountType: type,
-      };
-      // أضف العميل لقاعدة البيانات
-      const docRef = await addDoc(collection(db, "users"), newUser);
-
-      // توليد رقم العميل حسب المنطق الجديد
-      const customerId = generateCustomerId(type, docRef.id);
-
-      // تحديث الوثيقة برقم العميل بعد الحفظ
-      await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
-
-      // حفظ بيانات التواصل في نفس الوثيقة
-      await saveContactInfo(docRef.id, newUser);
-
-      // توجيه المستخدم للبروفايل بعد نجاح التسجيل
-      router.push(`/dashboard/client/profile?userId=${docRef.id}`);
-    } catch (err) {
-      alert(lang === "ar" ? "حدث خطأ أثناء التسجيل، حاول مرة أخرى." : "An error occurred during registration, please try again.");
-      console.error(err);
-    }
+  // الانتقال للخطوة التالية
+  const handleNext = (e) => {
+    e?.preventDefault?.();
+    if (!canNext) return;
+    onNext();
   };
 
-  const canRegister =
+  const canNext =
     emailVerified &&
     validatePassword(form.password) &&
     form.password === form.passwordConfirm &&
@@ -338,6 +253,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
         direction: lang === "ar" ? "rtl" : "ltr"
       }}
       lang={lang}
+      onSubmit={handleNext}
     >
       <div style={styles.formTitle}>
         {lang === "ar" ? "معلومات الأمان" : "Security Information"}
@@ -354,7 +270,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
             type="email"
             style={styles.inputField}
             placeholder={lang === "ar" ? "البريد الإلكتروني" : "Email"}
-            value={form.email}
+            value={form.email || ""}
             onChange={handleChange}
             autoComplete="email"
           />
@@ -366,7 +282,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
             type="email"
             style={styles.inputField}
             placeholder={lang === "ar" ? "تأكيد البريد الإلكتروني" : "Confirm Email"}
-            value={form.emailConfirm}
+            value={form.emailConfirm || ""}
             onChange={handleChange}
             autoComplete="email"
           />
@@ -446,7 +362,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
           <PasswordField
             label={lang === "ar" ? "كلمة المرور" : "Password"}
             name="password"
-            value={form.password}
+            value={form.password || ""}
             show={showPass}
             onChange={handleChange}
             toggleShow={() => setShowPass(s => !s)}
@@ -457,7 +373,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
           <PasswordField
             label={lang === "ar" ? "تأكيد كلمة المرور" : "Confirm Password"}
             name="passwordConfirm"
-            value={form.passwordConfirm}
+            value={form.passwordConfirm || ""}
             show={showPassC}
             onChange={handleChange}
             toggleShow={() => setShowPassC(s => !s)}
@@ -473,7 +389,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
         <div style={styles.inputWrapper}>
           <label style={styles.inputLabel}>{lang === "ar" ? "كود الدولة" : "Country Code"}</label>
           <PhoneCodeSelect
-            value={form.phoneCode}
+            value={form.phoneCode || "+971"}
             onChange={opt => handleChange({ name: "phoneCode", value: opt?.value })}
             lang={lang}
           />
@@ -485,7 +401,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
             type="tel"
             style={styles.inputField}
             placeholder={lang === "ar" ? "رقم الهاتف" : "Phone Number"}
-            value={form.phone}
+            value={form.phone || ""}
             onChange={handleChange}
             autoComplete="tel"
           />
@@ -497,7 +413,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
           <input
             type="checkbox"
             name="agreeTerms"
-            checked={form.agreeTerms}
+            checked={form.agreeTerms || false}
             onChange={handleChange}
           />
           {lang === "ar" ? "أوافق على الشروط والأحكام" : "I accept the terms and conditions"}
@@ -506,7 +422,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
           <input
             type="checkbox"
             name="agreePrivacy"
-            checked={form.agreePrivacy}
+            checked={form.agreePrivacy || false}
             onChange={handleChange}
           />
           {lang === "ar" ? "أوافق على سياسة الخصوصية" : "I accept the privacy policy"}
@@ -515,25 +431,44 @@ export default function ContactStep({ lang = "ar", t = {}, accountType, userId }
           <input
             type="checkbox"
             name="agreeEAuth"
-            checked={form.agreeEAuth}
+            checked={form.agreeEAuth || false}
             onChange={handleChange}
           />
           {lang === "ar" ? "أوافق على التفويض الإلكتروني" : "I accept E-authorization"}
         </label>
       </div>
 
-      <button
-        type="submit"
-        style={{
-          ...styles.btn,
-          ...(canRegister ? {} : styles.btnDisabled),
-          marginTop: "1.3rem"
-        }}
-        disabled={!canRegister}
-        onClick={handleRegister}
-      >
-        {lang === "ar" ? "تسجيل حساب جديد" : "Register New Account"}
-      </button>
+      <div style={{
+        display: "flex",
+        gap: "1rem",
+        justifyContent: "center",
+        marginTop: "1.3rem"
+      }}>
+        <button
+          type="button"
+          style={{
+            ...styles.btn,
+            background: "linear-gradient(90deg,#9CA3AF 40%,#6B7280 100%)",
+            marginTop: "0",
+            minWidth: "120px"
+          }}
+          onClick={onBack}
+        >
+          {lang === "ar" ? "رجوع" : "Back"}
+        </button>
+        <button
+          type="submit"
+          style={{
+            ...styles.btn,
+            ...(canNext ? {} : styles.btnDisabled),
+            marginTop: "0",
+            minWidth: "120px"
+          }}
+          disabled={!canNext}
+        >
+          {lang === "ar" ? "التالي" : "Next"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,10 +1,7 @@
 'use client';
 
-import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { doc, updateDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
 
 // تعريف أيقونات كل نوع عميل حسب القيمة
 const ICONS = {
@@ -33,30 +30,7 @@ const DESCRIPTIONS = {
   }
 };
 
-// حفظ نوع العميل داخل وثيقة المستخدم في كولكشن users
-async function saveClientType(userId, clientType, lang) {
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      accountType: clientType,
-      accountTypeLang: lang || "ar",
-      accountTypeUpdatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Firestore error saving client type:", err);
-  }
-}
-
-export default function ClientTypeStep({ value, onChange, options, lang, t, onNext, userId }) {
-  // توجيه تلقائي بعد الاختيار + حفظ الاختيار داخل المستخدم
-  useEffect(() => {
-    if (value && userId) {
-      saveClientType(userId, value, lang);
-
-      const timer = setTimeout(onNext, 550);
-      return () => clearTimeout(timer);
-    }
-  }, [value, onNext, lang, userId]);
-
+export default function ClientTypeStep({ value, onChange, options, lang, t, onNext }) {
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -87,7 +61,10 @@ export default function ClientTypeStep({ value, onChange, options, lang, t, onNe
                 ${value === opt.value ? "border-emerald-700 ring-4 ring-emerald-300" : "border-gray-300"}
                 ${lang === "ar" ? "text-right" : "text-left"}
                 hover:border-emerald-600`}
-              onClick={() => onChange(opt.value)}
+              onClick={() => {
+                onChange(opt.value);
+                setTimeout(onNext, 550);
+              }}
             >
               <Image
                 src={ICONS[opt.value] || ICONS.other}

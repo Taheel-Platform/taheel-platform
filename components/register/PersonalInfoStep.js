@@ -3,21 +3,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import NationalitySelect from "@/components/NationalitySelect";
-import { doc, updateDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
-
-// دالة حفظ البيانات الشخصية في نفس وثيقة المستخدم في كولكشن users
-async function savePersonalInfo(userId, data) {
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      ...data,
-      personalInfoUpdatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Firestore Error:", err);
-    alert("حدث خطأ أثناء حفظ البيانات الشخصية");
-  }
-}
 
 export default function PersonalInfoStep({
   form,
@@ -26,7 +11,6 @@ export default function PersonalInfoStep({
   onBack,
   lang,
   t,
-  userId // الآن يجب تمرير userId من الأب
 }) {
   const type = form.accountType;
 
@@ -40,8 +24,8 @@ export default function PersonalInfoStep({
     { value: "other", label: t?.other ?? (lang === "ar" ? "أخرى" : "Other") }
   ];
 
-  // التعديل هنا: حفظ البيانات عند الضغط على "التالي"
-  async function handleNext() {
+  // التعديل هنا: لا يوجد حفظ نهائي، فقط تحقق وانتقال للخطوة التالية
+  function handleNext() {
     if (type === "company" && !form.ownerGender) {
       alert(lang === "ar" ? "يرجى اختيار الجنس للمالك" : "Please select owner gender");
       return;
@@ -50,9 +34,7 @@ export default function PersonalInfoStep({
       alert(lang === "ar" ? "يرجى اختيار الجنس" : "Please select a gender");
       return;
     }
-    if (userId) {
-      await savePersonalInfo(userId, form);
-    }
+    // لا حفظ في قاعدة البيانات هنا
     onNext();
   }
 

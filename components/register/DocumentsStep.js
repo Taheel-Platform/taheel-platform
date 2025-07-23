@@ -2,8 +2,6 @@
 
 import DocumentUploadField from "@/components/DocumentUploadField";
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
 
 // مستندات مطلوبة حسب نوع الحساب
 const REQUIRED_DOCS = {
@@ -23,20 +21,7 @@ const REQUIRED_DOCS = {
   ]
 };
 
-// حفظ بيانات المستندات داخل نفس وثيقة العميل
-async function saveDocumentsInfo(userId, documents) {
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      ...documents,
-      documentsUpdatedAt: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Firestore Error:", err);
-    alert("حدث خطأ أثناء حفظ بيانات المستندات");
-  }
-}
-
-export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t, userId }) {
+export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t }) {
   // حفظ حالة كل ملف مرفوع
   const [docs, setDocs] = useState({});
   const [docsStatus, setDocsStatus] = useState({});
@@ -56,7 +41,7 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
         const formData = new FormData();
         formData.append("file", data.file);
         formData.append("docType", docType);
-        formData.append("sessionId", form.sessionId || userId || "no-session");
+        formData.append("sessionId", form.sessionId || "no-session");
 
         // API route يرفع على جوجل ويعيد لينك
         const uploadRes = await fetch("/api/upload-to-gcs", {
@@ -79,14 +64,10 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
 
         setDocsOCR(prev => ({ ...prev, [docType]: ocrJson }));
 
-        // 3- تحديث النموذج العام
+        // 3- تحديث النموذج العام في الـ state فقط
         if (ocrJson.success) {
           const newDocs = { ...docs, [docType]: { ...data, fileUrl, ocr: ocrJson } };
           onChange({ documents: newDocs });
-          // 4- حفظ البيانات في فايرستور داخل نفس وثيقة المستخدم
-          if (userId) {
-            await saveDocumentsInfo(userId, { documents: newDocs });
-          }
         } else {
           setDocsStatus(prev => ({ ...prev, [docType]: false }));
           onChange({ documents: { ...docs, [docType]: null } });
@@ -99,9 +80,6 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
     } else {
       const newDocs = { ...docs, [docType]: data };
       onChange({ documents: newDocs });
-      if (userId) {
-        await saveDocumentsInfo(userId, { documents: newDocs });
-      }
     }
   };
 
@@ -125,7 +103,7 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t,
               docType={doc.docType}
               label={lang === "ar" ? doc.labelAr : doc.labelEn}
               lang={lang}
-              sessionId={form.sessionId || userId || "no-session"}
+              sessionId={form.sessionId || "no-session"}
               onVerified={data => handleDocVerified(doc.docType, data)}
               onFailed={() => handleDocFailed(doc.docType)}
               status={docsStatus[doc.docType]}

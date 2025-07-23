@@ -14,7 +14,7 @@ import ContactStep from "@/components/register/ContactStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
 import AgreementStep from "@/components/register/AgreementsStep";
 
-// اللغات (اختصرها حسب الحاجة)
+// اللغات
 const LANGUAGES = {
   ar: {
     accountType: "نوع الحساب",
@@ -49,13 +49,9 @@ const LANGUAGES = {
 export default function RegisterPage() {
   const searchParams = useSearchParams();
   const langParam = searchParams.get("lang") === "en" ? "en" : "ar";
-  return <RegisterPageInner initialLang={langParam} />;
-}
-
-function RegisterPageInner({ initialLang }) {
-  const router = useRouter();
-  const [lang, setLang] = useState(initialLang);
+  const [lang, setLang] = useState(langParam);
   const t = LANGUAGES[lang];
+  const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
 
   // أنواع العميل
@@ -95,7 +91,6 @@ function RegisterPageInner({ initialLang }) {
     setRegError("");
     setRegLoading(true);
     // ... منطق التسجيل النهائية هنا ...
-    // عند نجاح التسجيل:
     setRegSuccess(true);
     setTimeout(() => {
       router.push("/dashboard/client/profile");
