@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { collection, addDoc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
 
 // تعريف أيقونات كل نوع عميل حسب القيمة
 const ICONS = {
@@ -31,14 +33,32 @@ const DESCRIPTIONS = {
   }
 };
 
+// دالة لحفظ نوع العميل في الفايرستور
+async function saveClientType(clientType, lang) {
+  try {
+    await addDoc(collection(db, "client_types"), {
+      type: clientType,
+      lang: lang || "ar",
+      createdAt: new Date().toISOString()
+      // يمكنك إضافة userId أو أي بيانات إضافية هنا
+    });
+  } catch (err) {
+    console.error("Firestore error saving client type:", err);
+  }
+}
+
 export default function ClientTypeStep({ value, onChange, options, lang, t, onNext }) {
-  // توجيه تلقائي بعد الاختيار
+  // توجيه تلقائي بعد الاختيار + حفظ الاختيار في الفايرستور
   useEffect(() => {
     if (value) {
+      // الحفظ في الفايرستور
+      saveClientType(value, lang);
+
+      // التوجيه التلقائي بعد الاختيار
       const timer = setTimeout(onNext, 550);
       return () => clearTimeout(timer);
     }
-  }, [value, onNext]);
+  }, [value, onNext, lang]);
 
   return (
     <AnimatePresence mode="wait">

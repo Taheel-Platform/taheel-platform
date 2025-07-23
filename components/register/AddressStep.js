@@ -1,6 +1,22 @@
 'use client';
 
 import CountrySelect from "@/components/CountrySelect";
+import { collection, addDoc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
+
+// حفظ بيانات العنوان في فايرستور
+async function saveAddressInfo(data) {
+  try {
+    await addDoc(collection(db, "address_info"), {
+      ...data,
+      createdAt: new Date().toISOString()
+      // أضف userId أو sessionId لو لديك
+    });
+  } catch (err) {
+    console.error("Firestore Error:", err);
+    alert("حدث خطأ أثناء حفظ العنوان");
+  }
+}
 
 const UAE_EMIRATES = [
   { value: "dubai", labelAr: "دبي", labelEn: "Dubai" },
@@ -27,6 +43,12 @@ export default function AddressStep({ form, onChange, onNext, onBack, lang, t })
 
   const isUae = form.accountType === "resident" || form.accountType === "company";
   const badge = accountTypeBadge[form.accountType];
+
+  // دالة حفظ ثم انتقال للخطوة التالية
+  const handleNext = async () => {
+    await saveAddressInfo(form);
+    onNext();
+  };
 
   return (
     <div className="flex flex-col gap-6 bg-white rounded-2xl px-4 py-6 shadow-xl animate-fade-in"
@@ -192,7 +214,7 @@ export default function AddressStep({ form, onChange, onNext, onBack, lang, t })
         <button
           type="button"
           className="bg-gradient-to-r from-emerald-700 via-emerald-500 to-green-700 text-white px-7 py-2 rounded-xl font-bold shadow-lg hover:brightness-110 hover:scale-[1.02] transition border-none w-full max-w-xs"
-          onClick={onNext}
+          onClick={handleNext}
           style={{ cursor: "pointer" }}
         >
           {lang === "ar" ? "التالي" : "Next"}

@@ -2,6 +2,8 @@
 
 import DocumentUploadField from "@/components/DocumentUploadField";
 import { useState } from "react";
+import { collection, addDoc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
 
 // مستندات مطلوبة حسب نوع الحساب
 const REQUIRED_DOCS = {
@@ -21,11 +23,27 @@ const REQUIRED_DOCS = {
   ]
 };
 
+// دالة لحفظ بيانات المستندات في فايرستور
+async function saveDocumentInfo(docType, url, ocrData, sessionId) {
+  try {
+    await addDoc(collection(db, "documents"), {
+      docType,
+      url,
+      ocrData,
+      sessionId,
+      createdAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Firestore Error:", err);
+    alert("حدث خطأ أثناء حفظ بيانات المستند");
+  }
+}
+
 export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t }) {
   // حفظ حالة كل ملف مرفوع
   const [docs, setDocs] = useState({});
   const [docsStatus, setDocsStatus] = useState({});
-  const [docsOCR, setDocsOCR] = useState({}); // لحفظ نتيجة OCR والتحقق
+  const [docsOCR, setDocsOCR] = useState({});
 
   const docsList = REQUIRED_DOCS[form.accountType] || [];
 
@@ -34,34 +52,54 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
     setDocs(prev => ({ ...prev, [docType]: data }));
     setDocsStatus(prev => ({ ...prev, [docType]: true }));
 
-    // استدعاء OCR بعد رفع الملف
+    // 1- رفع الملف على الباكت عبر API route
+    let fileUrl = null;
     if (data?.file) {
       try {
         const formData = new FormData();
         formData.append("file", data.file);
         formData.append("docType", docType);
+        formData.append("sessionId", form.sessionId || "no-session");
 
-        const res = await fetch("/api/ocr", {
+        // API route يرفع على جوجل ويعيد لينك
+        const uploadRes = await fetch("/api/upload-to-gcs", {
           method: "POST",
           body: formData,
         });
+        const uploadJson = await uploadRes.json();
+        fileUrl = uploadJson.url;
 
-        const json = await res.json();
-        setDocsOCR(prev => ({ ...prev, [docType]: json }));
+        // 2- تحقق OCR
+        const ocrForm = new FormData();
+        ocrForm.append("fileUrl", fileUrl);
+        ocrForm.append("docType", docType);
 
-        if (json.success) {
-          onChange({ documents: { ...docs, [docType]: { ...data, ocr: json } } });
+        const ocrRes = await fetch("/api/ocr", {
+          method: "POST",
+          body: ocrForm,
+        });
+        const ocrJson = await ocrRes.json();
+
+        setDocsOCR(prev => ({ ...prev, [docType]: ocrJson }));
+
+        // 3- تحديث النموذج العام
+        if (ocrJson.success) {
+          onChange({ documents: { ...docs, [docType]: { ...data, fileUrl, ocr: ocrJson } } });
         } else {
           setDocsStatus(prev => ({ ...prev, [docType]: false }));
           onChange({ documents: { ...docs, [docType]: null } });
         }
+
+        // 4- حفظ البيانات في فايرستور
+        await saveDocumentInfo(docType, fileUrl, ocrJson, form.sessionId || "no-session");
+
       } catch (err) {
         setDocsStatus(prev => ({ ...prev, [docType]: false }));
         onChange({ documents: { ...docs, [docType]: null } });
         setDocsOCR(prev => ({ ...prev, [docType]: null }));
       }
     } else {
-      onChange({ documents: { ...docs, [docType]: data } }); // تحديث النموذج العام فقط لو لم يوجد ملف
+      onChange({ documents: { ...docs, [docType]: data } });
     }
   };
 
