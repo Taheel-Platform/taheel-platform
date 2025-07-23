@@ -13,7 +13,6 @@ import AddressStep from "@/components/register/AddressStep";
 import ContactStep from "@/components/register/ContactStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
 import AgreementStep from "@/components/register/AgreementsStep";
-import SubmitStep from "@/components/register/SubmitStep";
 
 // اللغات (اختصرها حسب الحاجة)
 const LANGUAGES = {
@@ -160,20 +159,9 @@ function RegisterPageInner({ initialLang }) {
       onChange={handleChange}
       lang={lang}
       t={t}
-      onNext={() => setStep(6)}
+      onNext={handleRegister}
       onBack={() => setStep(4)}
     />,
-    <SubmitStep
-      key="step-6"
-      form={form}
-      lang={lang}
-      t={t}
-      onBack={() => setStep(5)}
-      onRegister={handleRegister}
-      regError={regError}
-      regLoading={regLoading}
-      regSuccess={regSuccess}
-    />
   ];
 
   // واجهة الصفحة الرئيسية

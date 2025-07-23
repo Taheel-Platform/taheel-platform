@@ -6,8 +6,6 @@
   --foreground: #171717;
 }
 
-/* تم حذف @theme inline لأنه غير مدعوم في Next.js/Tailwind */
-
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

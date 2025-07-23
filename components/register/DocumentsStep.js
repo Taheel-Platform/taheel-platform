@@ -25,18 +25,50 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
   // حفظ حالة كل ملف مرفوع
   const [docs, setDocs] = useState({});
   const [docsStatus, setDocsStatus] = useState({});
+  const [docsOCR, setDocsOCR] = useState({}); // لحفظ نتيجة OCR والتحقق
 
   const docsList = REQUIRED_DOCS[form.accountType] || [];
 
-  // تحكم في رفع الملفات
-  const handleDocVerified = (docType, data) => {
+  // تحكم في رفع الملفات والتحقق
+  const handleDocVerified = async (docType, data) => {
     setDocs(prev => ({ ...prev, [docType]: data }));
     setDocsStatus(prev => ({ ...prev, [docType]: true }));
-    onChange({ documents: { ...docs, [docType]: data } }); // تحديث النموذج العام
+
+    // استدعاء OCR بعد رفع الملف
+    if (data?.file) {
+      try {
+        const formData = new FormData();
+        formData.append("file", data.file);
+        formData.append("docType", docType);
+
+        const res = await fetch("/api/ocr", {
+          method: "POST",
+          body: formData,
+        });
+
+        const json = await res.json();
+        setDocsOCR(prev => ({ ...prev, [docType]: json }));
+
+        if (json.success) {
+          onChange({ documents: { ...docs, [docType]: { ...data, ocr: json } } });
+        } else {
+          setDocsStatus(prev => ({ ...prev, [docType]: false }));
+          onChange({ documents: { ...docs, [docType]: null } });
+        }
+      } catch (err) {
+        setDocsStatus(prev => ({ ...prev, [docType]: false }));
+        onChange({ documents: { ...docs, [docType]: null } });
+        setDocsOCR(prev => ({ ...prev, [docType]: null }));
+      }
+    } else {
+      onChange({ documents: { ...docs, [docType]: data } }); // تحديث النموذج العام فقط لو لم يوجد ملف
+    }
   };
+
   const handleDocFailed = (docType) => {
     setDocsStatus(prev => ({ ...prev, [docType]: false }));
     onChange({ documents: { ...docs, [docType]: null } });
+    setDocsOCR(prev => ({ ...prev, [docType]: null }));
   };
 
   return (
@@ -46,27 +78,40 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
       <h2 className="font-extrabold text-2xl text-emerald-700 mb-3 text-center">
         {t.attachments}
       </h2>
-<div className={`grid gap-6 ${docsList.length >= 4 ? "sm:grid-cols-2 md:grid-cols-3" : "sm:grid-cols-2"}`}>
-  {docsList.map(doc =>
-    <div key={doc.docType} className="flex flex-col items-center w-full">
-      <DocumentUploadField
-        docType={doc.docType}
-        label={lang === "ar" ? doc.labelAr : doc.labelEn}
-        lang={lang}
-        onVerified={data => handleDocVerified(doc.docType, data)}
-        onFailed={() => handleDocFailed(doc.docType)}
-        status={docsStatus[doc.docType]}
-      />
-    </div>
-  )}
-</div>
+      <div className={`grid gap-6 ${docsList.length >= 4 ? "sm:grid-cols-2 md:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {docsList.map(doc =>
+          <div key={doc.docType} className="flex flex-col items-center w-full">
+            <DocumentUploadField
+              docType={doc.docType}
+              label={lang === "ar" ? doc.labelAr : doc.labelEn}
+              lang={lang}
+              sessionId={form.sessionId || "no-session"}
+              onVerified={data => handleDocVerified(doc.docType, data)}
+              onFailed={() => handleDocFailed(doc.docType)}
+              status={docsStatus[doc.docType]}
+            />
+            {/* عرض نتيجة OCR تحت كل مستند */}
+            {docsOCR[doc.docType] && (
+              <div className={`mt-2 text-sm ${docsOCR[doc.docType].success ? 'text-green-700' : 'text-red-600'}`}>
+                {docsOCR[doc.docType].success
+                  ? (lang === "ar" ? "تم التحقق من المستند بنجاح" : "Document verified successfully")
+                  : docsOCR[doc.docType].message}
+                {docsOCR[doc.docType]?.extracted && (
+                  <pre className="bg-gray-100 p-2 rounded text-xs mt-1">
+                    {JSON.stringify(docsOCR[doc.docType].extracted, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       {/* الأزرار تحت بعض في عمود */}
       <div className="flex flex-col gap-3 mt-7 justify-center items-center">
         <button
           type="button"
           className="bg-gray-100 text-emerald-700 px-6 py-2 rounded-xl font-bold shadow hover:bg-gray-200 transition border border-emerald-300 cursor-pointer w-full max-w-xs"
           onClick={onBack}
-          style={{ cursor: "pointer" }}
         >
           {lang === "ar" ? "رجوع" : "Back"}
         </button>
@@ -74,7 +119,6 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
           type="button"
           className={`bg-gradient-to-r from-emerald-700 via-emerald-500 to-green-700 text-white px-7 py-2 rounded-xl font-bold shadow-lg hover:brightness-110 hover:scale-[1.02] transition border-none cursor-pointer w-full max-w-xs`}
           onClick={onNext}
-          style={{ cursor: "pointer" }}
           disabled={docsList.some(doc => !docsStatus[doc.docType])}
         >
           {lang === "ar" ? "التالي" : "Next"}

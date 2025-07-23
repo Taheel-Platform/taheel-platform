@@ -10,11 +10,19 @@ export const config = {
 let credentials;
 try {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    console.error("GOOGLE_SERVICE_ACCOUNT_KEY is undefined. تحقق من ملف البيئة .env");
     throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY is undefined. تحقق من ملف البيئة .env");
   }
+  console.log("GOOGLE_SERVICE_ACCOUNT_KEY موجود، جاري التحويل إلى JSON...");
   const rawCreds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-  rawCreds.private_key = rawCreds.private_key.replace(/\\n/g, '\n');
+  console.log("تمت قراءة GOOGLE_SERVICE_ACCOUNT_KEY كـ JSON.");
+
+  if (rawCreds.private_key && rawCreds.private_key.includes("\\n")) {
+    rawCreds.private_key = rawCreds.private_key.replace(/\\n/g, '\n');
+    console.log("private_key تم تحويل \\n إلى أسطر حقيقة.");
+  }
   credentials = rawCreds;
+  console.log("بيانات الخدمة جاهزة للـ Vision API.");
 } catch (err) {
   console.error("Google Service Account Key Error:", err);
   throw new Error("خطأ في قراءة GOOGLE_SERVICE_ACCOUNT_KEY من ملف البيئة. تأكد من وجوده وصيغته الصحيحة.");
@@ -23,7 +31,10 @@ try {
 const client = new vision.ImageAnnotatorClient({ credentials });
 
 export default async function handler(req, res) {
+  console.log("تم استدعاء /api/ocr بالميثود:", req.method);
+
   if (req.method !== "POST") {
+    console.error("ميثود غير مدعوم:", req.method);
     return res.status(405).json({ success: false, message: "Method Not Allowed" });
   }
 
@@ -32,18 +43,24 @@ export default async function handler(req, res) {
   try {
     const [fields, files] = await new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve([fields, files]);
+        if (err) {
+          console.error("Formidable error:", err);
+          reject(err);
+        } else {
+          console.log("Form fields:", fields);
+          console.log("Form files:", files);
+          resolve([fields, files]);
+        }
       });
     });
 
     const fileRaw = files?.file;
     const file = Array.isArray(fileRaw) ? fileRaw[0] : fileRaw;
-
     const docTypeRaw = fields?.docType;
     const docType = Array.isArray(docTypeRaw) ? docTypeRaw[0] : docTypeRaw;
 
     if (!file?.filepath || typeof docType !== "string" || !docType.trim()) {
+      console.error("الملف أو نوع المستند غير موجود", { file, docType });
       return res.status(400).json({ success: false, message: "الملف أو نوع المستند غير موجود" });
     }
 
@@ -51,6 +68,7 @@ export default async function handler(req, res) {
     const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
     const fileMimetype = typeof file?.mimetype === "string" ? file.mimetype : "";
     if (!allowedTypes.includes(fileMimetype)) {
+      console.error("نوع الصورة غير مدعوم:", fileMimetype);
       return res.status(400).json({
         success: false,
         message: "❌ فقط صور JPG أو PNG مدعومة.",
@@ -61,7 +79,9 @@ export default async function handler(req, res) {
     let fileBuffer;
     try {
       fileBuffer = await fs.readFile(file.filepath);
+      console.log("تمت قراءة ملف الصورة من النظام.");
     } catch (readErr) {
+      console.error("تعذر قراءة الملف من النظام:", readErr);
       return res.status(400).json({
         success: false,
         message: "تعذر قراءة الملف، أعد رفعه.",
@@ -70,6 +90,7 @@ export default async function handler(req, res) {
 
     // تحقق أن الملف غير فارغ
     if (!fileBuffer || !Buffer.isBuffer(fileBuffer) || fileBuffer.length === 0) {
+      console.error("الصورة غير صالحة أو فارغة.");
       return res.status(400).json({
         success: false,
         message: "الصورة غير صالحة أو فارغة، أعد رفع الملف.",
@@ -79,7 +100,9 @@ export default async function handler(req, res) {
     // -------- Google Vision API OCR --------
     let result;
     try {
+      console.log("إرسال الصورة إلى Google Vision API...");
       [result] = await client.textDetection({ image: { content: fileBuffer } });
+      console.log("تم استلام نتيجة OCR من Google Vision.");
     } catch (visionErr) {
       console.error("Google Vision OCR Error:", visionErr);
       return res.status(500).json({
@@ -97,7 +120,10 @@ export default async function handler(req, res) {
     const cleanedText = (typeof text === "string" ? text : "").trim();
     const upperText = cleanedText ? cleanedText.toUpperCase() : "";
 
+    console.log("النص المستخرج من المستند:", cleanedText);
+
     if (cleanedText.length < 15) {
+      console.error("النص المستخرج قصير جدًا:", cleanedText);
       return res.status(200).json({
         success: false,
         text: cleanedText,
@@ -164,7 +190,10 @@ export default async function handler(req, res) {
       };
     }
 
+    console.log("نتيجة التحقق من المستند:", { isValid, extractedData });
+
     if (!isValid) {
+      console.error(`فشل الفحص. لم يتم العثور على محتوى مناسب في مستند (${docType})`);
       return res.status(200).json({
         success: false,
         text: cleanedText,
