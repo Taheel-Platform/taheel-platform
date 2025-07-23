@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import PasswordField from "../PasswordField";
 import PhoneCodeSelect from "../PhoneCodeSelect";
 import { useRouter } from "next/navigation";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
 // دوال التحقق
@@ -158,7 +158,17 @@ const styles = {
   }
 };
 
-export default function ContactStep({ lang = "ar", t = {} }) {
+// دالة توليد رقم العميل حسب النوع
+function generateCustomerId(accountType, docId) {
+  let prefix = "RES";
+  if (accountType === "company") prefix = "COM";
+  else if (accountType === "nonresident") prefix = "NON";
+  // docId قد يكون طويل، نأخذ آخر 6 رموز منه
+  const suffix = docId.slice(-6).toUpperCase();
+  return `${prefix}-000-${suffix}`;
+}
+
+export default function ContactStep({ lang = "ar", t = {}, accountType }) {
   const router = useRouter();
   const [form, setForm] = useState({
     email: "",
@@ -170,6 +180,8 @@ export default function ContactStep({ lang = "ar", t = {} }) {
     agreeTerms: false,
     agreePrivacy: false,
     agreeEAuth: false,
+    // يمكنك إضافة accountType هنا لو عايز تربطه مع كل خطوة
+    accountType: accountType || "resident"
   });
 
   const [emailOtpSent, setEmailOtpSent] = useState(false);
@@ -243,11 +255,12 @@ export default function ContactStep({ lang = "ar", t = {} }) {
     }
   };
 
-  // دالة التسجيل الفعلي + التوجيه للبروفايل
+  // دالة التسجيل الفعلي + توليد رقم العميل + التوجيه للبروفايل
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!canRegister) return;
     try {
+      const type = form.accountType || accountType || "resident";
       // إنشاء بيانات العميل الجديدة
       const newUser = {
         email: form.email,
@@ -257,10 +270,16 @@ export default function ContactStep({ lang = "ar", t = {} }) {
         agreeTerms: form.agreeTerms,
         agreePrivacy: form.agreePrivacy,
         agreeEAuth: form.agreeEAuth,
-        // يمكنك إضافة name أو أي بيانات أخرى لو لديك
+        accountType: type,
       };
       // أضف العميل لقاعدة البيانات
       const docRef = await addDoc(collection(db, "users"), newUser);
+
+      // توليد رقم العميل
+      const customerId = generateCustomerId(type, docRef.id);
+
+      // تحديث الوثيقة برقم العميل بعد الحفظ
+      await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
 
       // توجيه المستخدم للبروفايل بعد نجاح التسجيل
       router.push(`/dashboard/client/profile?userId=${docRef.id}`);
