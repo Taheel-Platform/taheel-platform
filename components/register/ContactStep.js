@@ -158,14 +158,31 @@ const styles = {
   }
 };
 
-// دالة توليد رقم العميل حسب النوع
+// دالة توليد رقم العميل حسب النوع وبداية الرقم
 function generateCustomerId(accountType, docId) {
-  let prefix = "RES";
-  if (accountType === "company") prefix = "COM";
-  else if (accountType === "nonresident") prefix = "NON";
-  // docId قد يكون طويل، نأخذ آخر 6 رموز منه
-  const suffix = docId.slice(-6).toUpperCase();
-  return `${prefix}-000-${suffix}`;
+  let prefix = "";
+  let startArr = [];
+  if (accountType === "resident") {
+    prefix = "RES";
+    startArr = ["100", "200", "300"];
+  } else if (accountType === "company") {
+    prefix = "COM";
+    startArr = ["400", "500", "600"];
+  } else if (accountType === "nonresident") {
+    prefix = "NON";
+    startArr = ["700", "800", "900"];
+  } else {
+    prefix = "RES";
+    startArr = ["100"];
+  }
+  // اختار رقم عشوائي من المجموعة
+  const first3 = startArr[Math.floor(Math.random() * startArr.length)];
+  // استخرج آخر 4 أرقام من docId أو كمل من timestamp لو غير كافي
+  let last4 = docId.replace(/\D/g, '').slice(-4);
+  if (last4.length < 4) {
+    last4 = (last4 + Date.now().toString().slice(-4)).slice(0, 4);
+  }
+  return `${prefix}-${first3}-${last4}`;
 }
 
 export default function ContactStep({ lang = "ar", t = {}, accountType }) {
@@ -180,7 +197,6 @@ export default function ContactStep({ lang = "ar", t = {}, accountType }) {
     agreeTerms: false,
     agreePrivacy: false,
     agreeEAuth: false,
-    // يمكنك إضافة accountType هنا لو عايز تربطه مع كل خطوة
     accountType: accountType || "resident"
   });
 
@@ -275,7 +291,7 @@ export default function ContactStep({ lang = "ar", t = {}, accountType }) {
       // أضف العميل لقاعدة البيانات
       const docRef = await addDoc(collection(db, "users"), newUser);
 
-      // توليد رقم العميل
+      // توليد رقم العميل حسب المنطق الجديد
       const customerId = generateCustomerId(type, docRef.id);
 
       // تحديث الوثيقة برقم العميل بعد الحفظ

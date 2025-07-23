@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
 // تعريف أيقونات كل نوع عميل حسب القيمة
@@ -33,32 +33,33 @@ const DESCRIPTIONS = {
   }
 };
 
-// دالة لحفظ نوع العميل في الفايرستور
-async function saveClientType(clientType, lang) {
+// حفظ نوع العميل داخل وثيقة المستخدم
+async function saveClientType(userId, clientType, lang) {
   try {
-    await addDoc(collection(db, "client_types"), {
-      type: clientType,
-      lang: lang || "ar",
-      createdAt: new Date().toISOString()
-      // يمكنك إضافة userId أو أي بيانات إضافية هنا
+    await updateDoc(doc(db, "users", userId), {
+      client_type: {
+        type: clientType,
+        lang: lang || "ar",
+        updatedAt: new Date().toISOString()
+      }
     });
   } catch (err) {
     console.error("Firestore error saving client type:", err);
   }
 }
 
-export default function ClientTypeStep({ value, onChange, options, lang, t, onNext }) {
-  // توجيه تلقائي بعد الاختيار + حفظ الاختيار في الفايرستور
+export default function ClientTypeStep({ value, onChange, options, lang, t, onNext, userId }) {
+  // توجيه تلقائي بعد الاختيار + حفظ الاختيار داخل المستخدم
   useEffect(() => {
-    if (value) {
-      // الحفظ في الفايرستور
-      saveClientType(value, lang);
+    if (value && userId) {
+      // الحفظ في الفايرستور داخل العميل
+      saveClientType(userId, value, lang);
 
       // التوجيه التلقائي بعد الاختيار
       const timer = setTimeout(onNext, 550);
       return () => clearTimeout(timer);
     }
-  }, [value, onNext, lang]);
+  }, [value, onNext, lang, userId]);
 
   return (
     <AnimatePresence mode="wait">

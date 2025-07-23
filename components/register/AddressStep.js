@@ -1,16 +1,17 @@
 'use client';
 
 import CountrySelect from "@/components/CountrySelect";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
-// حفظ بيانات العنوان في فايرستور
-async function saveAddressInfo(data) {
+// حفظ بيانات العنوان داخل وثيقة العميل في فايرستور
+async function saveAddressInfo(userId, data) {
   try {
-    await addDoc(collection(db, "address_info"), {
-      ...data,
-      createdAt: new Date().toISOString()
-      // أضف userId أو sessionId لو لديك
+    await updateDoc(doc(db, "users", userId), {
+      address_info: {
+        ...data,
+        createdAt: new Date().toISOString()
+      }
     });
   } catch (err) {
     console.error("Firestore Error:", err);
@@ -35,7 +36,7 @@ const accountTypeBadge = {
   company: { ar: "شركة", en: "Company", color: "yellow" }
 };
 
-export default function AddressStep({ form, onChange, onNext, onBack, lang, t }) {
+export default function AddressStep({ form, onChange, onNext, onBack, lang, t, userId }) {
   const inputClass =
     "w-full border border-gray-300 rounded-xl px-3 py-2 font-bold bg-gray-50 text-emerald-900 focus:border-emerald-500 focus:ring-emerald-200 outline-none shadow placeholder:text-gray-400 transition-all";
   const selectClass =
@@ -46,7 +47,7 @@ export default function AddressStep({ form, onChange, onNext, onBack, lang, t })
 
   // دالة حفظ ثم انتقال للخطوة التالية
   const handleNext = async () => {
-    await saveAddressInfo(form);
+    await saveAddressInfo(userId, form); // يجب تمرير userId الخاص بالعميل هنا
     onNext();
   };
 

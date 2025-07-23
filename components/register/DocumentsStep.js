@@ -2,7 +2,7 @@
 
 import DocumentUploadField from "@/components/DocumentUploadField";
 import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
 // مستندات مطلوبة حسب نوع الحساب
@@ -23,23 +23,22 @@ const REQUIRED_DOCS = {
   ]
 };
 
-// دالة لحفظ بيانات المستندات في فايرستور
-async function saveDocumentInfo(docType, url, ocrData, sessionId) {
+// حفظ بيانات المستندات داخل وثيقة العميل
+async function saveDocumentsInfo(userId, documents) {
   try {
-    await addDoc(collection(db, "documents"), {
-      docType,
-      url,
-      ocrData,
-      sessionId,
-      createdAt: new Date().toISOString()
+    await updateDoc(doc(db, "users", userId), {
+      documents: {
+        ...documents,
+        updatedAt: new Date().toISOString()
+      }
     });
   } catch (err) {
     console.error("Firestore Error:", err);
-    alert("حدث خطأ أثناء حفظ بيانات المستند");
+    alert("حدث خطأ أثناء حفظ بيانات المستندات");
   }
 }
 
-export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t }) {
+export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t, userId }) {
   // حفظ حالة كل ملف مرفوع
   const [docs, setDocs] = useState({});
   const [docsStatus, setDocsStatus] = useState({});
@@ -59,7 +58,7 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
         const formData = new FormData();
         formData.append("file", data.file);
         formData.append("docType", docType);
-        formData.append("sessionId", form.sessionId || "no-session");
+        formData.append("sessionId", form.sessionId || userId || "no-session");
 
         // API route يرفع على جوجل ويعيد لينك
         const uploadRes = await fetch("/api/upload-to-gcs", {
@@ -84,22 +83,23 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
 
         // 3- تحديث النموذج العام
         if (ocrJson.success) {
-          onChange({ documents: { ...docs, [docType]: { ...data, fileUrl, ocr: ocrJson } } });
+          const newDocs = { ...docs, [docType]: { ...data, fileUrl, ocr: ocrJson } };
+          onChange({ documents: newDocs });
+          // 4- حفظ البيانات في فايرستور داخل المستخدم
+          await saveDocumentsInfo(userId, newDocs);
         } else {
           setDocsStatus(prev => ({ ...prev, [docType]: false }));
           onChange({ documents: { ...docs, [docType]: null } });
         }
-
-        // 4- حفظ البيانات في فايرستور
-        await saveDocumentInfo(docType, fileUrl, ocrJson, form.sessionId || "no-session");
-
       } catch (err) {
         setDocsStatus(prev => ({ ...prev, [docType]: false }));
         onChange({ documents: { ...docs, [docType]: null } });
         setDocsOCR(prev => ({ ...prev, [docType]: null }));
       }
     } else {
-      onChange({ documents: { ...docs, [docType]: data } });
+      const newDocs = { ...docs, [docType]: data };
+      onChange({ documents: newDocs });
+      await saveDocumentsInfo(userId, newDocs);
     }
   };
 
@@ -123,7 +123,7 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
               docType={doc.docType}
               label={lang === "ar" ? doc.labelAr : doc.labelEn}
               lang={lang}
-              sessionId={form.sessionId || "no-session"}
+              sessionId={form.sessionId || userId || "no-session"}
               onVerified={data => handleDocVerified(doc.docType, data)}
               onFailed={() => handleDocFailed(doc.docType)}
               status={docsStatus[doc.docType]}
