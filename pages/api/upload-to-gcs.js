@@ -1,18 +1,16 @@
 import formidable from "formidable";
 import { Storage } from "@google-cloud/storage";
 import fs from "fs";
-import path from "path";
 
 export const config = { api: { bodyParser: false } };
 
-// استخدم القراءة من ملف service-account.json
-const credentials = JSON.parse(fs.readFileSync(path.join(process.cwd(), "service-account.json"), "utf8"));
+// استخدم متغير البيئة مباشرة
+const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
 const storage = new Storage({
   projectId: credentials.project_id,
   credentials,
 });
 const bucketName = process.env.GCLOUD_STORAGE_BUCKET;
-
 
 export default async function handler(req, res) {
   console.log("==== رفع ملف جديد ====");
@@ -77,8 +75,6 @@ export default async function handler(req, res) {
       });
       readStream.pipe(writeStream);
     });
-
-   
 
     const publicUrl = `https://storage.googleapis.com/${bucketName}/${uniqueName}`;
     console.log("رابط الملف:", publicUrl);
