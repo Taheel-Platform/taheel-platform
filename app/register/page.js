@@ -5,6 +5,10 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
+// Firebase imports (تأكد من وجود هذه الباكج في مشروعك)
+import { collection, addDoc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
+
 // استدعاء الكومبوننتات المقسمة
 import ClientTypeStep from "@/components/register/ClientTypeStep";
 import PersonalInfoStep from "@/components/register/PersonalInfoStep";
@@ -59,10 +63,52 @@ export default function RegisterPage() {
     { value: "company", label: t.company },
   ];
 
-  // بيانات العميل (أضف كل الحقول المطلوبة لكل الخطوات هنا)
+  // بيانات العميل (كل الحقول المطلوبة لكل الخطوات في وثيقة واحدة لكل مستخدم)
   const [form, setForm] = useState({
     accountType: "",
-    // باقي الحقول المطلوبة لكل الخطوات ...
+    // Personal Info
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    nameEn: "",
+    birthDate: "",
+    gender: "",
+    nationality: "",
+    eidNumber: "",
+    // Company Info
+    companyNameAr: "",
+    companyNameEn: "",
+    companyLicenseNumber: "",
+    companyRegistrationDate: "",
+    ownerFirstName: "",
+    ownerMiddleName: "",
+    ownerLastName: "",
+    ownerBirthDate: "",
+    ownerGender: "",
+    ownerNationality: "",
+    // Address Info
+    emirate: "",
+    district: "",
+    street: "",
+    building: "",
+    floor: "",
+    apartment: "",
+    country: "",
+    city: "",
+    state: "",
+    // Documents
+    documents: {}, // كل المستندات هنا
+    // Contact/Security Info
+    email: "",
+    emailConfirm: "",
+    password: "",
+    passwordConfirm: "",
+    phone: "",
+    phoneCode: "+971",
+    agreeTerms: false,
+    agreePrivacy: false,
+    agreeEAuth: false,
+    createdAt: "",
   });
 
   // متغيرات التحكم
@@ -84,19 +130,35 @@ export default function RegisterPage() {
     router.replace(`?${params.toString()}`);
   }
 
-  // دالة التسجيل النهائية (تعدلها حسب ما عندك)
+  // دالة التسجيل النهائية: تحفظ كل بيانات العميل في وثيقة واحدة وتحول على صفحة البروفايل
   const handleRegister = async () => {
     setRegError("");
     setRegLoading(true);
-    // ... منطق التسجيل النهائية هنا ...
-    setRegSuccess(true);
-    setTimeout(() => {
-      router.push("/dashboard/client/profile");
-    }, 1500);
+
+    try {
+      // إضافة تاريخ الإنشاء
+      const dataToSave = {
+        ...form,
+        createdAt: new Date().toISOString(),
+      };
+
+      // حفظ بيانات العميل في وثيقة واحدة (كولكشن users، كل مستخدم له وثيقة واحدة فيها كل بياناته)
+      const docRef = await addDoc(collection(db, "users"), dataToSave);
+
+      setRegSuccess(true);
+
+      // التحويل إلى صفحة بروفايل العميل مع userId
+      setTimeout(() => {
+        router.push(`/dashboard/client/profile?userId=${docRef.id}`);
+      }, 1000);
+    } catch (err) {
+      setRegError("حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.");
+    }
+
     setRegLoading(false);
   };
 
-  // خطوات التسجيل بدون خطوة الاتفاقية
+  // خطوات التسجيل بدون خطوة الاتفاقية، كل خطوة تحدث بيانات form المركزي فقط
   const steps = [
     <ClientTypeStep
       key="step-0"
@@ -143,7 +205,7 @@ export default function RegisterPage() {
       onChange={handleChange}
       lang={lang}
       t={t}
-      onNext={handleRegister}
+      onRegister={handleRegister}
       onBack={() => setStep(3)}
     />
   ];
@@ -185,6 +247,16 @@ export default function RegisterPage() {
           </div>
           {/* استدعاء الخطوة الحالية فقط */}
           {steps[step]}
+          {/* رسائل خطأ أو تحميل أو نجاح */}
+          {regError && (
+            <div className="text-red-600 font-bold text-center mt-2">{regError}</div>
+          )}
+          {regLoading && (
+            <div className="text-emerald-600 font-bold text-center mt-2">{lang === "ar" ? "جاري التسجيل..." : "Registering..."}</div>
+          )}
+          {regSuccess && (
+            <div className="text-green-600 font-bold text-center mt-2">{lang === "ar" ? "تم التسجيل بنجاح!" : "Registration successful!"}</div>
+          )}
         </div>
       </main>
       <footer className="bg-[#192233] text-gray-200 pt-8 pb-4 px-2 mt-10 rounded-t-3xl shadow-lg border-t border-[#22304a]">
