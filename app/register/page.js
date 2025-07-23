@@ -3,16 +3,14 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 // استدعاء الكومبوننتات المقسمة
 import ClientTypeStep from "@/components/register/ClientTypeStep";
 import PersonalInfoStep from "@/components/register/PersonalInfoStep";
 import AddressStep from "@/components/register/AddressStep";
-import ContactStep from "@/components/register/ContactStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
-import AgreementStep from "@/components/register/AgreementsStep";
+import ContactStep from "@/components/register/ContactStep";
 
 // اللغات
 const LANGUAGES = {
@@ -61,7 +59,7 @@ export default function RegisterPage() {
     { value: "company", label: t.company },
   ];
 
-  // بيانات العميل (تضيف عليها باقي الحقول في كل خطوة)
+  // بيانات العميل (أضف كل الحقول المطلوبة لكل الخطوات هنا)
   const [form, setForm] = useState({
     accountType: "",
     // باقي الحقول المطلوبة لكل الخطوات ...
@@ -98,7 +96,7 @@ export default function RegisterPage() {
     setRegLoading(false);
   };
 
-  // خطوات التسجيل مع إضافة خاصية key لكل عنصر
+  // خطوات التسجيل بدون خطوة الاتفاقية
   const steps = [
     <ClientTypeStep
       key="step-0"
@@ -145,18 +143,9 @@ export default function RegisterPage() {
       onChange={handleChange}
       lang={lang}
       t={t}
-      onNext={() => setStep(5)}
-      onBack={() => setStep(3)}
-    />,
-    <AgreementStep
-      key="step-5"
-      form={form}
-      onChange={handleChange}
-      lang={lang}
-      t={t}
       onNext={handleRegister}
-      onBack={() => setStep(4)}
-    />,
+      onBack={() => setStep(3)}
+    />
   ];
 
   // واجهة الصفحة الرئيسية

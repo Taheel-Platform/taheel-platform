@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import PasswordField from "../PasswordField";
 import PhoneCodeSelect from "../PhoneCodeSelect";
 
-// دوال التحقق
 function validateEmail(email) {
   if (typeof email !== "string") return false;
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
@@ -19,7 +18,6 @@ function validatePassword(password) {
   );
 }
 
-// دالة إرسال الكود للباك اند
 async function sendVerificationCode(email, code) {
   const res = await fetch("/api/send-otp", {
     method: "POST",
@@ -29,7 +27,6 @@ async function sendVerificationCode(email, code) {
   return await res.json();
 }
 
-// دالة تحقق الكود مع الباك اند
 async function verifyCode(email, code) {
   const res = await fetch("/api/verify-otp", {
     method: "POST",
@@ -39,7 +36,6 @@ async function verifyCode(email, code) {
   return await res.json();
 }
 
-// تعريف الـ styles بالكامل
 const styles = {
   formSection: {
     maxWidth: 720,
@@ -87,9 +83,6 @@ const styles = {
     outline: 'none',
     transition: 'border 0.2s',
     width: '100%'
-  },
-  inputFieldFocus: {
-    borderColor: '#10b981'
   },
   inputError: {
     fontSize: '0.89rem',
@@ -157,7 +150,7 @@ const styles = {
   }
 };
 
-export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar", t = {} }) {
+export default function ContactStep({ form, onChange, onRegister, onBack, lang = "ar", t = {} }) {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtpCode, setEmailOtpCode] = useState("");
   const [emailOtpVerifying, setEmailOtpVerifying] = useState(false);
@@ -167,8 +160,8 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
   const [showPass, setShowPass] = useState(false);
   const [showPassC, setShowPassC] = useState(false);
 
-  // استجابة للموبايل
   const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth <= 600);
     handler();
@@ -190,7 +183,6 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
 
   const emailsMatch = form.email && form.email === form.emailConfirm && validateEmail(form.email);
 
-  // إرسال كود التفعيل عبر ريسند
   const handleSendOtp = async () => {
     setOtpError("");
     setOtpSentMsg("");
@@ -201,10 +193,7 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
       setEmailOtpVerifying(false);
       return;
     }
-    // توليد كود عشوائي 6 أرقام
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // إرسال إلى الباك اند ليرسل الكود فعليًا على الإيميل
     const res = await sendVerificationCode(form.email, otp);
     setEmailOtpVerifying(false);
     if (res.success) {
@@ -215,7 +204,6 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
     }
   };
 
-  // تحقق الكود مع الباك اند
   const handleVerifyCode = async () => {
     setOtpError("");
     setEmailOtpVerifying(true);
@@ -229,14 +217,14 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
     }
   };
 
-  // الانتقال للخطوة التالية
-  const handleNext = (e) => {
+  // زر تسجيل فقط (لا يوجد زر "التالي")
+  const handleRegisterClick = (e) => {
     e?.preventDefault?.();
-    if (!canNext) return;
-    onNext();
+    if (!canRegister) return;
+    onRegister();
   };
 
-  const canNext =
+  const canRegister =
     emailVerified &&
     validatePassword(form.password) &&
     form.password === form.passwordConfirm &&
@@ -253,7 +241,7 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
         direction: lang === "ar" ? "rtl" : "ltr"
       }}
       lang={lang}
-      onSubmit={handleNext}
+      onSubmit={handleRegisterClick}
     >
       <div style={styles.formTitle}>
         {lang === "ar" ? "معلومات الأمان" : "Security Information"}
@@ -460,13 +448,13 @@ export default function ContactStep({ form, onChange, onNext, onBack, lang = "ar
           type="submit"
           style={{
             ...styles.btn,
-            ...(canNext ? {} : styles.btnDisabled),
+            ...(canRegister ? {} : styles.btnDisabled),
             marginTop: "0",
             minWidth: "120px"
           }}
-          disabled={!canNext}
+          disabled={!canRegister}
         >
-          {lang === "ar" ? "التالي" : "Next"}
+          {lang === "ar" ? "تسجيل الحساب" : "Register Account"}
         </button>
       </div>
     </form>
