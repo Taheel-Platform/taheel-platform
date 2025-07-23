@@ -33,7 +33,7 @@ const DESCRIPTIONS = {
   }
 };
 
-// حفظ نوع العميل داخل وثيقة المستخدم
+// حفظ نوع العميل داخل وثيقة المستخدم (وليس في كولكشن مستقل)
 async function saveClientType(userId, clientType, lang) {
   try {
     await updateDoc(doc(db, "users", userId), {
