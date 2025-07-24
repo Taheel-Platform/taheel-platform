@@ -26,11 +26,14 @@ import {
   setDoc,
   query,
   where,
-  orderBy
 } from "firebase/firestore";
 
 // Force dynamic rendering to prevent static export issues
-export const dynamic = 'force-dynamic'; // ✅
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
+
 const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
