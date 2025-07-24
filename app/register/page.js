@@ -8,7 +8,6 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 // Firebase imports
 import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
-import { collection, setDoc, doc as firestoreDoc } from "firebase/firestore";
 
 // استدعاء الكومبوننتات المقسمة
 import ClientTypeStep from "@/components/register/ClientTypeStep";
