@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaLock, FaUser, FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { firestore } from "@/lib/firebase.client";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
@@ -82,6 +83,14 @@ function LoginPageInner() {
   const [errorMsg, setErrorMsg] = useState("");
   const [recaptchaOk, setRecaptchaOk] = useState(false);
 
+  // لحالات التفعيل
+  const [unverifiedUser, setUnverifiedUser] = useState(null);
+  const [sendingVerify, setSendingVerify] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState("");
+
+  // لحفظ صفحة العودة
+  const prev = searchParams.get("prev");
+
   // تحميل مكتبة reCAPTCHA v3 مرة واحدة فقط
   useEffect(() => {
     if (typeof window !== "undefined" && !window.grecaptcha) {
@@ -111,11 +120,13 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل دخول العميل فقط من Firestore
+  // تسجيل الدخول والتوجيه حسب الدور
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setLoading(true);
+    setUnverifiedUser(null);
+    setVerifyMsg("");
 
     // reCAPTCHA v3
     let recaptchaToken = "";
@@ -152,27 +163,29 @@ function LoginPageInner() {
     }
     setRecaptchaOk(true);
 
-    // تحقق من العميل في Firestore فقط
+    // منطق دخول العميل (يبحث في Firestore وليس في Auth)
     try {
-      let q;
-      if (isEmail(loginId)) {
-        q = query(
-          collection(firestore, "users"),
-          where("email", "==", loginId),
-          where("password", "==", password),
-          where("role", "==", "client")
-        );
-      } else {
-        q = query(
+      // لو المستخدم عميل
+      let clientQuery;
+      if (!isEmail(loginId)) {
+        clientQuery = query(
           collection(firestore, "users"),
           where("customerId", "==", loginId),
           where("password", "==", password),
           where("role", "==", "client")
         );
+      } else {
+        clientQuery = query(
+          collection(firestore, "users"),
+          where("email", "==", loginId),
+          where("password", "==", password),
+          where("role", "==", "client")
+        );
       }
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const userDoc = snap.docs[0];
+      const clientSnap = await getDocs(clientQuery);
+
+      if (!clientSnap.empty) {
+        const userDoc = clientSnap.docs[0];
         const data = userDoc.data();
         const userId = userDoc.id;
 
@@ -184,11 +197,72 @@ function LoginPageInner() {
         }
 
         window.localStorage.setItem("userId", userId);
-        window.localStorage.setItem("userName", data.name || "موظف");
+        window.localStorage.setItem("userName", data.name || "عميل");
 
         router.replace(`/dashboard/client/profile?userId=${userId}`);
+        setLoading(false);
+        return;
+      }
+    } catch (e) {
+      // لو فيه مشكلة في تحقق العميل، لا تمنع تحقق باقي الأدوار
+    }
+
+    // باقي الأدوار (مدير، موظف، مديرين...) بنفس منطقك القديم
+    try {
+      let emailToUse = loginId;
+      if (!isEmail(loginId)) {
+        // بحث عن العميل أو الموظف بالرقم في Firestore
+        const q = query(collection(firestore, "users"), where("customerId", "==", loginId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          emailToUse = querySnapshot.docs[0].data().email;
+        } else {
+          setLoading(false);
+          setErrorMsg(t.wrongClient);
+          return;
+        }
+      }
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password);
+      const user = userCredential.user;
+      if (!user.emailVerified) {
+        setLoading(false);
+        setErrorMsg(t.emailVerify);
+        setUnverifiedUser(user); // خزّن المستخدم غير المفعل
+        return;
+      }
+      const docRef = doc(firestore, "users", user.uid);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        setLoading(false);
+        setErrorMsg(t.notFound);
+        return;
+      }
+      const data = docSnap.data();
+      if (data.phoneVerified === false) {
+        setLoading(false);
+        setErrorMsg(t.phoneVerify);
+        return;
+      }
+      const role = data.role || data.type || "client";
+
+      window.localStorage.setItem("userId", user.uid);
+      window.localStorage.setItem("userName", data.name || "موظف");
+
+      // التوجيه حسب الدور
+      let dashboardPath = "/dashboard/client";
+      if (role === "admin" || role === "superadmin") dashboardPath = "/dashboard/admin";
+      else if (role === "employee") dashboardPath = "/dashboard/employee";
+      else if (role === "manager") dashboardPath = "/dashboard/manager";
+
+      if (
+        prev &&
+        prev !== "/login" &&
+        prev !== "/" &&
+        prev !== window.location.pathname
+      ) {
+        router.replace(prev);
       } else {
-        setErrorMsg(t.wrongLogin);
+        router.replace(dashboardPath);
       }
     } catch (e) {
       setErrorMsg(t.wrongLogin);
@@ -201,6 +275,21 @@ function LoginPageInner() {
     const params = new URLSearchParams(searchParams);
     params.set("lang", lng);
     router.replace(`?${params.toString()}`);
+  };
+
+  // إعادة إرسال رابط التفعيل
+  const handleResendActivation = async () => {
+    if (!unverifiedUser) return;
+    setSendingVerify(true);
+    setVerifyMsg("");
+    try {
+      const mod = await import("firebase/auth");
+      await mod.sendEmailVerification(unverifiedUser);
+      setVerifyMsg(t.resendSuccess);
+    } catch {
+      setVerifyMsg(t.resendError);
+    }
+    setSendingVerify(false);
   };
 
   return (
@@ -265,6 +354,21 @@ function LoginPageInner() {
         {errorMsg && (
           <div className="bg-red-900/80 text-red-200 p-3 rounded text-center mb-2 animate-shake">
             {errorMsg}
+            {unverifiedUser && (
+              <div className="mt-3 flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded shadow"
+                  disabled={sendingVerify}
+                  onClick={handleResendActivation}
+                >
+                  {sendingVerify ? t.sending : t.resend}
+                </button>
+                {verifyMsg && (
+                  <span className="text-xs text-emerald-200 mt-2">{verifyMsg}</span>
+                )}
+              </div>
+            )}
           </div>
         )}
         <form onSubmit={handleLogin} autoComplete="on" className="space-y-5">
