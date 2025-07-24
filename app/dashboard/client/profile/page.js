@@ -17,6 +17,7 @@ import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   doc,
@@ -32,7 +33,19 @@ import {
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_USER_ID = "RES-2025-001";
+const auth = getAuth();
+signInWithEmailAndPassword(auth, email, password)
+  .then((userCredential) => {
+    const user = userCredential.user;
+    // هذا هو الـ userId الصحيح (user.uid)
+    localStorage.setItem("userId", user.uid);
+    // يمكنك تحويل المستخدم مباشرة لصفحة البروفايل مثلاً
+    // router.push("/dashboard/client/profile");
+  })
+  .catch((error) => {
+    // التعامل مع الخطأ
+  });
+  
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -536,7 +549,7 @@ function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
         {/* كارت العميل */}
         {client.type === "resident" && (
           <div className="min-w-[320px] max-w-[380px] mb-6">
-            <ResidentCard client={client} lang={lang} />
+            <ResidentCard client={client} lang="en" />
           </div>
         )}
         {client.type === "nonResident" || client.type === "nonresident" ? (
@@ -791,10 +804,15 @@ function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
     </div>
   );
 }
-export default function ClientProfilePage(props) {
+function ClientProfilePage(props) {
+  // جلب userId من URL أو localStorage
+  const searchParams = useSearchParams();
+  const userId = searchParams.get("userId") ||
+    (typeof window !== "undefined" ? window.localStorage.getItem("userId") : null);
+
   return (
     <Suspense fallback={null}>
-      <ClientProfilePageInner {...props} />
+      <ClientProfilePageInner userId={userId} />
     </Suspense>
   );
 }
