@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaLock, FaUser, FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { auth, firestore } from "@/lib/firebase.client";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
@@ -120,13 +119,11 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه إلى صفحة بروفايل العميل فقط
+  // تسجيل الدخول والتوجيه إلى صفحة بروفايل العميل فقط من Firestore
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setLoading(true);
-    setUnverifiedUser(null);
-    setVerifyMsg("");
 
     // reCAPTCHA v3
     let recaptchaToken = "";
@@ -163,48 +160,42 @@ function LoginPageInner() {
     }
     setRecaptchaOk(true);
 
+    // تحقق من العميل في Firestore فقط
     try {
-      let emailToUse = loginId;
-      if (!isEmail(loginId)) {
-        // بحث عن العميل بالرقم في Firestore
-        const q = query(collection(firestore, "users"), where("customerId", "==", loginId));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          emailToUse = querySnapshot.docs[0].data().email;
-        } else {
+      let q;
+      if (isEmail(loginId)) {
+        q = query(
+          collection(firestore, "users"),
+          where("email", "==", loginId),
+          where("password", "==", password)
+        );
+      } else {
+        q = query(
+          collection(firestore, "users"),
+          where("customerId", "==", loginId),
+          where("password", "==", password)
+        );
+      }
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const userDoc = snap.docs[0];
+        const data = userDoc.data();
+        const userId = userDoc.id;
+
+        // تحقق من تفعيل الجوال لو عندك
+        if (data.phoneVerified === false) {
           setLoading(false);
-          setErrorMsg(t.wrongClient);
+          setErrorMsg(t.phoneVerify);
           return;
         }
-      }
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password);
-      const user = userCredential.user;
-      if (!user.emailVerified) {
-        setLoading(false);
-        setErrorMsg(t.emailVerify);
-        setUnverifiedUser(user); // خزّن المستخدم غير المفعل
-        return;
-      }
-      const docRef = doc(firestore, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
-        setLoading(false);
-        setErrorMsg(t.notFound);
-        return;
-      }
-      const data = docSnap.data();
-      if (data.phoneVerified === false) {
-        setLoading(false);
-        setErrorMsg(t.phoneVerify);
-        return;
-      }
 
-      // حفظ الـ userId واسم المستخدم في localStorage
-      window.localStorage.setItem("userId", user.uid);
-      window.localStorage.setItem("userName", data.name || "موظف");
+        window.localStorage.setItem("userId", userId);
+        window.localStorage.setItem("userName", data.name || "موظف");
 
-      // التوجيه مباشرة إلى صفحة بروفايل العميل
-      router.replace(`/dashboard/client/profile?userId=${user.uid}`);
+        router.replace(`/dashboard/client/profile?userId=${userId}`);
+      } else {
+        setErrorMsg(t.wrongLogin);
+      }
     } catch (e) {
       setErrorMsg(t.wrongLogin);
     }
@@ -218,20 +209,9 @@ function LoginPageInner() {
     router.replace(`?${params.toString()}`);
   };
 
-  // إعادة إرسال رابط التفعيل
+  // إعادة إرسال رابط التفعيل (باقية لو احتجت)
   const handleResendActivation = async () => {
-    if (!unverifiedUser) return;
-    setSendingVerify(true);
-    setVerifyMsg("");
-    try {
-      // Lazy import for tree-shaking (حتى لا تُضاف كل مكتبة auth في الباندل)
-      const mod = await import("firebase/auth");
-      await mod.sendEmailVerification(unverifiedUser);
-      setVerifyMsg(t.resendSuccess);
-    } catch {
-      setVerifyMsg(t.resendError);
-    }
-    setSendingVerify(false);
+    // فارغة هنا لأننا لا نستخدم Firebase Auth
   };
 
   return (
@@ -298,14 +278,7 @@ function LoginPageInner() {
             {errorMsg}
             {unverifiedUser && (
               <div className="mt-3 flex flex-col items-center gap-1">
-                <button
-                  type="button"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded shadow"
-                  disabled={sendingVerify}
-                  onClick={handleResendActivation}
-                >
-                  {sendingVerify ? t.sending : t.resend}
-                </button>
+                {/* زر إعادة إرسال التفعيل محذوف لأننا لا نستخدم Auth */}
                 {verifyMsg && (
                   <span className="text-xs text-emerald-200 mt-2">{verifyMsg}</span>
                 )}
