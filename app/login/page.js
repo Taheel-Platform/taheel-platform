@@ -166,43 +166,36 @@ function LoginPageInner() {
     // منطق دخول العميل (يبحث في Firestore وليس في Auth)
     try {
       // لو المستخدم عميل
-      let clientQuery;
-      if (!isEmail(loginId)) {
-        clientQuery = query(
-          collection(firestore, "users"),
-          where("customerId", "==", loginId),
-          where("password", "==", password),
-          where("role", "==", "client")
-        );
-      } else {
-        clientQuery = query(
-          collection(firestore, "users"),
-          where("email", "==", loginId),
-          where("password", "==", password),
-          where("role", "==", "client")
-        );
-      }
-      const clientSnap = await getDocs(clientQuery);
+let clientQuery;
+if (!isEmail(loginId)) {
+  clientQuery = query(
+    collection(firestore, "users"),
+    where("customerId", "==", loginId),
+    where("password", "==", password),
+    where("role", "==", "client")
+  );
+} else {
+  clientQuery = query(
+    collection(firestore, "users"),
+    where("email", "==", loginId),
+    where("password", "==", password),
+    where("role", "==", "client")
+  );
+}
+const clientSnap = await getDocs(clientQuery);
 
-      if (!clientSnap.empty) {
-        const userDoc = clientSnap.docs[0];
-        const data = userDoc.data();
-        const userId = userDoc.id;
+if (!clientSnap.empty) {
+  const userDoc = clientSnap.docs[0];
+  const data = userDoc.data();
+  const userId = userDoc.id;
 
-        // تحقق من تفعيل الجوال لو عندك
-        if (data.phoneVerified === false) {
-          setLoading(false);
-          setErrorMsg(t.phoneVerify);
-          return;
-        }
+  window.localStorage.setItem("userId", userId);
+  window.localStorage.setItem("userName", data.name || "عميل");
 
-        window.localStorage.setItem("userId", userId);
-        window.localStorage.setItem("userName", data.name || "عميل");
-
-        router.replace(`/dashboard/client/profile?userId=${userId}`);
-        setLoading(false);
-        return;
-      }
+  router.replace(`/dashboard/client/profile?userId=${userId}`);
+  setLoading(false);
+  return;
+}
     } catch (e) {
       // لو فيه مشكلة في تحقق العميل، لا تمنع تحقق باقي الأدوار
     }
