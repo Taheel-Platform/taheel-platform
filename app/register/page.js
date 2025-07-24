@@ -8,6 +8,7 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 // Firebase imports
 import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
+import { collection, setDoc, doc as firestoreDoc } from "firebase/firestore";
 
 // استدعاء الكومبوننتات المقسمة
 import ClientTypeStep from "@/components/register/ClientTypeStep";
@@ -161,27 +162,25 @@ const handleRegister = async () => {
   setRegLoading(true);
 
   try {
-    // إضافة تاريخ الإنشاء ودور العميل
+    // 1. توليد رقم العميل (userId)
+    const userId = generateCustomerId(form.accountType, Date.now().toString());
+
+    // 2. إعداد البيانات
     const dataToSave = {
       ...form,
+      userId, // خزّن الرقم مع البيانات
       createdAt: new Date().toISOString(),
-      role: "client", // <-- هنا الإضافة
+      role: "client",
     };
 
-    // حفظ بيانات العميل في وثيقة واحدة (كولكشن users، كل مستخدم له وثيقة واحدة فيها كل بياناته)
-    const docRef = await addDoc(collection(db, "users"), dataToSave);
-
-    // توليد رقم العميل بعد الحفظ
-    const customerId = generateCustomerId(form.accountType, docRef.id);
-
-    // تحديث الوثيقة برقم العميل
-    await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
+    // 3. احفظ البيانات في users ويكون document ID هو userId
+    await setDoc(firestoreDoc(db, "users", userId), dataToSave);
 
     setRegSuccess(true);
 
-    // التحويل إلى صفحة بروفايل العميل مع userId
+    // 4. التحويل لصفحة البروفايل مع userId
     setTimeout(() => {
-      router.push(`/dashboard/client/profile?userId=${docRef.id}`);
+      router.push(`/dashboard/client/profile?userId=${userId}`);
     }, 1000);
   } catch (err) {
     setRegError("حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.");
