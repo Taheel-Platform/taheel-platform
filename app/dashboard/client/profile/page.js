@@ -30,7 +30,7 @@ import {
   orderBy
 } from "firebase/firestore";
 
-export const dynamic = 'force-dynamic'; // أو 'auto' أو 'force-static' أو 'error'
+export const dynamic = 'force-dynamic';
 
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
@@ -87,7 +87,7 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
-function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
+function ClientProfilePageInner({ userId }) {
   const router = useRouter();
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
