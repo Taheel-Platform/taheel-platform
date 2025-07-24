@@ -17,7 +17,6 @@ import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   doc,
@@ -30,8 +29,10 @@ import {
   orderBy
 } from "firebase/firestore";
 
+// Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
+const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -87,7 +88,7 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
-function ClientProfilePageInner({ userId }) {
+function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
   const router = useRouter();
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
