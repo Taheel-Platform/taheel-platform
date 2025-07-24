@@ -10,8 +10,6 @@ import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-
-// Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
 const LANGUAGES = {
@@ -163,61 +161,62 @@ function LoginPageInner() {
     }
     setRecaptchaOk(true);
 
-    // منطق دخول العميل (يبحث في Firestore وليس في Auth)
+    // ----------- منطق دخول العميل فقط ----------
     try {
-      // لو المستخدم عميل
-let clientQuery;
-if (!isEmail(loginId)) {
-  clientQuery = query(
-    collection(firestore, "users"),
-    where("customerId", "==", loginId),
-    where("password", "==", password),
-    where("role", "==", "client")
-  );
-} else {
-  clientQuery = query(
-    collection(firestore, "users"),
-    where("email", "==", loginId),
-    where("password", "==", password),
-    where("role", "==", "client")
-  );
-}
-const clientSnap = await getDocs(clientQuery);
+      const enteredLoginId = loginId.trim();
+      const enteredPassword = password.trim();
 
-// ... بعد الاستعلام
-if (!clientSnap.empty) {
-  const userDoc = clientSnap.docs[0];
-  const data = userDoc.data();
-  const userId = userDoc.id;
+      let clientQuery;
+      if (!isEmail(enteredLoginId)) {
+        clientQuery = query(
+          collection(firestore, "users"),
+          where("customerId", "==", enteredLoginId),
+          where("password", "==", enteredPassword),
+          where("role", "==", "client")
+        );
+      } else {
+        clientQuery = query(
+          collection(firestore, "users"),
+          where("email", "==", enteredLoginId.toLowerCase()),
+          where("password", "==", enteredPassword),
+          where("role", "==", "client")
+        );
+      }
 
-  window.localStorage.setItem(
-    "userName",
-    data.fullName ||
-    `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim() ||
-    data.nameEn ||
-    "عميل"
-  );
-  window.localStorage.setItem("userId", userId);
+      const clientSnap = await getDocs(clientQuery);
 
-  router.replace(`/dashboard/client/profile?userId=${userId}`);
-  setLoading(false);
-  return;
-} else {
-  // إظهار رسالة خطأ للعميل لو لم يوجد
-  setErrorMsg(t.wrongLogin);
-  setLoading(false);
-  return;
-}
+      if (!clientSnap.empty) {
+        const userDoc = clientSnap.docs[0];
+        const data = userDoc.data();
+        const userId = userDoc.id;
+
+        window.localStorage.setItem(
+          "userName",
+          data.fullName ||
+          `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim() ||
+          data.nameEn ||
+          "عميل"
+        );
+        window.localStorage.setItem("userId", userId);
+
+        router.replace(`/dashboard/client/profile?userId=${userId}`);
+        setLoading(false);
+        return;
+      }
     } catch (e) {
-      // لو فيه مشكلة في تحقق العميل، لا تمنع تحقق باقي الأدوار
+      // يمكنك تسجيل الخطأ هنا أثناء التطوير
+      // console.error(e);
     }
 
-    // باقي الأدوار (مدير، موظف، مديرين...) بنفس منطقك القديم
+    // ----------- باقي الأدوار (مدير، موظف، ...) ----------
     try {
-      let emailToUse = loginId;
-      if (!isEmail(loginId)) {
+      const enteredLoginId = loginId.trim();
+      const enteredPassword = password.trim();
+
+      let emailToUse = enteredLoginId;
+      if (!isEmail(enteredLoginId)) {
         // بحث عن العميل أو الموظف بالرقم في Firestore
-        const q = query(collection(firestore, "users"), where("customerId", "==", loginId));
+        const q = query(collection(firestore, "users"), where("customerId", "==", enteredLoginId));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           emailToUse = querySnapshot.docs[0].data().email;
@@ -227,12 +226,12 @@ if (!clientSnap.empty) {
           return;
         }
       }
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password);
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, enteredPassword);
       const user = userCredential.user;
       if (!user.emailVerified) {
         setLoading(false);
         setErrorMsg(t.emailVerify);
-        setUnverifiedUser(user); // خزّن المستخدم غير المفعل
+        setUnverifiedUser(user);
         return;
       }
       const docRef = doc(firestore, "users", user.uid);
@@ -269,10 +268,13 @@ if (!clientSnap.empty) {
       } else {
         router.replace(dashboardPath);
       }
+      setLoading(false);
+      return;
     } catch (e) {
       setErrorMsg(t.wrongLogin);
     }
     setLoading(false);
+    setErrorMsg(t.wrongLogin);
   };
 
   const handleLang = (lng) => {
