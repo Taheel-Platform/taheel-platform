@@ -30,22 +30,9 @@ import {
   orderBy
 } from "firebase/firestore";
 
-// Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-const auth = getAuth();
-signInWithEmailAndPassword(auth, email, password)
-  .then((userCredential) => {
-    const user = userCredential.user;
-    // هذا هو الـ userId الصحيح (user.uid)
-    localStorage.setItem("userId", user.uid);
-    // يمكنك تحويل المستخدم مباشرة لصفحة البروفايل مثلاً
-    // router.push("/dashboard/client/profile");
-  })
-  .catch((error) => {
-    // التعامل مع الخطأ
-  });
-  
+
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
