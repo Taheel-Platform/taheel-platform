@@ -156,38 +156,39 @@ export default function RegisterPage() {
   }
 
   // دالة التسجيل النهائية: تحفظ كل بيانات العميل في وثيقة واحدة وتحول على صفحة البروفايل مع توليد رقم العميل
-  const handleRegister = async () => {
-    setRegError("");
-    setRegLoading(true);
+const handleRegister = async () => {
+  setRegError("");
+  setRegLoading(true);
 
-    try {
-      // إضافة تاريخ الإنشاء
-      const dataToSave = {
-        ...form,
-        createdAt: new Date().toISOString(),
-      };
+  try {
+    // إضافة تاريخ الإنشاء ودور العميل
+    const dataToSave = {
+      ...form,
+      createdAt: new Date().toISOString(),
+      role: "client", // <-- هنا الإضافة
+    };
 
-      // حفظ بيانات العميل في وثيقة واحدة (كولكشن users، كل مستخدم له وثيقة واحدة فيها كل بياناته)
-      const docRef = await addDoc(collection(db, "users"), dataToSave);
+    // حفظ بيانات العميل في وثيقة واحدة (كولكشن users، كل مستخدم له وثيقة واحدة فيها كل بياناته)
+    const docRef = await addDoc(collection(db, "users"), dataToSave);
 
-      // توليد رقم العميل بعد الحفظ
-      const customerId = generateCustomerId(form.accountType, docRef.id);
+    // توليد رقم العميل بعد الحفظ
+    const customerId = generateCustomerId(form.accountType, docRef.id);
 
-      // تحديث الوثيقة برقم العميل
-      await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
+    // تحديث الوثيقة برقم العميل
+    await updateDoc(firestoreDoc(db, "users", docRef.id), { customerId });
 
-      setRegSuccess(true);
+    setRegSuccess(true);
 
-      // التحويل إلى صفحة بروفايل العميل مع userId
-      setTimeout(() => {
-        router.push(`/dashboard/client/profile?userId=${docRef.id}`);
-      }, 1000);
-    } catch (err) {
-      setRegError("حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.");
-    }
+    // التحويل إلى صفحة بروفايل العميل مع userId
+    setTimeout(() => {
+      router.push(`/dashboard/client/profile?userId=${docRef.id}`);
+    }, 1000);
+  } catch (err) {
+    setRegError("حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.");
+  }
 
-    setRegLoading(false);
-  };
+  setRegLoading(false);
+};
 
   // خطوات التسجيل بدون خطوة الاتفاقية، كل خطوة تحدث بيانات form المركزي فقط
   const steps = [
