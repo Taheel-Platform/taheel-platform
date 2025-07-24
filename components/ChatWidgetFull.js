@@ -60,7 +60,7 @@ export default function ChatWidgetFull({
   const chatEndRef = useRef(null);
 
   // handle roomId (SSR safe)
-  useEffect(() => {
+   useEffect(() => {
     if (!roomId) {
       let id = initialRoomId;
       if (!id && typeof window !== "undefined") {
@@ -76,10 +76,9 @@ export default function ChatWidgetFull({
     }
   }, [roomId, initialRoomId]);
 
-  if (!roomId) return null;
-
-  // إنشاء غرفة الشات إذا لم توجد
+  // 2. إنشاء غرفة الشات إذا لم توجد
   useEffect(() => {
+    if (!roomId) return;
     set(dbRef(db, `chats/${roomId}`), {
       clientId: userId,
       clientName: userName,
@@ -88,8 +87,9 @@ export default function ChatWidgetFull({
     });
   }, [db, roomId, userId, userName]);
 
-  // مراقبة الرسائل (مع ترتيب الرسائل حسب الوقت)
+  // 3. مراقبة الرسائل (مع ترتيب الرسائل حسب الوقت)
   useEffect(() => {
+    if (!roomId) return;
     const msgsRef = dbRef(db, `chats/${roomId}/messages`);
     return onValue(msgsRef, (snap) => {
       const msgs = [];
@@ -113,8 +113,9 @@ export default function ChatWidgetFull({
     });
   }, [db, roomId]);
 
-  // مراقبة حالة الغرفة (انتظار موظف/قبول موظف)
+  // 4. مراقبة حالة الغرفة (انتظار موظف/قبول موظف)
   useEffect(() => {
+    if (!roomId) return;
     const chatRef = dbRef(db, `chats/${roomId}`);
     const unsub = onValue(chatRef, (snap) => {
       const val = snap.val();
@@ -125,7 +126,7 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // إرسال رسالة أو مرفق base64 (صورة/صوت)
+  // 5. إرسال رسالة أو مرفق base64 (صورة/صوت)
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
