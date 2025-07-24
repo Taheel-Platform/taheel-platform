@@ -82,14 +82,6 @@ function LoginPageInner() {
   const [errorMsg, setErrorMsg] = useState("");
   const [recaptchaOk, setRecaptchaOk] = useState(false);
 
-  // لحالات التفعيل
-  const [unverifiedUser, setUnverifiedUser] = useState(null);
-  const [sendingVerify, setSendingVerify] = useState(false);
-  const [verifyMsg, setVerifyMsg] = useState("");
-
-  // لحفظ صفحة العودة
-  const prev = searchParams.get("prev");
-
   // تحميل مكتبة reCAPTCHA v3 مرة واحدة فقط
   useEffect(() => {
     if (typeof window !== "undefined" && !window.grecaptcha) {
@@ -119,7 +111,7 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه إلى صفحة بروفايل العميل فقط من Firestore
+  // تسجيل دخول العميل فقط من Firestore
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -167,13 +159,15 @@ function LoginPageInner() {
         q = query(
           collection(firestore, "users"),
           where("email", "==", loginId),
-          where("password", "==", password)
+          where("password", "==", password),
+          where("role", "==", "client")
         );
       } else {
         q = query(
           collection(firestore, "users"),
           where("customerId", "==", loginId),
-          where("password", "==", password)
+          where("password", "==", password),
+          where("role", "==", "client")
         );
       }
       const snap = await getDocs(q);
@@ -207,11 +201,6 @@ function LoginPageInner() {
     const params = new URLSearchParams(searchParams);
     params.set("lang", lng);
     router.replace(`?${params.toString()}`);
-  };
-
-  // إعادة إرسال رابط التفعيل (باقية لو احتجت)
-  const handleResendActivation = async () => {
-    // فارغة هنا لأننا لا نستخدم Firebase Auth
   };
 
   return (
@@ -276,14 +265,6 @@ function LoginPageInner() {
         {errorMsg && (
           <div className="bg-red-900/80 text-red-200 p-3 rounded text-center mb-2 animate-shake">
             {errorMsg}
-            {unverifiedUser && (
-              <div className="mt-3 flex flex-col items-center gap-1">
-                {/* زر إعادة إرسال التفعيل محذوف لأننا لا نستخدم Auth */}
-                {verifyMsg && (
-                  <span className="text-xs text-emerald-200 mt-2">{verifyMsg}</span>
-                )}
-              </div>
-            )}
           </div>
         )}
         <form onSubmit={handleLogin} autoComplete="on" className="space-y-5">
