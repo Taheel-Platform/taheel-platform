@@ -184,15 +184,27 @@ if (!isEmail(loginId)) {
 }
 const clientSnap = await getDocs(clientQuery);
 
+// ... بعد الاستعلام
 if (!clientSnap.empty) {
   const userDoc = clientSnap.docs[0];
   const data = userDoc.data();
   const userId = userDoc.id;
 
+  window.localStorage.setItem(
+    "userName",
+    data.fullName ||
+    `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim() ||
+    data.nameEn ||
+    "عميل"
+  );
   window.localStorage.setItem("userId", userId);
-  window.localStorage.setItem("userName", data.name || "عميل");
 
   router.replace(`/dashboard/client/profile?userId=${userId}`);
+  setLoading(false);
+  return;
+} else {
+  // إظهار رسالة خطأ للعميل لو لم يوجد
+  setErrorMsg(t.wrongLogin);
   setLoading(false);
   return;
 }
