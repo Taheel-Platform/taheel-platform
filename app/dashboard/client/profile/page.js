@@ -26,13 +26,11 @@ import {
   setDoc,
   query,
   where,
+  orderBy
 } from "firebase/firestore";
 
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
 
 const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
@@ -538,7 +536,7 @@ function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
         {/* كارت العميل */}
         {client.type === "resident" && (
           <div className="min-w-[320px] max-w-[380px] mb-6">
-            <ResidentCard client={client} lang="en" />
+            <ResidentCard client={client} lang={lang} />
           </div>
         )}
         {client.type === "nonResident" || client.type === "nonresident" ? (
@@ -793,15 +791,10 @@ function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
     </div>
   );
 }
-function ClientProfilePage(props) {
-  // جلب userId من URL أو localStorage
-  const searchParams = useSearchParams();
-  const userId = searchParams.get("userId") ||
-    (typeof window !== "undefined" ? window.localStorage.getItem("userId") : null);
-
+export default function ClientProfilePage(props) {
   return (
     <Suspense fallback={null}>
-      <ClientProfilePageInner userId={userId} />
+      <ClientProfilePageInner {...props} />
     </Suspense>
   );
 }
