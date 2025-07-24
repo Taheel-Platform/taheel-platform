@@ -52,15 +52,17 @@ export default function ChatWidgetFull({
   const [minimized, setMinimized] = useState(false);
   const [chatClosed, setChatClosed] = useState(false);
 
-  // ذكاء
   const [noBotHelpCount, setNoBotHelpCount] = useState(0);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
 
   const chatEndRef = useRef(null);
 
-  // handle roomId (SSR safe)
-   useEffect(() => {
+  // fallback in case userId/userName are missing
+  const safeUserId = userId || "guest";
+  const safeUserName = userName || "زائر";
+
+  useEffect(() => {
     if (!roomId) {
       let id = initialRoomId;
       if (!id && typeof window !== "undefined") {
@@ -76,18 +78,16 @@ export default function ChatWidgetFull({
     }
   }, [roomId, initialRoomId]);
 
-  // 2. إنشاء غرفة الشات إذا لم توجد
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !safeUserId || !safeUserName) return;
     set(dbRef(db, `chats/${roomId}`), {
-      clientId: userId,
-      clientName: userName,
+      clientId: safeUserId,
+      clientName: safeUserName,
       createdAt: Date.now(),
       status: "open",
     });
-  }, [db, roomId, userId, userName]);
+  }, [db, roomId, safeUserId, safeUserName]);
 
-  // 3. مراقبة الرسائل (مع ترتيب الرسائل حسب الوقت)
   useEffect(() => {
     if (!roomId) return;
     const msgsRef = dbRef(db, `chats/${roomId}/messages`);
@@ -113,7 +113,6 @@ export default function ChatWidgetFull({
     });
   }, [db, roomId]);
 
-  // 4. مراقبة حالة الغرفة (انتظار موظف/قبول موظف)
   useEffect(() => {
     if (!roomId) return;
     const chatRef = dbRef(db, `chats/${roomId}`);
@@ -126,12 +125,11 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // 5. إرسال رسالة أو مرفق base64 (صورة/صوت)
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
-      senderId: userId,
-      senderName: userName,
+      senderId: safeUserId,
+      senderName: safeUserName,
       type,
       createdAt: Date.now(),
       ...content,
@@ -140,7 +138,6 @@ export default function ChatWidgetFull({
     if (type === "image" || type === "audio") setUploading(false);
   };
 
-  // إرسال الرد الذكي أو الإنساني
   const handleSend = async (e) => {
     e.preventDefault();
     if (chatClosed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
@@ -177,7 +174,6 @@ export default function ChatWidgetFull({
     setInput("");
   };
 
-  // الرد على زر FAQ - الإرسال الفوري
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
@@ -191,17 +187,19 @@ export default function ChatWidgetFull({
     }
   };
 
-  // زر التواصل مع الموظف
   const requestAgent = async () => {
+    if (!roomId || !safeUserId || !safeUserName) return;
     await update(dbRef(db, `chats/${roomId}`), {
       waitingForAgent: true,
       agentAccepted: false,
       assignedTo: null,
+      clientId: safeUserId,
+      clientName: safeUserName,
+      status: "open",
     });
     setNoBotHelpCount(0);
   };
 
-  // رفع صورة
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -211,7 +209,6 @@ export default function ChatWidgetFull({
     e.target.value = "";
   };
 
-  // تسجيل صوتى
   const handleRecord = async () => {
     if (!recording) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -232,15 +229,13 @@ export default function ChatWidgetFull({
     }
   };
 
-  // إيموجى
   const handleSelectEmoji = (emoji) => {
     setInput((prev) => prev + emoji.native);
     setShowEmoji(false);
   };
 
-  // رسائل الفقاعة
   function renderMsgBubble(msg) {
-    let isSelf = msg.senderId === userId;
+    let isSelf = msg.senderId === safeUserId;
     let isBot = msg.type === "bot";
     let isSystem = msg.type === "system";
     let base =
@@ -265,7 +260,6 @@ export default function ChatWidgetFull({
         {msg.type === "text" && <span>{msg.text}</span>}
         {msg.type === "bot" && <span>{msg.text}</span>}
         {msg.type === "image" && (
-          // استخدم img بدل Image لو حصلت مشكلة مع base64
           <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
         )}
         {msg.type === "audio" && (
@@ -289,7 +283,6 @@ export default function ChatWidgetFull({
     );
   }
 
-  // واجهة المستخدم
   return (
     <>
       <style>{`
@@ -307,7 +300,6 @@ export default function ChatWidgetFull({
       ) : (
         <div className="fixed bottom-24 right-4 z-[1000]">
           <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
-            {/* Header */}
             <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
               <span className="text-lg">الدردشة الذكية</span>
               <button
@@ -319,12 +311,10 @@ export default function ChatWidgetFull({
                 <span style={{ fontWeight: 900, fontSize: 18 }}>–</span>
               </button>
             </div>
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
               {messages.map(renderMsgBubble)}
               <div ref={chatEndRef} />
             </div>
-            {/* Input */}
             {!chatClosed && (
               <form
                 className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
@@ -409,8 +399,6 @@ export default function ChatWidgetFull({
                 )}
               </form>
             )}
-
-            {/* رسالة انتظار عند طلب موظف */}
             {waitingForAgent && !agentAccepted && (
               <div className="flex justify-center p-3">
                 <div className="bg-orange-100 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse">
@@ -418,8 +406,6 @@ export default function ChatWidgetFull({
                 </div>
               </div>
             )}
-
-            {/* خيارات الأسئلة السريعة (FAQ) فقط لو لم يدخل العميل أي رسالة */}
             {messages.length === 0 && !waitingForAgent && !agentAccepted && (
               <div className="flex flex-wrap gap-2 mt-4 justify-center">
                 {FAQ.map(f => (
@@ -433,8 +419,6 @@ export default function ChatWidgetFull({
                 ))}
               </div>
             )}
-
-            {/* زر طلب موظف بعد محاولات فاشلة */}
             {!waitingForAgent && !agentAccepted && noBotHelpCount >= 2 && (
               <div className="flex justify-center p-3">
                 <button
