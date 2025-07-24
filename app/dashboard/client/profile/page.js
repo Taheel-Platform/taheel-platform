@@ -30,8 +30,7 @@ import {
 } from "firebase/firestore";
 
 // Force dynamic rendering to prevent static export issues
-export const dynamic = 'force-dynamic';
-
+export const dynamic = 'force-dynamic';// This ensures the page is rendered on the server for each request
 const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
