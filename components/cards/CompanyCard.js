@@ -15,7 +15,7 @@ export default function CompanyCardGold({
 }) {
   // بيانات الشركة
   const {
-    companyId = "COM-0000-000",
+    companyId = "COM-000-0000",
     name = "اسم الشركة",
     emirate = "إمارة غير محددة",
     email = "البريد الإلكتروني غير محدد",

@@ -30,7 +30,6 @@ import {
 } from "firebase/firestore";
 
 export const dynamic = 'force-dynamic';
-const [ownerResident, setOwnerResident] = useState(null);
 
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
@@ -99,6 +98,7 @@ function ClientProfilePageInner({ userId }) {
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ownerResident, setOwnerResident] = useState(null);
 
   // Popups for header icons
   const [showNotifMenu, setShowNotifMenu] = useState(false);
