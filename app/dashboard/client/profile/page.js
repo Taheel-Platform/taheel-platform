@@ -30,6 +30,7 @@ import {
 } from "firebase/firestore";
 
 export const dynamic = 'force-dynamic';
+const [ownerResident, setOwnerResident] = useState(null);
 
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
@@ -125,6 +126,21 @@ function ClientProfilePageInner({ userId }) {
       const userDoc = await getDoc(doc(firestore, "users", userId));
       const user = userDoc.exists() ? userDoc.data() : null;
       setClient(user);
+
+      if ((user?.type === "company" || user?.accountType === "company")) {
+  setOwnerResident({
+    firstName: user.ownerFirstName,
+    middleName: user.ownerMiddleName,
+    lastName: user.ownerLastName,
+    birthDate: user.ownerBirthDate,
+    gender: user.ownerGender,
+    nationality: user.ownerNationality,
+    phone: user.phone,
+    // أضف أي بيانات أخرى تريدها من بيانات الشركة (حقول تبدأ بـ owner أو بيانات إضافية)
+  });
+} else {
+  setOwnerResident(null);
+}
 
       // 2. جلب الشركات المرتبطة بالعميل (لو النوع مقيم فقط)
       let relatedCompanies = [];
@@ -554,15 +570,30 @@ if (clientType === "resident") {
           </div>
         ) : null}
         {/* الشركات إن وجدت */}
-        {clientType === "resident" && companies.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6 w-full my-6">
-            {companies.map((company) => (
-              <div key={company.userId || company.companyId} className="min-w-[320px] max-w-[380px]">
-                <CompanyCardGold company={company} lang={lang} />
-              </div>
-            ))}
-          </div>
-        )}
+        {clientType === "company" && (
+  <>
+    {/* كارت الشركة */}
+    <div className="min-w-[320px] max-w-[380px] mb-6">
+      <CompanyCardGold company={client} lang={lang} />
+    </div>
+    {/* كارت المقيم (مالك الشركة) */}
+    <div className="min-w-[320px] max-w-[380px] mb-6">
+      <ResidentCard
+        client={{
+          firstName: client.ownerFirstName,
+          middleName: client.ownerMiddleName,
+          lastName: client.ownerLastName,
+          birthDate: client.ownerBirthDate,
+          gender: client.ownerGender,
+          nationality: client.ownerNationality,
+          phone: client.phone,
+          // أضف أي بيانات أخرى تحتاجها
+        }}
+        lang={lang}
+      />
+    </div>
+  </>
+)}
 
         {/* تتبع الطلبات مع الحالة */}
         <div className="w-full flex items-center my-8 select-none">
