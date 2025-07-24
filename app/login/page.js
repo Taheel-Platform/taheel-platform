@@ -14,7 +14,6 @@ const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-
 const LANGUAGES = {
   ar: {
     login: "تسجيل الدخول",
@@ -121,7 +120,7 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه حسب الدور وبشكل مضمون
+  // تسجيل الدخول والتوجيه إلى صفحة بروفايل العميل فقط
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -199,29 +198,13 @@ function LoginPageInner() {
         setErrorMsg(t.phoneVerify);
         return;
       }
-      const role = data.role || data.type || "client";
 
-      // أضف هنا حفظ الـ userId واسم المستخدم في localStorage
+      // حفظ الـ userId واسم المستخدم في localStorage
       window.localStorage.setItem("userId", user.uid);
       window.localStorage.setItem("userName", data.name || "موظف");
 
-      // التوجيه حسب الدور
-      let dashboardPath = "/dashboard/client";
-      if (role === "admin" || role === "superadmin") dashboardPath = "/dashboard/admin";
-      else if (role === "employee") dashboardPath = "/dashboard/employee";
-      else if (role === "manager") dashboardPath = "/dashboard/manager";
-
-      // إذا فيه prev صالح (وليس /login أو / أو الصفحة الحالية)، وجه له. غير ذلك وجه للوحة الدور
-      if (
-        prev &&
-        prev !== "/login" &&
-        prev !== "/" &&
-        prev !== window.location.pathname
-      ) {
-        router.replace(prev);
-      } else {
-        router.replace(dashboardPath);
-      }
+      // التوجيه مباشرة إلى صفحة بروفايل العميل
+      router.replace(`/dashboard/client/profile?userId=${user.uid}`);
     } catch (e) {
       setErrorMsg(t.wrongLogin);
     }
