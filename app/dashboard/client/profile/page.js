@@ -87,7 +87,7 @@ async function addNotification(userId, title, body, type = "wallet") {
 }
 
 function ClientProfilePageInner({ userId }) {
-  const router = useRouter();
+  
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
 
@@ -301,30 +301,41 @@ function ClientProfilePageInner({ userId }) {
   }
 
   if (loading) {
-    return <GlobalLoader />;
-  }
+  return <GlobalLoader />;
+}
 
-  if (!client) {
-    return (
-      <div className="flex min-h-screen justify-center items-center bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-20 h-20 flex items-center justify-center animate-bounce">
-            <Image
-              src="/logo-transparent-large.png"
-              alt="شعار الشركة"
-              width={80}
-              height={80}
-              className="rounded-full bg-white ring-2 ring-red-400 shadow-lg"
-              priority
-            />
-          </div>
-          <span className="text-red-400 text-2xl font-bold animate-pulse">
-            العميل غير موجود في قاعدة البيانات
-          </span>
+if (!client) {
+  return (
+    <div className="flex min-h-screen justify-center items-center bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40]">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-20 h-20 flex items-center justify-center animate-bounce">
+          <Image
+            src="/logo-transparent-large.png"
+            alt="شعار الشركة"
+            width={80}
+            height={80}
+            className="rounded-full bg-white ring-2 ring-red-400 shadow-lg"
+            priority
+          />
         </div>
+        <span className="text-red-400 text-2xl font-bold animate-pulse">
+          العميل غير موجود في قاعدة البيانات
+        </span>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+// بعد التأكد أن client موجود:
+const clientType = (client.type || client.accountType || "").toLowerCase();
+
+if (clientType === "resident") {
+  // Render resident-specific content
+} else if (clientType === "nonresident") {
+  // Render non-resident-specific content
+} else if (clientType === "company") {
+  // Render company-specific content
+}
 
   return (
     <div
@@ -532,7 +543,7 @@ function ClientProfilePageInner({ userId }) {
 
       <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
         {/* كارت العميل */}
-        {client.type === "resident" && (
+        {clientType === "resident" && (
           <div className="min-w-[320px] max-w-[380px] mb-6">
             <ResidentCard client={client} lang={lang} />
           </div>
@@ -543,7 +554,7 @@ function ClientProfilePageInner({ userId }) {
           </div>
         ) : null}
         {/* الشركات إن وجدت */}
-        {client.type === "resident" && companies.length > 0 && (
+        {clientType === "resident" && companies.length > 0 && (
           <div className="flex flex-wrap justify-center gap-6 w-full my-6">
             {companies.map((company) => (
               <div key={company.userId || company.companyId} className="min-w-[320px] max-w-[380px]">
@@ -613,7 +624,7 @@ function ClientProfilePageInner({ userId }) {
         </div>
 
         {/* ----------- خدمات المقيم ----------- */}
-        {client.type === "resident" && services.resident.length > 0 && (
+        {clientType === "resident" && services.resident.length > 0 && (
           <>
             <SectionTitle icon="resident" color="emerald">
               {lang === "ar" ? "خدمات المقيم" : "Resident Services"}
@@ -644,7 +655,7 @@ function ClientProfilePageInner({ userId }) {
         )}
 
         {/* ----------- خدمات الشركات ----------- */}
-        {client.type === "resident" && companies.length > 0 && services.company.length > 0 && (
+        {clientType === "company" && companies.length > 0 && services.company.length > 0 && (
           <>
             <SectionTitle icon="company" color="blue">
               {lang === "ar" ? "خدمات الشركات" : "Company Services"}
@@ -675,7 +686,8 @@ function ClientProfilePageInner({ userId }) {
         )}
 
         {/* ----------- خدمات غير المقيم ----------- */}
-        {(client.type === "nonResident" || client.type === "nonresident") && services.nonresident.length > 0 && (
+        {clientType === "nonresident" && services.nonresident.length > 0 && (
+
           <>
             <SectionTitle icon="nonresident" color="yellow">
               {lang === "ar" ? "خدمات غير المقيم" : "Non-Resident Services"}

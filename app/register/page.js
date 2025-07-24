@@ -166,11 +166,13 @@ const handleRegister = async () => {
 
     // 2. إعداد البيانات
     const dataToSave = {
-      ...form,
-      userId, // خزّن الرقم مع البيانات
-      createdAt: new Date().toISOString(),
-      role: "client",
-    };
+  ...form,
+  userId,
+  accountType: form.accountType?.toLowerCase(),
+  type: form.accountType?.toLowerCase(),    // أضف هذا السطر لحفظ النوع في الحقلين
+  createdAt: new Date().toISOString(),
+  role: "client",
+};
 
     // 3. احفظ البيانات في users ويكون document ID هو userId
     await setDoc(firestoreDoc(db, "users", userId), dataToSave);
