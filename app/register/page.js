@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 // Firebase imports
-import { collection, addDoc, updateDoc, doc as firestoreDoc } from "firebase/firestore";
+import { setDoc, doc as firestoreDoc } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
 // استدعاء الكومبوننتات المقسمة
