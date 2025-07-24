@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import {
   getDatabase,
   ref as dbRef,
@@ -25,16 +24,6 @@ const FAQ = [
   { q: "ما هي طرق الدفع المتاحة", a: "نوفر الدفع بالبطاقات البنكية والتحويل البنكي." },
 ];
 
-// Helper to always return a stable roomId (from props, localStorage, or new)
-function getInitialRoomId(initialRoomId) {
-  if (initialRoomId) return initialRoomId;
-  const saved = window.localStorage.getItem("chatRoomId");
-  if (saved) return saved;
-  const newId = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
-  window.localStorage.setItem("chatRoomId", newId);
-  return newId;
-}
-
 function blobToBase64(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -51,7 +40,7 @@ export default function ChatWidgetFull({
   lang = "ar",
 }) {
   const db = getDatabase();
-  const [roomId] = useState(() => getInitialRoomId(initialRoomId));
+  const [roomId, setRoomId] = useState(initialRoomId || "");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -70,6 +59,25 @@ export default function ChatWidgetFull({
 
   const chatEndRef = useRef(null);
 
+  // handle roomId (SSR safe)
+  useEffect(() => {
+    if (!roomId) {
+      let id = initialRoomId;
+      if (!id && typeof window !== "undefined") {
+        const saved = window.localStorage.getItem("chatRoomId");
+        if (saved) {
+          id = saved;
+        } else {
+          id = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+          window.localStorage.setItem("chatRoomId", id);
+        }
+      }
+      setRoomId(id);
+    }
+  }, [roomId, initialRoomId]);
+
+  if (!roomId) return null;
+
   // إنشاء غرفة الشات إذا لم توجد
   useEffect(() => {
     set(dbRef(db, `chats/${roomId}`), {
@@ -82,32 +90,28 @@ export default function ChatWidgetFull({
 
   // مراقبة الرسائل (مع ترتيب الرسائل حسب الوقت)
   useEffect(() => {
-  const msgsRef = dbRef(db, `chats/${roomId}/messages`);
-  return onValue(msgsRef, (snap) => {
-    const msgs = [];
-    snap.forEach((child) => {
-      const val = child.val();
-      if (!val || typeof val !== "object") return;
-
-      msgs.push({
-        id: child.key,
-        createdAt: val.createdAt || Date.now(), // ✨ ضمان وجود createdAt
-        ...val,
+    const msgsRef = dbRef(db, `chats/${roomId}/messages`);
+    return onValue(msgsRef, (snap) => {
+      const msgs = [];
+      snap.forEach((child) => {
+        const val = child.val();
+        if (!val || typeof val !== "object") return;
+        msgs.push({
+          id: child.key,
+          createdAt: val.createdAt || Date.now(),
+          ...val,
+        });
       });
+      msgs.sort((a, b) => a.createdAt - b.createdAt);
+      setMessages(msgs);
+
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        });
+      }, 100);
     });
-
-    // ترتيب آمن
-    msgs.sort((a, b) => a.createdAt - b.createdAt);
-    setMessages(msgs);
-
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      });
-    }, 100);
-  });
-}, [db, roomId]);
-
+  }, [db, roomId]);
 
   // مراقبة حالة الغرفة (انتظار موظف/قبول موظف)
   useEffect(() => {
@@ -260,7 +264,8 @@ export default function ChatWidgetFull({
         {msg.type === "text" && <span>{msg.text}</span>}
         {msg.type === "bot" && <span>{msg.text}</span>}
         {msg.type === "image" && (
-          <Image src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
+          // استخدم img بدل Image لو حصلت مشكلة مع base64
+          <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
         )}
         {msg.type === "audio" && (
           <audio controls src={msg.audioBase64} className="mt-1" />
