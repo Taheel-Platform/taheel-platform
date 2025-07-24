@@ -1,7 +1,7 @@
 "use client";
 import { Suspense } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   FaSignOutAlt, FaBell, FaCoins, FaEnvelopeOpenText, FaWallet, FaWhatsapp, FaComments,
   FaUser, FaBuilding, FaUserTie, FaTag
@@ -29,10 +29,8 @@ import {
   orderBy
 } from "firebase/firestore";
 
-// Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_USER_ID = "RES-2025-001";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -88,7 +86,7 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
-function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
+function ClientProfilePageInner({ userId }) {
   const router = useRouter();
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
@@ -792,9 +790,11 @@ function ClientProfilePageInner({ userId = DEFAULT_USER_ID }) {
   );
 }
 export default function ClientProfilePage(props) {
+  const searchParams = useSearchParams();
+
   return (
     <Suspense fallback={null}>
-      <ClientProfilePageInner {...props} />
+      <ClientProfilePageInner {...props} userId={searchParams.get("userId")} />
     </Suspense>
   );
 }
