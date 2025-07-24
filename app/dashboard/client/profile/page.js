@@ -30,8 +30,7 @@ import {
   orderBy
 } from "firebase/firestore";
 
-export const dynamic = 'force-dynamic';
-
+export const dynamic = 'force-dynamic'; // أو 'auto' أو 'force-static' أو 'error'
 
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
