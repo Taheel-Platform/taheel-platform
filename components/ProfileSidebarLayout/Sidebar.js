@@ -26,7 +26,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const headerHeight = 88; // عدل الرقم لو الهيدر أكبر أو أصغر
+  const headerHeight = 64; // عدل الرقم لو الهيدر أكبر أو أصغر
 
   // غلق القائمة عند الضغط خارجها
   useEffect(() => {
