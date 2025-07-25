@@ -112,6 +112,8 @@ function LoginPageInner() {
         body: JSON.stringify({ token })
       });
       const data = await res.json();
+      console.log("reCAPTCHA API response:", data);
+
       return data.success && (typeof data.score !== "number" || data.score > 0.5);
     } catch {
       return false;
@@ -132,6 +134,8 @@ function LoginPageInner() {
       try {
         await new Promise((resolve) => window.grecaptcha.ready(resolve));
         recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "login" });
+        console.log("reCAPTCHA token:", recaptchaToken);
+
         if (!recaptchaToken) {
           setLoading(false);
           setRecaptchaOk(false);
