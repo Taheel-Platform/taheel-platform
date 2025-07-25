@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  FaSignOutAlt, FaBell, FaCoins, FaEnvelopeOpenText, FaWallet
+  FaSignOutAlt, FaBell, FaCoins, FaEnvelopeOpenText, FaWallet, FaWhatsapp, FaComments
 } from "react-icons/fa";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
@@ -22,7 +22,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// Greeting helpers
+// Helper functions
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -38,13 +38,12 @@ function getDayGreeting(lang = "ar") {
 function getWelcome(name, lang = "ar") {
   return lang === "ar" ? `مرحباً ${name || ""}` : `Welcome, ${name || ""}`;
 }
-
-// Notification helper
 async function addNotification(userId, title, body, type = "wallet") {
   const notif = {
     notificationId: `notif-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     targetId: userId,
-    title, body,
+    title,
+    body,
     isRead: false,
     type,
     timestamp: new Date().toISOString()
@@ -53,7 +52,6 @@ async function addNotification(userId, title, body, type = "wallet") {
 }
 
 function ClientProfilePageInner({ userId }) {
-  // State hooks
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState("personal");
@@ -75,16 +73,14 @@ function ClientProfilePageInner({ userId }) {
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
 
-  // Data fetching
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      // Fetch user data
+
       const userDoc = await getDoc(doc(firestore, "users", userId));
       const user = userDoc.exists() ? userDoc.data() : null;
       setClient(user);
 
-      // Owner details if company
       if ((user?.type === "company" || user?.accountType === "company")) {
         setOwnerResident({
           firstName: user.ownerFirstName,
@@ -99,7 +95,6 @@ function ClientProfilePageInner({ userId }) {
         setOwnerResident(null);
       }
 
-      // Related companies for resident
       let relatedCompanies = [];
       if (user?.type === "resident" && user?.userId) {
         const companiesSnap = await getDocs(
@@ -113,11 +108,16 @@ function ClientProfilePageInner({ userId }) {
       }
       setCompanies(relatedCompanies);
 
-      // Services
       const servicesSnap = await getDocs(collection(firestore, "services"));
       let arr = [];
       servicesSnap.forEach(doc => arr.push({ ...doc.data(), id: doc.id }));
-      let servicesByType = { resident: [], nonresident: [], company: [], other: [] };
+
+      let servicesByType = {
+        resident: [],
+        nonresident: [],
+        company: [],
+        other: [],
+      };
       arr.forEach(srv => {
         if (srv.active === false) return;
         if (srv.category === "resident") servicesByType.resident.push(srv);
@@ -127,7 +127,6 @@ function ClientProfilePageInner({ userId }) {
       });
       setServices(servicesByType);
 
-      // Orders
       const ordersSnap = await getDocs(
         query(
           collection(firestore, "requests"),
@@ -137,7 +136,6 @@ function ClientProfilePageInner({ userId }) {
       );
       setOrders(ordersSnap.docs.map(doc => doc.data()));
 
-      // Notifications
       const notifsSnap = await getDocs(
         query(
           collection(firestore, "notifications"),
@@ -153,7 +151,6 @@ function ClientProfilePageInner({ userId }) {
     fetchData();
   }, [userId, reloadClient]);
 
-  // Outside click handler for menus
   useEffect(() => {
     function handleClickOutside(event) {
       if (notifRef.current && !notifRef.current.contains(event.target)) setShowNotifMenu(false);
@@ -165,12 +162,10 @@ function ClientProfilePageInner({ userId }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Language toggle
   function toggleLang() {
     setLang(l => (l === "ar" ? "en" : "ar"));
   }
 
-  // Logout handler
   async function handleLogout() {
     if (client?.userId) {
       const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
@@ -185,7 +180,6 @@ function ClientProfilePageInner({ userId }) {
     router.replace("/login");
   }
 
-  // Service filter
   function filterService(service) {
     return (lang === "ar" ? service.name : (service.name_en || service.name))
       .toLowerCase()
@@ -201,7 +195,6 @@ function ClientProfilePageInner({ userId }) {
     setReloadClient(v => !v);
   }
 
-  // Wallet top-up
   async function handleWalletCharge(amount) {
     if (!client) return;
     window.Paytabs.open({
@@ -249,7 +242,6 @@ function ClientProfilePageInner({ userId }) {
     });
   }
 
-  // Loading and not-found states
   if (loading) return <GlobalLoader />;
   if (!client) {
     return (
@@ -268,7 +260,6 @@ function ClientProfilePageInner({ userId }) {
 
   const clientType = (client.type || client.accountType || "").toLowerCase();
 
-  // Main JSX
   return (
     <div
       className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
@@ -277,7 +268,16 @@ function ClientProfilePageInner({ userId }) {
     >
       <Sidebar selected={selectedSection} onSelect={setSelectedSection} lang={lang} />
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
+        {/* Decorations */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute -top-32 -left-20 w-[280px] h-[280px] bg-emerald-400 opacity-20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-0 right-0 w-[170px] h-[170px] bg-gradient-to-br from-emerald-900 to-emerald-400 opacity-30 rounded-full blur-2xl" />
+          <svg className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30" viewBox="0 0 500 80" fill="none">
+            <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
+          </svg>
+        </div>
+
         {/* Header */}
         <header className="w-full z-30 bg-gradient-to-b from-[#0b131e]/95 to-[#22304a]/90 flex items-center justify-between px-2 sm:px-8 py-4 border-b border-emerald-900 shadow-xl sticky top-0">
           {/* Logo + info */}
@@ -444,7 +444,6 @@ function ClientProfilePageInner({ userId }) {
             <span className="hidden sm:inline">
               <WeatherTimeWidget isArabic={lang === "ar"} />
             </span>
-            {/* Language and logout buttons */}
             <button
               onClick={toggleLang}
               className="px-3 py-1.5 rounded-full border border-emerald-500 bg-[#16222c] text-emerald-200 hover:bg-emerald-500 hover:text-white text-xs sm:text-sm font-bold shadow transition cursor-pointer"
@@ -461,15 +460,6 @@ function ClientProfilePageInner({ userId }) {
             </button>
           </div>
         </header>
-
-        {/* Decorations */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <div className="absolute -top-32 -left-20 w-[280px] h-[280px] bg-emerald-400 opacity-20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute top-0 right-0 w-[170px] h-[170px] bg-gradient-to-br from-emerald-900 to-emerald-400 opacity-30 rounded-full blur-2xl" />
-          <svg className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30" viewBox="0 0 500 80" fill="none">
-            <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
-          </svg>
-        </div>
 
         {/* Main Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
@@ -516,67 +506,76 @@ function ClientProfilePageInner({ userId }) {
           {selectedSection === "services" && (
             <>
               {/* الخدمات المتاحة حسب نوع العميل */}
-              {/* كود الخدمات هنا */}
-            </>
-          )}
-         {/* FOOTER */}
-          <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
-            <Image
-              src="/logo-transparent-large.png"
-              alt="شعار تأهيل"
-              width={48}
-              height={48}
-              className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
-            />
-            <div className="text-gray-400 text-xs mt-2">
-              © 2025 تأهيل. جميع الحقوق محفوظة
-            </div>
-          </footer>
-
-          {/* زرار المحادثة الداخلية + زر الواتساب العائم */}
-          <div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
-            <button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
-              title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
-              onClick={() => setOpenChat(true)}
-            >
-              <FaComments />
-            </button>
-            <a
-              href="https://wa.me/9665XXXXXXXX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
-              title={lang === "ar" ? "تواصل واتساب" : "WhatsApp"}
-            >
-              <FaWhatsapp />
-            </a>
-          </div>
-
-          {openChat && (
-            <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
-              <ChatWidgetFull
-                userId={client.userId}
-                userName={client.name}
-                roomId={client.userId} // ثابت، نفس اسم غرفة العميل
+              <ServiceSection
+                lang={lang}
+                clientType={clientType}
+                services={services}
+                filterService={filterService}
+                search={search}
+                setSearch={setSearch}
+                onServicePaid={handleServicePaid}
+                client={client}
+                companies={companies}
               />
-              <button
-                onClick={() => setOpenChat(false)}
-                className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
-                title="إغلاق المحادثة"
-                tabIndex={0}
-              >×</button>
-            </div>
+            </>
           )}
         </main>
       </div>
+
+      {/* زر المحادثة العائم وزر الواتساب */}
+      <div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
+        <button
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+          title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
+          onClick={() => setOpenChat(true)}
+        >
+          <FaComments />
+        </button>
+        <a
+          href="https://wa.me/9665XXXXXXXX"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+          title={lang === "ar" ? "تواصل واتساب" : "WhatsApp"}
+        >
+          <FaWhatsapp />
+        </a>
+      </div>
+      {openChat && (
+        <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
+          <ChatWidgetFull
+            userId={client.userId}
+            userName={client.name}
+            roomId={client.userId}
+          />
+          <button
+            onClick={() => setOpenChat(false)}
+            className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+            title="إغلاق المحادثة"
+            tabIndex={0}
+          >×</button>
+        </div>
+      )}
+
+      {/* الفوتر وحقوق الملكية */}
+      <footer className="fixed left-8 bottom-8 z-40 flex flex-col items-center justify-center">
+        <Image
+          src="/logo-transparent-large.png"
+          alt="شعار تأهيل"
+          width={48}
+          height={48}
+          className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
+        />
+        <div className="text-gray-400 text-xs mt-2">
+          © 2025 تأهيل. جميع الحقوق محفوظة
+        </div>
+      </footer>
     </div>
   );
 }
 
 export default function ClientProfilePage(props) {
   const searchParams = useSearchParams();
-
   return (
     <Suspense fallback={null}>
       <ClientProfilePageInner {...props} userId={searchParams.get("userId")} />
