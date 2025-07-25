@@ -54,23 +54,6 @@ function getWelcome(name, lang = "ar") {
   }
 }
 
-function SectionTitle({ icon, color = "emerald", children }) {
-  const iconMap = {
-    resident: <FaUser className={`text-emerald-500`} />,
-    company: <FaBuilding className={`text-blue-500`} />,
-    nonresident: <FaUserTie className={`text-yellow-500`} />,
-    other: <FaTag className="text-gray-500" />,
-  };
-  return (
-    <div className="w-full flex items-center my-10 select-none">
-      <div className={`flex-1 h-px bg-gradient-to-l from-${color}-300 via-${color}-100 to-transparent`} />
-      <span className={`flex items-center gap-2 px-4 py-1 bg-white/80 rounded-full shadow text-${color}-900 font-extrabold text-lg border border-${color}-100`}>
-        {iconMap[icon]} {children}
-      </span>
-      <div className={`flex-1 h-px bg-gradient-to-r from-${color}-300 via-${color}-100 to-transparent`} />
-    </div>
-  );
-}
 
 // دالة عامة لإضافة إشعار (Firestore فقط)
 async function addNotification(userId, title, body, type = "wallet") {
