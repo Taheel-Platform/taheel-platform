@@ -10,7 +10,7 @@ import { ResidentCard } from "@/components/cards/ResidentCard";
 import CompanyCardGold from "@/components/cards/CompanyCard";
 import ChatWidgetFull from "@/components/ChatWidgetFull";
 import { NonResidentCard } from "@/components/cards/NonResidentCard";
-import ServiceSection from "@/components/ProfileSidebarLayout/ServiceSection";
+import ServiceSection from "@/components/services/ServiceSection";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
