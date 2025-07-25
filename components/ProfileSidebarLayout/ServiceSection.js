@@ -1,5 +1,5 @@
 import SectionTitle from "@/components/services/SectionTitle";
-import ServiceProfileCard from "./ServiceProfileCard";
+import ServiceProfileCard from "../services/ServiceProfileCard";
 
 export default function ServiceSection({
   icon,
