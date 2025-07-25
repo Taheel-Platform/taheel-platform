@@ -558,18 +558,18 @@ function ClientProfilePageInner({ userId }) {
       )}
 
       {/* الفوتر وحقوق الملكية */}
-      <footer className="fixed left-8 bottom-8 z-40 flex flex-col items-center justify-center">
-        <Image
-          src="/logo-transparent-large.png"
-          alt="شعار تأهيل"
-          width={48}
-          height={48}
-          className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
-        />
-        <div className="text-gray-400 text-xs mt-2">
-          © 2025 تأهيل. جميع الحقوق محفوظة
-        </div>
-      </footer>
+<footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
+  <Image
+    src="/logo-transparent-large.png"
+    alt="شعار تأهيل"
+    width={48}
+    height={48}
+    className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
+  />
+  <div className="text-gray-400 text-xs mt-2">
+    © 2025 تأهيل. جميع الحقوق محفوظة
+  </div>
+</footer>
     </div>
   );
 }
