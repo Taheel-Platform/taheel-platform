@@ -12,14 +12,22 @@ export default function ServiceSection({
   onPaid,
   addNotification,
 }) {
-  if (!services.length) return null;
+  const filteredServices = services.filter(filterService);
+
+  if (!filteredServices.length)
+    return (
+      <div className="text-gray-400 text-xl text-center py-8">
+        {lang === "ar" ? "لا توجد خدمات متاحة حالياً" : "No services available now"}
+      </div>
+    );
+
   return (
     <>
       <SectionTitle icon={icon} color={color}>
         {title}
       </SectionTitle>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-        {services.filter(filterService).map((srv, i) => (
+        {filteredServices.map((srv, i) => (
           <ServiceProfileCard
             key={srv.name + i}
             category={srv.category}
