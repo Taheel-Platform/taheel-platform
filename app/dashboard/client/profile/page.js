@@ -3,8 +3,17 @@ import { Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  FaSignOutAlt, FaBell, FaCoins, FaEnvelopeOpenText, FaWallet, FaWhatsapp, FaComments,
-  FaUser, FaBuilding, FaUserTie, FaTag
+  FaSignOutAlt,
+  FaBell,
+  FaCoins,
+  FaEnvelopeOpenText,
+  FaWallet,
+  FaWhatsapp,
+  FaComments,
+  FaUser,
+  FaBuilding,
+  FaUserTie,
+  FaTag,
 } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
@@ -28,10 +37,10 @@ import {
   setDoc,
   query,
   where,
-  orderBy
+  orderBy,
 } from "firebase/firestore";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
@@ -62,7 +71,7 @@ async function addNotification(userId, title, body, type = "wallet") {
     body,
     isRead: false,
     type,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
@@ -74,7 +83,12 @@ function ClientProfilePageInner({ userId }) {
 
   const [client, setClient] = useState(null);
   const [companies, setCompanies] = useState([]);
-  const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
+  const [services, setServices] = useState({
+    resident: [],
+    nonresident: [],
+    company: [],
+    other: [],
+  });
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +116,7 @@ function ClientProfilePageInner({ userId }) {
       const user = userDoc.exists() ? userDoc.data() : null;
       setClient(user);
 
-      if ((user?.type === "company" || user?.accountType === "company")) {
+      if (user?.type === "company" || user?.accountType === "company") {
         setOwnerResident({
           firstName: user.ownerFirstName,
           middleName: user.ownerMiddleName,
@@ -125,13 +139,15 @@ function ClientProfilePageInner({ userId }) {
             where("owner", "in", [user.name, user.userId])
           )
         );
-        relatedCompanies = companiesSnap.docs.map(doc => doc.data());
+        relatedCompanies = companiesSnap.docs.map((doc) => doc.data());
       }
       setCompanies(relatedCompanies);
 
       const servicesSnap = await getDocs(collection(firestore, "services"));
       let arr = [];
-      servicesSnap.forEach(doc => arr.push({ ...doc.data(), id: doc.id }));
+      servicesSnap.forEach((doc) =>
+        arr.push({ ...doc.data(), id: doc.id })
+      );
 
       let servicesByType = {
         resident: [],
@@ -140,10 +156,11 @@ function ClientProfilePageInner({ userId }) {
         other: [],
       };
 
-      arr.forEach(srv => {
+      arr.forEach((srv) => {
         if (srv.active === false) return;
         if (srv.category === "resident") servicesByType.resident.push(srv);
-        else if (srv.category === "nonresident") servicesByType.nonresident.push(srv);
+        else if (srv.category === "nonresident")
+          servicesByType.nonresident.push(srv);
         else if (srv.category === "company") servicesByType.company.push(srv);
         else if (srv.category === "other") servicesByType.other.push(srv);
       });
@@ -162,7 +179,7 @@ function ClientProfilePageInner({ userId }) {
           orderBy("createdAt", "desc")
         )
       );
-      let clientOrders = ordersSnap.docs.map(doc => doc.data());
+      let clientOrders = ordersSnap.docs.map((doc) => doc.data());
       setOrders(clientOrders);
 
       const notifsSnap = await getDocs(
@@ -171,8 +188,10 @@ function ClientProfilePageInner({ userId }) {
           where("targetId", "==", userId)
         )
       );
-      let clientNotifs = notifsSnap.docs.map(d => d.data());
-      clientNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      let clientNotifs = notifsSnap.docs.map((d) => d.data());
+      clientNotifs.sort((a, b) =>
+        (b.timestamp || "").localeCompare(a.timestamp || "")
+      );
       setNotifications(clientNotifs);
 
       setLoading(false);
@@ -182,13 +201,21 @@ function ClientProfilePageInner({ userId }) {
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (notifRef.current && !notifRef.current.contains(event.target)) setShowNotifMenu(false);
-      if (coinsRef.current && !coinsRef.current.contains(event.target)) setShowCoinsMenu(false);
-      if (walletRef.current && !walletRef.current.contains(event.target)) setShowWalletMenu(false);
-      if (messagesRef.current && !messagesRef.current.contains(event.target)) setShowMessagesMenu(false);
+      if (notifRef.current && !notifRef.current.contains(event.target))
+        setShowNotifMenu(false);
+      if (coinsRef.current && !coinsRef.current.contains(event.target))
+        setShowCoinsMenu(false);
+      if (walletRef.current && !walletRef.current.contains(event.target))
+        setShowWalletMenu(false);
+      if (
+        messagesRef.current &&
+        !messagesRef.current.contains(event.target)
+      )
+        setShowMessagesMenu(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   function toggleLang() {
@@ -197,10 +224,22 @@ function ClientProfilePageInner({ userId }) {
 
   async function handleLogout() {
     if (client?.userId) {
-      const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
+      const msgsSnap = await getDocs(
+        collection(firestore, "chatRooms", client.userId, "messages")
+      );
       const deletes = [];
       msgsSnap.forEach((msg) => {
-        deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
+        deletes.push(
+          deleteDoc(
+            doc(
+              firestore,
+              "chatRooms",
+              client.userId,
+              "messages",
+              msg.id
+            )
+          )
+        );
       });
       await Promise.all(deletes);
       await deleteDoc(doc(firestore, "chatRooms", client.userId));
@@ -210,7 +249,10 @@ function ClientProfilePageInner({ userId }) {
   }
 
   function filterService(service) {
-    return (lang === "ar" ? service.name : (service.name_en || service.name))
+    return (lang === "ar"
+      ? service.name
+      : service.name_en || service.name
+    )
       .toLowerCase()
       .includes(search.trim().toLowerCase());
   }
@@ -222,7 +264,9 @@ function ClientProfilePageInner({ userId }) {
   }
 
   async function markNotifAsRead(notifId) {
-    await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
+    await updateDoc(doc(firestore, "notifications", notifId), {
+      isRead: true,
+    });
     setReloadClient((v) => !v);
   }
 
@@ -250,15 +294,21 @@ function ClientProfilePageInner({ userId }) {
         const newWallet = (client.walletBalance || 0) + amount;
         const newCoins = (client.coins || 0) + bonus;
 
-        await updateDoc(doc(firestore, "users", client.userId), { walletBalance: newWallet });
+        await updateDoc(doc(firestore, "users", client.userId), {
+          walletBalance: newWallet,
+        });
         await addNotification(
           client.userId,
           lang === "ar" ? "تم شحن المحفظة" : "Wallet Charged",
-          lang === "ar" ? `تم شحن محفظتك بمبلغ ${amount} درهم.` : `Your wallet was charged with ${amount} AED.`
+          lang === "ar"
+            ? `تم شحن محفظتك بمبلغ ${amount} درهم.`
+            : `Your wallet was charged with ${amount} AED.`
         );
 
         if (bonus > 0) {
-          await updateDoc(doc(firestore, "users", client.userId), { coins: newCoins });
+          await updateDoc(doc(firestore, "users", client.userId), {
+            coins: newCoins,
+          });
           await addNotification(
             client.userId,
             lang === "ar" ? "تم إضافة كوينات" : "Coins Added",
@@ -269,12 +319,20 @@ function ClientProfilePageInner({ userId }) {
         }
 
         setReloadClient((v) => !v);
-        alert(lang === "ar" ? "تم شحن المحفظة بنجاح!" : "Wallet charged successfully!");
+        alert(
+          lang === "ar"
+            ? "تم شحن المحفظة بنجاح!"
+            : "Wallet charged successfully!"
+        );
       },
 
       onFailure: (error) => {
-        alert(lang === "ar" ? "فشل الدفع! برجاء المحاولة مرة أخرى" : "Payment failed! Please try again.");
-      }
+        alert(
+          lang === "ar"
+            ? "فشل الدفع! برجاء المحاولة مرة أخرى"
+            : "Payment failed! Please try again."
+        );
+      },
     });
   }
 
@@ -312,7 +370,11 @@ function ClientProfilePageInner({ userId }) {
       dir={dir}
       lang={lang}
     >
-      <Sidebar selected={selectedSection} onSelect={setSelectedSection} lang={lang} />
+      <Sidebar
+        selected={selectedSection}
+        onSelect={setSelectedSection}
+        lang={lang}
+      />
 
       <div className="flex-1 flex flex-col">
         {/* HEADER */}
@@ -327,8 +389,12 @@ function ClientProfilePageInner({ userId }) {
               priority
             />
             <div className="flex flex-col items-center text-center">
-              <span className="text-emerald-400 text-2xl sm:text-3xl font-extrabold">تأهيل</span>
-              <span className="text-gray-100 text-lg sm:text-xl font-bold tracking-widest">TAHEEL</span>
+              <span className="text-emerald-400 text-2xl sm:text-3xl font-extrabold">
+                تأهيل
+              </span>
+              <span className="text-gray-100 text-lg sm:text-xl font-bold tracking-widest">
+                TAHEEL
+              </span>
               <span className="text-emerald-200 text-sm sm:text-base font-semibold my-1">
                 لمتابعة المعلومات والمعاملات والخدمات
               </span>
@@ -344,11 +410,18 @@ function ClientProfilePageInner({ userId }) {
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {/* إشعارات */}
-            <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
-              <FaBell size={22} className="text-emerald-300 hover:text-emerald-400 transition" />
-              {notifications.some(n => !n.isRead) && (
+            <div
+              ref={notifRef}
+              className="relative group cursor-pointer"
+              onClick={() => setShowNotifMenu((v) => !v)}
+            >
+              <FaBell
+                size={22}
+                className="text-emerald-300 hover:text-emerald-400 transition"
+              />
+              {notifications.some((n) => !n.isRead) && (
                 <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
-                  {notifications.filter(n => !n.isRead).length}
+                  {notifications.filter((n) => !n.isRead).length}
                 </span>
               )}
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
@@ -356,26 +429,48 @@ function ClientProfilePageInner({ userId }) {
               </span>
               {showNotifMenu && (
                 <div className="absolute top-10 right-0 w-72 bg-white shadow-xl rounded-lg p-4 z-50">
-                  <div className="font-bold text-emerald-700 mb-3">{lang === "ar" ? "الإشعارات" : "Notifications"}</div>
+                  <div className="font-bold text-emerald-700 mb-3">
+                    {lang === "ar" ? "الإشعارات" : "Notifications"}
+                  </div>
                   {notifications.length === 0 ? (
-                    <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</div>
+                    <div className="text-gray-400 text-center">
+                      {lang === "ar" ? "لا توجد إشعارات" : "No notifications"}
+                    </div>
                   ) : (
                     <ul className="space-y-2 max-h-60 overflow-y-auto">
                       {notifications.map((notif, idx) => (
                         <li
                           key={notif.notificationId || idx}
-                          className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
+                          className={`text-xs border-b pb-2 cursor-pointer ${
+                            notif.isRead
+                              ? "opacity-70"
+                              : "font-bold text-emerald-900"
+                          }`}
                           onClick={() => markNotifAsRead(notif.notificationId)}
-                          title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء" : "Mark as read")}
+                          title={
+                            notif.isRead
+                              ? ""
+                              : lang === "ar"
+                              ? "اضغط لتمييز كمقروء"
+                              : "Mark as read"
+                          }
                           style={{ transition: "opacity 0.2s" }}
                         >
-                          <div className="font-bold text-emerald-600">{notif.title}</div>
+                          <div className="font-bold text-emerald-600">
+                            {notif.title}
+                          </div>
                           <div className="text-gray-500">{notif.body}</div>
                           <div className="text-gray-400 text-[10px] mt-1">
-                            {notif.timestamp ? new Date(notif.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US") : ""}
+                            {notif.timestamp
+                              ? new Date(notif.timestamp).toLocaleString(
+                                  lang === "ar" ? "ar-EG" : "en-US"
+                                )
+                              : ""}
                           </div>
                           {!notif.isRead && (
-                            <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{lang === "ar" ? "جديد" : "New"}</span>
+                            <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">
+                              {lang === "ar" ? "جديد" : "New"}
+                            </span>
                           )}
                         </li>
                       ))}
@@ -385,16 +480,29 @@ function ClientProfilePageInner({ userId }) {
               )}
             </div>
             {/* كوينات */}
-            <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu(v => !v)}>
-              <FaCoins size={22} className="text-yellow-300 hover:text-yellow-400 transition" />
-              <span className="absolute -top-2 -right-1 bg-gray-800 text-yellow-300 text-[10px] font-bold rounded-full px-1 shadow">{client.coins || 0}</span>
+            <div
+              ref={coinsRef}
+              className="relative group cursor-pointer"
+              onClick={() => setShowCoinsMenu((v) => !v)}
+            >
+              <FaCoins
+                size={22}
+                className="text-yellow-300 hover:text-yellow-400 transition"
+              />
+              <span className="absolute -top-2 -right-1 bg-gray-800 text-yellow-300 text-[10px] font-bold rounded-full px-1 shadow">
+                {client.coins || 0}
+              </span>
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
                 {lang === "ar" ? "الرصيد" : "Coins"}
               </span>
               {showCoinsMenu && (
                 <div className="absolute top-10 right-0 w-56 bg-white shadow-xl rounded-lg p-4 z-50">
-                  <div className="font-bold text-yellow-600 mb-2">{lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}</div>
-                  <div className="text-2xl font-black text-yellow-500">{client.coins || 0}</div>
+                  <div className="font-bold text-yellow-600 mb-2">
+                    {lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}
+                  </div>
+                  <div className="text-2xl font-black text-yellow-500">
+                    {client.coins || 0}
+                  </div>
                   <div className="text-xs text-gray-600 mt-2">
                     {lang === "ar"
                       ? "يمكنك استخدام الكوينات في خدمات مختارة."
@@ -404,8 +512,15 @@ function ClientProfilePageInner({ userId }) {
               )}
             </div>
             {/* المحفظة */}
-            <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu(v => !v)}>
-              <FaWallet size={22} className="text-emerald-400 hover:text-emerald-600 transition" />
+            <div
+              ref={walletRef}
+              className="relative group cursor-pointer"
+              onClick={() => setShowWalletMenu((v) => !v)}
+            >
+              <FaWallet
+                size={22}
+                className="text-emerald-400 hover:text-emerald-600 transition"
+              />
               <span className="absolute -top-2 -right-1 bg-emerald-700 text-white text-[10px] font-bold rounded-full px-1 shadow">
                 {client.walletBalance || 0}
               </span>
@@ -414,8 +529,12 @@ function ClientProfilePageInner({ userId }) {
               </span>
               {showWalletMenu && (
                 <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
-                  <div className="font-bold text-emerald-700 mb-2">{lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}</div>
-                  <div className="text-2xl font-black text-emerald-600">{client.walletBalance || 0}</div>
+                  <div className="font-bold text-emerald-700 mb-2">
+                    {lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}
+                  </div>
+                  <div className="text-2xl font-black text-emerald-600">
+                    {client.walletBalance || 0}
+                  </div>
                   <div className="text-xs text-gray-600 mt-2 mb-4">
                     {lang === "ar"
                       ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد."
@@ -426,33 +545,48 @@ function ClientProfilePageInner({ userId }) {
                       className="w-full py-2 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold shadow"
                       onClick={() => handleWalletCharge(100)}
                     >
-                      {lang === "ar" ? "شحن 100 درهم+(50 كوين مجانا)" : "Charge 100 AED (+50 coins)"}
+                      {lang === "ar"
+                        ? "شحن 100 درهم+(50 كوين مجانا)"
+                        : "Charge 100 AED (+50 coins)"}
                     </button>
                     <button
                       className="w-full py-2 rounded-full bg-emerald-200 hover:bg-emerald-300 text-emerald-900 font-bold shadow"
                       onClick={() => handleWalletCharge(500)}
                     >
-                      {lang === "ar" ? "شحن 500 درهم+(250 كوين مجانا)" : "Charge 500 AED (+250 coins)"}
+                      {lang === "ar"
+                        ? "شحن 500 درهم+(250 كوين مجانا)"
+                        : "Charge 500 AED (+250 coins)"}
                     </button>
                     <button
                       className="w-full py-2 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold shadow"
                       onClick={() => handleWalletCharge(1000)}
                     >
-                      {lang === "ar" ? "شحن 1000 درهم+(500 كوين مجانا)" : "Charge 1000 AED (+500 coins)"}
+                      {lang === "ar"
+                        ? "شحن 1000 درهم+(500 كوين مجانا)"
+                        : "Charge 1000 AED (+500 coins)"}
                     </button>
                     <button
                       className="w-full py-2 rounded-full bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold shadow"
                       onClick={() => handleWalletCharge(5000)}
                     >
-                      {lang === "ar" ? "شحن 5000 درهم+(2500 كوين مجانا)" : "Charge 5000 AED (+2500 coins)"}
+                      {lang === "ar"
+                        ? "شحن 5000 درهم+(2500 كوين مجانا)"
+                        : "Charge 5000 AED (+2500 coins)"}
                     </button>
                   </div>
                 </div>
               )}
             </div>
             {/* الرسائل */}
-            <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
-              <FaEnvelopeOpenText size={22} className="text-cyan-200 hover:text-cyan-300 transition" />
+            <div
+              ref={messagesRef}
+              className="relative group cursor-pointer"
+              onClick={() => setShowMessagesMenu((v) => !v)}
+            >
+              <FaEnvelopeOpenText
+                size={22}
+                className="text-cyan-200 hover:text-cyan-300 transition"
+              />
               {client.unreadMessages > 0 && (
                 <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
                   {client.unreadMessages}
@@ -463,14 +597,20 @@ function ClientProfilePageInner({ userId }) {
               </span>
               {showMessagesMenu && (
                 <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
-                  <div className="font-bold text-cyan-800 mb-2">{lang === "ar" ? "الرسائل" : "Messages"}</div>
+                  <div className="font-bold text-cyan-800 mb-2">
+                    {lang === "ar" ? "الرسائل" : "Messages"}
+                  </div>
                   {client.messages && client.messages.length > 0 ? (
                     <ul className="space-y-2 max-h-60 overflow-y-auto">
                       {client.messages.map((msg, i) => (
                         <li key={i} className="border-b pb-2">
-                          <div className="font-bold text-cyan-700">{msg.title || ""}</div>
+                          <div className="font-bold text-cyan-700">
+                            {msg.title || ""}
+                          </div>
                           <div className="text-gray-700">{msg.body || ""}</div>
-                          <div className="text-gray-400 text-[10px] mt-1">{msg.time || ""}</div>
+                          <div className="text-gray-400 text-[10px] mt-1">
+                            {msg.time || ""}
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -506,8 +646,15 @@ function ClientProfilePageInner({ userId }) {
         <div className="absolute inset-0 pointer-events-none z-0">
           <div className="absolute -top-32 -left-20 w-[280px] h-[280px] bg-emerald-400 opacity-20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute top-0 right-0 w-[170px] h-[170px] bg-gradient-to-br from-emerald-900 to-emerald-400 opacity-30 rounded-full blur-2xl" />
-          <svg className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30" viewBox="0 0 500 80" fill="none">
-            <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
+          <svg
+            className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30"
+            viewBox="0 0 500 80"
+            fill="none"
+          >
+            <path
+              d="M0 80 Q250 0 500 80V100H0V80Z"
+              fill="#10b981"
+            />
           </svg>
         </div>
 
@@ -517,7 +664,8 @@ function ClientProfilePageInner({ userId }) {
               {clientType === "resident" && (
                 <ResidentCard client={client} lang={lang} />
               )}
-              {(client.type === "nonResident" || client.type === "nonresident") && (
+              {(client.type === "nonResident" ||
+                client.type === "nonresident") && (
                 <NonResidentCard client={client} lang={lang} />
               )}
               {clientType === "company" && (
@@ -562,52 +710,54 @@ function ClientProfilePageInner({ userId }) {
           )}
         </main>
         {/* زرار الشات العائم وزر الواتساب */}
-<div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
-  <button
-    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
-    title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
-    onClick={() => setOpenChat(true)}
-  >
-    <FaComments />
-  </button>
-  <a
-    href="https://wa.me/9665XXXXXXXX"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
-    title={lang === "ar" ? "تواصل واتساب" : "WhatsApp"}
-  >
-    <FaWhatsapp />
-  </a>
-</div>
-{openChat && (
-  <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
-    <ChatWidgetFull
-      userId={client.userId}
-      userName={client.name}
-      roomId={client.userId}
-    />
-    <button
-      onClick={() => setOpenChat(false)}
-      className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
-      title="إغلاق المحادثة"
-      tabIndex={0}
-    >×</button>
-  </div>
-)}
+        <div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
+          <button
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+            title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
+            onClick={() => setOpenChat(true)}
+          >
+            <FaComments />
+          </button>
+          <a
+            href="https://wa.me/9665XXXXXXXX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+            title={lang === "ar" ? "تواصل واتساب" : "WhatsApp"}
+          >
+            <FaWhatsapp />
+          </a>
+        </div>
+        {openChat && (
+          <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
+            <ChatWidgetFull
+              userId={client.userId}
+              userName={client.name}
+              roomId={client.userId}
+            />
+            <button
+              onClick={() => setOpenChat(false)}
+              className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+              title="إغلاق المحادثة"
+              tabIndex={0}
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
       <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
-  <Image
-    src="/logo-transparent-large.png"
-    alt="شعار تأهيل"
-    width={48}
-    height={48}
-    className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
-  />
-  <div className="text-gray-400 text-xs mt-2">
-    © 2025 تأهيل. جميع الحقوق محفوظة
-  </div>
-</footer>
+        <Image
+          src="/logo-transparent-large.png"
+          alt="شعار تأهيل"
+          width={48}
+          height={48}
+          className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
+        />
+        <div className="text-gray-400 text-xs mt-2">
+          © 2025 تأهيل. جميع الحقوق محفوظة
+        </div>
+      </footer>
     </div>
   );
 }
