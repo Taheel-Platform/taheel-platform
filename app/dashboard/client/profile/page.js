@@ -505,7 +505,6 @@ function ClientProfilePageInner({ userId }) {
           )}
           {selectedSection === "services" && (
             <>
-              {/* الخدمات المتاحة حسب نوع العميل */}
               <ServiceSection
                 lang={lang}
                 clientType={clientType}
@@ -520,6 +519,20 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
         </main>
+
+        {/* الفوتر وحقوق الملكية */}
+        <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10">
+          <Image
+            src="/logo-transparent-large.png"
+            alt="شعار تأهيل"
+            width={48}
+            height={48}
+            className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
+          />
+          <div className="text-gray-400 text-xs mt-2">
+            © 2025 تأهيل. جميع الحقوق محفوظة
+          </div>
+        </footer>
       </div>
 
       {/* زر المحادثة العائم وزر الواتساب */}
@@ -556,20 +569,6 @@ function ClientProfilePageInner({ userId }) {
           >×</button>
         </div>
       )}
-
-      {/* الفوتر وحقوق الملكية */}
-<footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
-  <Image
-    src="/logo-transparent-large.png"
-    alt="شعار تأهيل"
-    width={48}
-    height={48}
-    className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
-  />
-  <div className="text-gray-400 text-xs mt-2">
-    © 2025 تأهيل. جميع الحقوق محفوظة
-  </div>
-</footer>
     </div>
   );
 }
