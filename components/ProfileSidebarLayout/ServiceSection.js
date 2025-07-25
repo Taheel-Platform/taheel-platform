@@ -1,3 +1,4 @@
+"use client";
 import SectionTitle from "@/components/services/SectionTitle";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 
@@ -17,7 +18,7 @@ export default function ServiceSection({ services = [], lang = "ar", client }) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8 w-full">
           {services.map((srv, i) => (
             <ServiceProfileCard
-              key={srv.name + i}
+              key={srv.serviceId || srv.name + i}
               category={srv.category}
               name={srv.name}
               description={srv.description}
