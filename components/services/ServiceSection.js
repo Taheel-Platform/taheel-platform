@@ -12,6 +12,8 @@ export default function ServiceSection({
   onPaid,
   addNotification,
 }) {
+  // حماية إضافية
+  if (!Array.isArray(services)) services = [];
   if (!services.length) return null;
 
   return (
