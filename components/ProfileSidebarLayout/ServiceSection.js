@@ -3,6 +3,9 @@ import SectionTitle from "@/components/services/SectionTitle";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 
 export default function ServiceSection({ services = [], lang = "ar", client }) {
+  // حماية إضافية: تأكد أن الخدمات مصفوفة دائماً
+  if (!Array.isArray(services)) services = [];
+
   return (
     <section className="w-full max-w-5xl mx-auto flex flex-col items-center gap-6">
       {/* عنوان القسم */}

@@ -258,6 +258,7 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
+
   const clientType = (client.type || client.accountType || "").toLowerCase();
 
   let displayedServices = [];
