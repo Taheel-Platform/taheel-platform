@@ -12,7 +12,7 @@ import { ResidentCard } from "@/components/cards/ResidentCard";
 import CompanyCardGold from "@/components/cards/CompanyCard";
 import ChatWidgetFull from "@/components/ChatWidgetFull";
 import { NonResidentCard } from "@/components/cards/NonResidentCard";
-import ServiceProfileCard from "@/components/ServiceProfileCard";
+import ServiceSection from "@/components/services/ServiceSection";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
@@ -656,128 +656,60 @@ if (clientType === "resident") {
 
         {/* ----------- خدمات المقيم ----------- */}
         {clientType === "resident" && services.resident.length > 0 && (
-          <>
-            <SectionTitle icon="resident" color="emerald">
-              {lang === "ar" ? "خدمات المقيم" : "Resident Services"}
-            </SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-              {services.resident.filter(filterService).map((srv, i) => (
-                <ServiceProfileCard
-                  key={srv.name + i}
-                  category="resident"
-                  name={srv.name}
-                  description={srv.description}
-                  price={srv.price}
-                  duration={srv.duration}
-                  requiredDocs={srv.documents || []}
-                  requireUpload={srv.requireUpload}
-                  coins={srv.coins || 0}
-                  lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
-                  onPaid={handleServicePaid}
-                  coinsPercent={0.1}
-                  addNotification={addNotification}
-                />
-              ))}
-            </div>
-          </>
-        )}
+  <ServiceSection
+    icon="resident"
+    color="emerald"
+    title={lang === "ar" ? "خدمات المقيم" : "Resident Services"}
+    services={services.resident}
+    filterService={filterService}
+    lang={lang}
+    client={client}
+    onPaid={handleServicePaid}
+    addNotification={addNotification}
+  />
+)}
 
-        {/* ----------- خدمات الشركات ----------- */}
-        {clientType === "company" && companies.length > 0 && services.company.length > 0 && (
-          <>
-            <SectionTitle icon="company" color="blue">
-              {lang === "ar" ? "خدمات الشركات" : "Company Services"}
-            </SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-              {services.company.filter(filterService).map((srv, i) => (
-                <ServiceProfileCard
-                  key={srv.name + i}
-                  category="company"
-                  name={srv.name}
-                  description={srv.description}
-                  price={srv.price}
-                  duration={srv.duration}
-                  requiredDocs={srv.documents || []}
-                  requireUpload={srv.requireUpload}
-                  coins={srv.coins || 0}
-                  lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
-                  onPaid={handleServicePaid}
-                  coinsPercent={0.1}
-                  addNotification={addNotification}
-                />
-              ))}
-            </div>
-          </>
-        )}
+{clientType === "company" && companies.length > 0 && services.company.length > 0 && (
+  <ServiceSection
+    icon="company"
+    color="blue"
+    title={lang === "ar" ? "خدمات الشركات" : "Company Services"}
+    services={services.company}
+    filterService={filterService}
+    lang={lang}
+    client={client}
+    onPaid={handleServicePaid}
+    addNotification={addNotification}
+  />
+)}
 
-        {/* ----------- خدمات غير المقيم ----------- */}
-        {clientType === "nonresident" && services.nonresident.length > 0 && (
+{clientType === "nonresident" && services.nonresident.length > 0 && (
+  <ServiceSection
+    icon="nonresident"
+    color="yellow"
+    title={lang === "ar" ? "خدمات غير المقيم" : "Non-Resident Services"}
+    services={services.nonresident}
+    filterService={filterService}
+    lang={lang}
+    client={client}
+    onPaid={handleServicePaid}
+    addNotification={addNotification}
+  />
+)}
 
-          <>
-            <SectionTitle icon="nonresident" color="yellow">
-              {lang === "ar" ? "خدمات غير المقيم" : "Non-Resident Services"}
-            </SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-              {services.nonresident.filter(filterService).map((srv, i) => (
-                <ServiceProfileCard
-                  key={srv.name + i}
-                  category="nonresident"
-                  name={srv.name}
-                  description={srv.description}
-                  price={srv.price}
-                  duration={srv.duration}
-                  requiredDocs={srv.documents || []}
-                  requireUpload={srv.requireUpload}
-                  coins={srv.coins || 0}
-                  lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
-                  onPaid={handleServicePaid}
-                  coinsPercent={0.1}
-                  addNotification={addNotification}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ----------- خدمات أخرى (دائمًا آخر الصفحة) ----------- */}
-        {services.other.length > 0 && (
-          <>
-            <SectionTitle icon="other" color="gray">
-              {lang === "ar" ? "خدمات أخرى" : "Other Services"}
-            </SectionTitle>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-              {services.other.filter(filterService).map((srv, i) => (
-                <ServiceProfileCard
-                  key={srv.name + i}
-                  category="other"
-                  name={srv.name}
-                  description={srv.description}
-                  price={srv.price}
-                  duration={srv.duration}
-                  requiredDocs={srv.documents || []}
-                  requireUpload={srv.requireUpload}
-                  coins={srv.coins || 0}
-                  lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
-                  onPaid={handleServicePaid}
-                  coinsPercent={0.1}
-                  addNotification={addNotification}
-                />
-              ))}
-            </div>
-          </>
-        )}
+{services.other.length > 0 && (
+  <ServiceSection
+    icon="other"
+    color="gray"
+    title={lang === "ar" ? "خدمات أخرى" : "Other Services"}
+    services={services.other}
+    filterService={filterService}
+    lang={lang}
+    client={client}
+    onPaid={handleServicePaid}
+    addNotification={addNotification}
+  />
+)}
 
         {/* FOOTER */}
         <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
