@@ -561,7 +561,53 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
         </main>
+        {/* زرار الشات العائم وزر الواتساب */}
+<div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
+  <button
+    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+    title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
+    onClick={() => setOpenChat(true)}
+  >
+    <FaComments />
+  </button>
+  <a
+    href="https://wa.me/9665XXXXXXXX"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+    title={lang === "ar" ? "تواصل واتساب" : "WhatsApp"}
+  >
+    <FaWhatsapp />
+  </a>
+</div>
+{openChat && (
+  <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
+    <ChatWidgetFull
+      userId={client.userId}
+      userName={client.name}
+      roomId={client.userId}
+    />
+    <button
+      onClick={() => setOpenChat(false)}
+      className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
+      title="إغلاق المحادثة"
+      tabIndex={0}
+    >×</button>
+  </div>
+)}
       </div>
+      <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10 relative">
+  <Image
+    src="/logo-transparent-large.png"
+    alt="شعار تأهيل"
+    width={48}
+    height={48}
+    className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
+  />
+  <div className="text-gray-400 text-xs mt-2">
+    © 2025 تأهيل. جميع الحقوق محفوظة
+  </div>
+</footer>
     </div>
   );
 }
