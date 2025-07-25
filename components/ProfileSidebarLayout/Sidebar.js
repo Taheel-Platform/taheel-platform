@@ -26,7 +26,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const headerHeight = 80; // حدده حسب ارتفاع الهيدر عندك بالـ px
+  const headerHeight = 80; // عدل حسب ارتفاع الهيدر
 
   // غلق القائمة عند الضغط خارجها
   useEffect(() => {
@@ -48,16 +48,16 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
       style={{
         top: `${headerHeight}px`,
         height: `calc(100vh - ${headerHeight}px)`,
-        width: opened ? "260px" : "70px",
-        minWidth: opened ? "260px" : "70px",
+        width: opened ? "210px" : "60px",
+        minWidth: opened ? "210px" : "60px",
         background: `linear-gradient(135deg, #16222c 80%, #22304a 100%), url(/wave-bg.png)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        borderRadius: "40px",
+        borderRadius: "34px",
         boxShadow: "0 6px 24px 0 rgba(16,185,129,0.15)",
         border: "none",
         overflow: "hidden",
-        transition: "width 0.5s cubic-bezier(.4,0,.2,1), box-shadow 0.3s, background 0.5s",
+        transition: "width 0.45s cubic-bezier(.4,0,.2,1), box-shadow 0.3s, background 0.5s",
         display: "flex",
         flexDirection: "column",
       }}
@@ -77,23 +77,23 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
       </button>
 
       {/* اللوجو */}
-      <div className={`mt-10 mb-8 flex items-center justify-center transition-all duration-300 ${opened ? "opacity-100" : "opacity-0"}`}>
-        <div className="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center border-2 border-emerald-400">
+      <div className={`mt-7 mb-7 flex items-center justify-center transition-all duration-300 ${opened ? "opacity-100" : "opacity-0"}`}>
+        <div className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-400">
           <img
             src="/logo-transparent-large.png"
             alt="Logo"
-            className="w-12 h-12 rounded-full"
+            className="w-9 h-9 rounded-full"
             style={{ objectFit: "contain" }}
           />
         </div>
       </div>
 
       {/* قائمة التنقل */}
-      <nav className="flex flex-col gap-2 mt-2">
+      <nav className="flex flex-col gap-2 mt-1">
         {SECTIONS.map((section) => (
           <button
             key={section.key}
-            className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
+            className={`flex flex-row items-center gap-3 px-3 py-2 rounded-full transition-all font-bold text-base group
               ${selected === section.key
                 ? "bg-emerald-700/20 text-emerald-300 shadow"
                 : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
@@ -119,7 +119,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
 
       {/* حقوق الملكية */}
       {opened && (
-        <div className="text-xs text-gray-400 text-center mb-8 transition-opacity opacity-80 relative z-10">
+        <div className="text-xs text-gray-400 text-center mb-6 transition-opacity opacity-80 relative z-10">
           © 2025 تأهيل. جميع الحقوق محفوظة
         </div>
       )}
