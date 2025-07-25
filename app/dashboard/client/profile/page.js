@@ -259,6 +259,7 @@ function ClientProfilePageInner({ userId }) {
   }
 
   const clientType = (client.type || client.accountType || "").toLowerCase();
+
   let displayedServices = [];
 if (clientType === "resident") {
   displayedServices = [...services.resident, ...services.other];
@@ -518,80 +519,17 @@ if (clientType === "resident") {
 
 
           {selectedSection === "services" && (
-  <>
-    {/* خدمات المقيمين للمقيمين */}
-    {clientType === "resident" && (
-      <ServiceSection
-        lang={lang}
-        clientType={clientType}
-        services={services.resident}
-        filterService={filterService}
-        search={search}
-        setSearch={setSearch}
-        onServicePaid={handleServicePaid}
-        client={client}
-        companies={companies}
-      />
-    )}
-
-    {/* خدمات غير المقيمين لغير المقيمين */}
-    {clientType === "nonresident" && (
-      <ServiceSection
-        lang={lang}
-        clientType={clientType}
-        services={services.nonresident}
-        filterService={filterService}
-        search={search}
-        setSearch={setSearch}
-        onServicePaid={handleServicePaid}
-        client={client}
-        companies={companies}
-      />
-    )}
-
-    {/* خدمات الشركات للشركات */}
-    {clientType === "company" && (
-      <>
-        {/* خدمات الشركات */}
-        <ServiceSection
-          lang={lang}
-          clientType={clientType}
-          services={services.company}
-          filterService={filterService}
-          search={search}
-          setSearch={setSearch}
-          onServicePaid={handleServicePaid}
-          client={client}
-          companies={companies}
-        />
-        {/* خدمات المقيم (لصاحب الشركة نفسه) */}
-        <ServiceSection
-          lang={lang}
-          clientType="resident"
-          services={services.resident}
-          filterService={filterService}
-          search={search}
-          setSearch={setSearch}
-          onServicePaid={handleServicePaid}
-          client={client}
-          companies={companies}
-        />
-      </>
-    )}
-
-    {/* خدمات أخرى للجميع */}
-    <ServiceSection
-      lang={lang}
-      clientType={clientType}
-      services={services.other}
-      filterService={filterService}
-      search={search}
-      setSearch={setSearch}
-      onServicePaid={handleServicePaid}
-      client={client}
-      companies={companies}
-    />
-  </>
+  <ServiceSection
+    lang={lang}
+    clientType={clientType}
+    services={displayedServices}
+    filterService={filterService}
+    search={search}
+    setSearch={setSearch}
+    onServicePaid={handleServicePaid}
+    client={client}
+    companies={companies}
+  />
 )}
         </main>
 
