@@ -259,6 +259,18 @@ function ClientProfilePageInner({ userId }) {
   }
 
   const clientType = (client.type || client.accountType || "").toLowerCase();
+  let displayedServices = [];
+if (clientType === "resident") {
+  displayedServices = [...services.resident, ...services.other];
+} else if (clientType === "company") {
+  displayedServices = [
+    ...services.company,
+    ...services.resident,
+    ...services.other,
+  ];
+} else if (clientType === "nonresident") {
+  displayedServices = [...services.nonresident, ...services.other];
+}
 
   return (
     <div
