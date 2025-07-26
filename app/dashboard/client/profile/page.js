@@ -58,6 +58,17 @@ function objectToArray(obj) {
   return [];
 }
 
+// في ServiceSection:
+const safeServices = objectToArray(services);
+const filterFn = typeof filterService === "function" ? filterService : () => true;
+
+if (!safeServices.length) return (
+  <div className="text-center text-gray-400 py-8">
+    لا توجد خدمات متاحة حاليا
+  </div>
+);
+
+
 function ClientProfilePageInner({ userId }) {
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
