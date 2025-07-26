@@ -14,6 +14,7 @@ import {
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import ServiceUploadModal from "./ServiceUploadModal";
+import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 
 // رقم الطلب الفريد
 function generateOrderNumber() {
