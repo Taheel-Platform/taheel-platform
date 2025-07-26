@@ -15,7 +15,7 @@ import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
-import ServiceProfileCard from "@/components/ServiceProfileCard"; // تعديل هنا
+import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
