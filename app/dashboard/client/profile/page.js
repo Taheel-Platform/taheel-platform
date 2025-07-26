@@ -58,17 +58,6 @@ function objectToArray(obj) {
   return [];
 }
 
-// في ServiceSection:
-const safeServices = objectToArray(services);
-const filterFn = typeof filterService === "function" ? filterService : () => true;
-
-if (!safeServices.length) return (
-  <div className="text-center text-gray-400 py-8">
-    لا توجد خدمات متاحة حاليا
-  </div>
-);
-
-
 function ClientProfilePageInner({ userId }) {
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
@@ -276,7 +265,7 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
-  // ==== الخدمات مع حماية كاملة ضد Object/Array ====
+  // ==== حماية الخدمات ضد Object/Array ====
   const clientType = (client.type || client.accountType || "").toLowerCase();
 
   const residentServices    = objectToArray(services.resident);
@@ -298,7 +287,7 @@ function ClientProfilePageInner({ userId }) {
   }
   const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
 
-  // حماية الفلتر قبل التمرير
+  // الحماية للفلتر
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   return (
