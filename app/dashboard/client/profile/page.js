@@ -259,27 +259,36 @@ function ClientProfilePageInner({ userId }) {
   }
 
 
-  const clientType = (client.type || client.accountType || "").toLowerCase();
+const clientType = (client.type || client.accountType || "").toLowerCase();
 
-  let displayedServices = [];
+// حماية كل فئة لتكون Array حتى لو undefined أو null
+const residentServices = Array.isArray(services.resident) ? services.resident : [];
+const companyServices = Array.isArray(services.company) ? services.company : [];
+const nonresidentServices = Array.isArray(services.nonresident) ? services.nonresident : [];
+const otherServices = Array.isArray(services.other) ? services.other : [];
+
+let displayedServices = [];
 if (clientType === "resident") {
-  displayedServices = [...services.resident, ...services.other];
+  displayedServices = [...residentServices, ...otherServices];
 } else if (clientType === "company") {
   displayedServices = [
-    ...services.company,
-    ...services.resident,
-    ...services.other,
+    ...companyServices,
+    ...residentServices,
+    ...otherServices,
   ];
 } else if (clientType === "nonresident") {
-  displayedServices = [...services.nonresident, ...services.other];
+  displayedServices = [...nonresidentServices, ...otherServices];
 }
 
-  return (
-    <div
-      className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
-      dir={dir}
-      lang={lang}
-    >
+// حماية إضافية قبل التمرير للعرض
+const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
+
+return (
+  <div
+    className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
+    dir={dir}
+    lang={lang}
+  >
       <Sidebar selected={selectedSection} onSelect={setSelectedSection} lang={lang} />
 
       <div className="flex-1 flex flex-col relative">
@@ -519,19 +528,19 @@ if (clientType === "resident") {
           )}
 
 
-          {selectedSection === "services" && (
-  <ServiceSection
-    lang={lang}
-    clientType={clientType}
-    services={displayedServices}
-    filterService={filterService}
-    search={search}
-    setSearch={setSearch}
-    onServicePaid={handleServicePaid}
-    client={client}
-    companies={companies}
-  />
-)}
+    {selectedSection === "services" && (
+      <ServiceSection
+        lang={lang}
+        clientType={clientType}
+        services={safeDisplayedServices}
+        filterService={filterService}
+        search={search}
+        setSearch={setSearch}
+        onServicePaid={handleServicePaid}
+        client={client}
+        companies={companies}
+      />
+    )}
         </main>
 
         {/* الفوتر وحقوق الملكية */}
