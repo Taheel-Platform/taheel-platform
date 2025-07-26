@@ -51,6 +51,13 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
+// تحويل أي Object لخدمات إلى Array (يحمي ضد خطأ الفلترة)
+function objectToArray(obj) {
+  if (Array.isArray(obj)) return obj;
+  if (obj && typeof obj === "object") return Object.values(obj);
+  return [];
+}
+
 function ClientProfilePageInner({ userId }) {
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
@@ -258,14 +265,13 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
-  // ==== الخدمات مع حماية قوية ====
+  // ==== الخدمات مع حماية كاملة ضد Object/Array ====
   const clientType = (client.type || client.accountType || "").toLowerCase();
 
-  // حماية كل فئة لتكون Array حتى لو undefined أو null
-  const residentServices    = Array.isArray(services.resident)    ? services.resident    : [];
-  const companyServices     = Array.isArray(services.company)     ? services.company     : [];
-  const nonresidentServices = Array.isArray(services.nonresident) ? services.nonresident : [];
-  const otherServices       = Array.isArray(services.other)       ? services.other       : [];
+  const residentServices    = objectToArray(services.resident);
+  const companyServices     = objectToArray(services.company);
+  const nonresidentServices = objectToArray(services.nonresident);
+  const otherServices       = objectToArray(services.other);
 
   let displayedServices = [];
   if (clientType === "resident") {
@@ -279,10 +285,9 @@ function ClientProfilePageInner({ userId }) {
   } else if (clientType === "nonresident") {
     displayedServices = [...nonresidentServices, ...otherServices];
   }
-  // حماية إضافية قبل التمرير للعرض
   const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
 
-  // ==== حماية filterService قبل تمريره ====
+  // حماية الفلتر قبل التمرير
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   return (
