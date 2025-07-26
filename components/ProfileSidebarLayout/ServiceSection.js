@@ -5,15 +5,17 @@ export default function ServiceSection({
   icon,
   color,
   title,
-  services = [],
+  services,
   filterService,
   lang,
   client,
   onPaid,
   addNotification,
 }) {
-  if (!Array.isArray(services)) services = [];
-  if (!services.length) return null;
+  // تأمين المتغير ليكون دائماً مصفوفة
+  const safeServices = Array.isArray(services) ? services : [];
+
+  if (!safeServices.length) return null;
 
   return (
     <>
@@ -21,7 +23,7 @@ export default function ServiceSection({
         {title}
       </SectionTitle>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-        {services
+        {safeServices
           .filter(filterService || (() => true))
           .map((srv, i) => (
             <ServiceProfileCard
