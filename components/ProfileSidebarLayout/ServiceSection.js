@@ -1,6 +1,12 @@
 import SectionTitle from "@/components/services/SectionTitle";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 
+function objectToArray(obj) {
+  if (Array.isArray(obj)) return obj;
+  if (obj && typeof obj === "object") return Object.values(obj);
+  return [];
+}
+
 export default function ServiceSection({
   icon,
   color,
@@ -12,12 +18,14 @@ export default function ServiceSection({
   onPaid,
   addNotification,
 }) {
-  // تأمين المتغير ليكون دائماً مصفوفة
-  const safeServices = Array.isArray(services) ? services : [];
-  // تأمين الفلتر ليكون دالة دائماً
+  const safeServices = objectToArray(services);
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
-  if (!safeServices.length) return null;
+  if (!safeServices.length) return (
+    <div className="text-center text-gray-400 py-8">
+      لا توجد خدمات متاحة حاليا
+    </div>
+  );
 
   return (
     <>
