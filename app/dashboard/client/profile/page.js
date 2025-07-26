@@ -265,29 +265,28 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
-  // ==== حماية الخدمات ضد Object/Array ====
+  // ==== تقسيم الخدمات لمجموعات حسب نوع العميل ====
   const clientType = (client.type || client.accountType || "").toLowerCase();
-
-  const residentServices    = objectToArray(services.resident);
-  const companyServices     = objectToArray(services.company);
-  const nonresidentServices = objectToArray(services.nonresident);
-  const otherServices       = objectToArray(services.other);
-
-  let displayedServices = [];
+  const groups = [];
   if (clientType === "resident") {
-    displayedServices = [...residentServices, ...otherServices];
-  } else if (clientType === "company") {
-    displayedServices = [
-      ...companyServices,
-      ...residentServices,
-      ...otherServices,
-    ];
+    groups.push(
+      { title: "خدمات المقيمين", services: objectToArray(services.resident) },
+      { title: "خدمات أخرى", services: objectToArray(services.other) }
+    );
   } else if (clientType === "nonresident") {
-    displayedServices = [...nonresidentServices, ...otherServices];
+    groups.push(
+      { title: "خدمات غير المقيمين", services: objectToArray(services.nonresident) },
+      { title: "خدمات أخرى", services: objectToArray(services.other) }
+    );
+  } else if (clientType === "company") {
+    groups.push(
+      { title: "خدمات الشركات", services: objectToArray(services.company) },
+      { title: "خدمات المقيمين", services: objectToArray(services.resident) },
+      { title: "خدمات أخرى", services: objectToArray(services.other) }
+    );
   }
-  const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
 
-  // الحماية للفلتر
+  // حماية الفلتر قبل التمرير
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   return (
@@ -537,8 +536,7 @@ function ClientProfilePageInner({ userId }) {
           {selectedSection === "services" && (
             <ServiceSection
               lang={lang}
-              clientType={clientType}
-              services={safeDisplayedServices}
+              groups={groups}
               filterService={filterFn}
               search={search}
               setSearch={setSearch}
