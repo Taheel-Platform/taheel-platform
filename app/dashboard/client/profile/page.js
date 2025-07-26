@@ -3,7 +3,15 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
-  FaSignOutAlt, FaBell, FaCoins, FaEnvelopeOpenText, FaWallet, FaWhatsapp, FaComments
+  FaSignOutAlt,
+  FaBell,
+  FaCoins,
+  FaEnvelopeOpenText,
+  FaWallet,
+  FaWhatsapp,
+  FaComments,
+  FaBuilding,  
+  FaTag         
 } from "react-icons/fa";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
