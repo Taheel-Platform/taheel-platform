@@ -10,8 +10,8 @@ import {
   FaWallet,
   FaWhatsapp,
   FaComments,
-  FaBuilding,  
-  FaTag         
+  FaBuilding,
+  FaTag
 } from "react-icons/fa";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
@@ -206,33 +206,36 @@ function ClientProfilePageInner({ userId }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const clientType = (client?.type || client?.accountType || "").toLowerCase();
+
+  const residentServices = objectToArray(services.resident);
+  const companyServices = objectToArray(services.company);
+  const nonresidentServices = objectToArray(services.nonresident);
+  const otherServices = objectToArray(services.other);
+
+  const sectionToServices = {
+    residentServices: residentServices,
+    companyServices: companyServices,
+    nonresidentServices: nonresidentServices,
+    otherServices: otherServices,
+  };
+
+  useEffect(() => {
+    if (clientType === "resident") setSelectedServiceSection("residentServices");
+    else if (clientType === "company") setSelectedServiceSection("companyServices");
+    else if (clientType === "nonresident") setSelectedServiceSection("nonresidentServices");
+  }, [clientType]);
+
+  const filterFn = typeof filterService === "function" ? filterService : () => true;
+  const dir = lang === "ar" ? "rtl" : "ltr";
+
   function toggleLang() {
     setLang(l => (l === "ar" ? "en" : "ar"));
   }
 
-  async function handleLogout() {
-    if (client?.userId) {
-      const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
-      const deletes = [];
-      msgsSnap.forEach((msg) => {
-        deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
-      });
-      await Promise.all(deletes);
-      await deleteDoc(doc(firestore, "chatRooms", client.userId));
-    }
-    await signOut(auth);
-    router.replace("/login");
+  function handleServicePaid() {
+    setReloadClient(v => !v);
   }
-
-  function filterService(service) {
-    return (lang === "ar" ? service.name : (service.name_en || service.name))
-      .toLowerCase()
-      .includes(search.trim().toLowerCase());
-  }
-
-  const dir = lang === "ar" ? "rtl" : "ltr";
-
-  function handleServicePaid() { setReloadClient(v => !v); }
 
   async function markNotifAsRead(notifId) {
     await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
@@ -286,6 +289,27 @@ function ClientProfilePageInner({ userId }) {
     });
   }
 
+  async function handleLogout() {
+    if (client?.userId) {
+      const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
+      const deletes = [];
+      msgsSnap.forEach((msg) => {
+        deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
+      });
+      await Promise.all(deletes);
+      await deleteDoc(doc(firestore, "chatRooms", client.userId));
+    }
+    await signOut(auth);
+    router.replace("/login");
+  }
+
+  function filterService(service) {
+    return (lang === "ar" ? service.name : (service.name_en || service.name))
+      .toLowerCase()
+      .includes(search.trim().toLowerCase());
+  }
+
+  // الشروط بعد الهوكس مباشرة
   if (loading) return <GlobalLoader />;
   if (!client) {
     return (
@@ -301,32 +325,6 @@ function ClientProfilePageInner({ userId }) {
       </div>
     );
   }
-
-  // ==== حماية الخدمات ضد Object/Array ====
-  const clientType = (client.type || client.accountType || "").toLowerCase();
-
-  const residentServices    = objectToArray(services.resident);
-  const companyServices     = objectToArray(services.company);
-  const nonresidentServices = objectToArray(services.nonresident);
-  const otherServices       = objectToArray(services.other);
-
-  // منطق الأقسام المختارة
-  const sectionToServices = {
-    residentServices: residentServices,
-    companyServices: companyServices,
-    nonresidentServices: nonresidentServices,
-    otherServices: otherServices,
-  };
-
-  // تعيين القسم الافتراضي حسب نوع العميل عند أول تحميل البيانات
-  useEffect(() => {
-    if (clientType === "resident") setSelectedServiceSection("residentServices");
-    else if (clientType === "company") setSelectedServiceSection("companyServices");
-    else if (clientType === "nonresident") setSelectedServiceSection("nonresidentServices");
-  }, [clientType]);
-
-  // الحماية للفلتر
-  const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   return (
     <div
@@ -582,7 +580,7 @@ function ClientProfilePageInner({ userId }) {
           )}
 
           {/* الخدمات المختارة فقط حسب الزر من السايدبار */}
-          {["residentServices","companyServices","nonresidentServices","otherServices"].includes(selectedServiceSection) && (
+          {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedServiceSection) && (
             <>
               <SectionTitle
                 icon={sectionTitles[selectedServiceSection].icon}
@@ -596,7 +594,7 @@ function ClientProfilePageInner({ userId }) {
                 {sectionToServices[selectedServiceSection].filter(filterFn).map((srv, i) => (
                   <ServiceProfileCard
                     key={srv.name + i}
-                    category={selectedServiceSection.replace("Services","")}
+                    category={selectedServiceSection.replace("Services", "")}
                     name={srv.name}
                     description={srv.description}
                     price={srv.price}
