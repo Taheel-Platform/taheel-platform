@@ -17,7 +17,7 @@ import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
 import ServiceSection from "@/components/ProfileSidebarLayout/ServiceSection";
 import {
-  collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy
+  collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
 
 export const dynamic = 'force-dynamic';
@@ -258,37 +258,39 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
+  // ==== الخدمات مع حماية قوية ====
+  const clientType = (client.type || client.accountType || "").toLowerCase();
 
-const clientType = (client.type || client.accountType || "").toLowerCase();
+  // حماية كل فئة لتكون Array حتى لو undefined أو null
+  const residentServices    = Array.isArray(services.resident)    ? services.resident    : [];
+  const companyServices     = Array.isArray(services.company)     ? services.company     : [];
+  const nonresidentServices = Array.isArray(services.nonresident) ? services.nonresident : [];
+  const otherServices       = Array.isArray(services.other)       ? services.other       : [];
 
-// حماية كل فئة لتكون Array حتى لو undefined أو null
-const residentServices = Array.isArray(services.resident) ? services.resident : [];
-const companyServices = Array.isArray(services.company) ? services.company : [];
-const nonresidentServices = Array.isArray(services.nonresident) ? services.nonresident : [];
-const otherServices = Array.isArray(services.other) ? services.other : [];
+  let displayedServices = [];
+  if (clientType === "resident") {
+    displayedServices = [...residentServices, ...otherServices];
+  } else if (clientType === "company") {
+    displayedServices = [
+      ...companyServices,
+      ...residentServices,
+      ...otherServices,
+    ];
+  } else if (clientType === "nonresident") {
+    displayedServices = [...nonresidentServices, ...otherServices];
+  }
+  // حماية إضافية قبل التمرير للعرض
+  const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
 
-let displayedServices = [];
-if (clientType === "resident") {
-  displayedServices = [...residentServices, ...otherServices];
-} else if (clientType === "company") {
-  displayedServices = [
-    ...companyServices,
-    ...residentServices,
-    ...otherServices,
-  ];
-} else if (clientType === "nonresident") {
-  displayedServices = [...nonresidentServices, ...otherServices];
-}
+  // ==== حماية filterService قبل تمريره ====
+  const filterFn = typeof filterService === "function" ? filterService : () => true;
 
-// حماية إضافية قبل التمرير للعرض
-const safeDisplayedServices = Array.isArray(displayedServices) ? displayedServices : [];
-
-return (
-  <div
-    className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
-    dir={dir}
-    lang={lang}
-  >
+  return (
+    <div
+      className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
+      dir={dir}
+      lang={lang}
+    >
       <Sidebar selected={selectedSection} onSelect={setSelectedSection} lang={lang} />
 
       <div className="flex-1 flex flex-col relative">
@@ -527,20 +529,19 @@ return (
             </>
           )}
 
-
-    {selectedSection === "services" && (
-      <ServiceSection
-        lang={lang}
-        clientType={clientType}
-        services={safeDisplayedServices}
-        filterService={filterService}
-        search={search}
-        setSearch={setSearch}
-        onServicePaid={handleServicePaid}
-        client={client}
-        companies={companies}
-      />
-    )}
+          {selectedSection === "services" && (
+            <ServiceSection
+              lang={lang}
+              clientType={clientType}
+              services={safeDisplayedServices}
+              filterService={filterFn}
+              search={search}
+              setSearch={setSearch}
+              onServicePaid={handleServicePaid}
+              client={client}
+              companies={companies}
+            />
+          )}
         </main>
 
         {/* الفوتر وحقوق الملكية */}

@@ -14,7 +14,6 @@ export default function ServiceSection({
 }) {
   // تأمين المتغير ليكون دائماً مصفوفة
   const safeServices = Array.isArray(services) ? services : [];
-
   // تأمين الفلتر ليكون دالة دائماً
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
