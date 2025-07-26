@@ -15,14 +15,14 @@ import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
-import ServiceProfileCard from "@/components/ServiceProfileCard";
+import ServiceProfileCard from "@/components/ServiceProfileCard"; // تعديل هنا
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
 
-// Helper functions
 export const dynamic = 'force-dynamic';
 
+// Helper functions
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -51,19 +51,28 @@ async function addNotification(userId, title, body, type = "wallet") {
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
 
+// تحويل أي Object لخدمات إلى Array (يحمي ضد خطأ الفلترة)
 function objectToArray(obj) {
   if (Array.isArray(obj)) return obj;
   if (obj && typeof obj === "object") return Object.values(obj);
   return [];
 }
 
-// SectionTitle (inline for simplicity, can use your old one)
+// عناوين وألوان الأقسام
+const sectionTitles = {
+  residentServices: { icon: "resident", color: "emerald", ar: "خدمات المقيم", en: "Resident Services" },
+  companyServices: { icon: "company", color: "blue", ar: "خدمات الشركات", en: "Company Services" },
+  nonresidentServices: { icon: "nonresident", color: "yellow", ar: "خدمات غير المقيم", en: "Non-Resident Services" },
+  otherServices: { icon: "other", color: "gray", ar: "خدمات أخرى", en: "Other Services" },
+};
+
+// مكون عنوان القسم (نفس منطقك القديم)
 function SectionTitle({ icon, color = "emerald", children }) {
   const iconMap = {
-    resident: <FaComments className="text-emerald-500" />,
-    company: <FaComments className="text-blue-500" />,
-    nonresident: <FaComments className="text-yellow-500" />,
-    other: <FaComments className="text-gray-500" />,
+    resident: <FaComments className={`text-emerald-500`} />,
+    company: <FaBuilding className={`text-blue-500`} />,
+    nonresident: <FaEnvelopeOpenText className={`text-yellow-500`} />,
+    other: <FaTag className="text-gray-500" />,
   };
   return (
     <div className="w-full flex items-center my-10 select-none">
@@ -80,6 +89,8 @@ function ClientProfilePageInner({ userId }) {
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState("personal");
+  // قسم الخدمات المختار في السايدبار
+  const [selectedServiceSection, setSelectedServiceSection] = useState("residentServices");
   const [client, setClient] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
@@ -283,8 +294,31 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
-  // ==== تقسيم الخدمات لمجموعات حسب نوع العميل ====
+  // ==== حماية الخدمات ضد Object/Array ====
   const clientType = (client.type || client.accountType || "").toLowerCase();
+
+  const residentServices    = objectToArray(services.resident);
+  const companyServices     = objectToArray(services.company);
+  const nonresidentServices = objectToArray(services.nonresident);
+  const otherServices       = objectToArray(services.other);
+
+  // منطق الأقسام المختارة
+  const sectionToServices = {
+    residentServices: residentServices,
+    companyServices: companyServices,
+    nonresidentServices: nonresidentServices,
+    otherServices: otherServices,
+  };
+
+  // تعيين القسم الافتراضي حسب نوع العميل عند أول تحميل البيانات
+  useEffect(() => {
+    if (clientType === "resident") setSelectedServiceSection("residentServices");
+    else if (clientType === "company") setSelectedServiceSection("companyServices");
+    else if (clientType === "nonresident") setSelectedServiceSection("nonresidentServices");
+  }, [clientType]);
+
+  // الحماية للفلتر
+  const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   return (
     <div
@@ -292,7 +326,13 @@ function ClientProfilePageInner({ userId }) {
       dir={dir}
       lang={lang}
     >
-      <Sidebar selected={selectedSection} onSelect={setSelectedSection} lang={lang} />
+      {/* دمج: مرر selected/onSelect للسايدبار ليتحكم في القسم المختار للخدمات */}
+      <Sidebar
+        selected={selectedServiceSection}
+        onSelect={setSelectedServiceSection}
+        lang={lang}
+        clientType={clientType}
+      />
 
       <div className="flex-1 flex flex-col relative">
         {/* Decorations */}
@@ -327,12 +367,169 @@ function ClientProfilePageInner({ userId }) {
             </span>
           </div>
           {/* Action icons */}
-          {/* ... نفس أكواد الهيدر كما في الكود السابق ... */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Notifications */}
+            <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
+              <FaBell size={22} className="text-emerald-300 hover:text-emerald-400 transition" />
+              {notifications.some(n => !n.isRead) && (
+                <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                  {notifications.filter(n => !n.isRead).length}
+                </span>
+              )}
+              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                {lang === "ar" ? "الإشعارات" : "Notifications"}
+              </span>
+              {showNotifMenu && (
+                <div className="absolute top-10 right-0 w-72 bg-white shadow-xl rounded-lg p-4 z-50">
+                  <div className="font-bold text-emerald-700 mb-3">{lang === "ar" ? "الإشعارات" : "Notifications"}</div>
+                  {notifications.length === 0 ? (
+                    <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</div>
+                  ) : (
+                    <ul className="space-y-2 max-h-60 overflow-y-auto">
+                      {notifications.map((notif, idx) => (
+                        <li
+                          key={notif.notificationId || idx}
+                          className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
+                          onClick={() => markNotifAsRead(notif.notificationId)}
+                          title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء" : "Mark as read")}
+                          style={{ transition: "opacity 0.2s" }}
+                        >
+                          <div className="font-bold text-emerald-600">{notif.title}</div>
+                          <div className="text-gray-500">{notif.body}</div>
+                          <div className="text-gray-400 text-[10px] mt-1">
+                            {notif.timestamp ? new Date(notif.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US") : ""}
+                          </div>
+                          {!notif.isRead && (
+                            <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{lang === "ar" ? "جديد" : "New"}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Coins */}
+            <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu(v => !v)}>
+              <FaCoins size={22} className="text-yellow-300 hover:text-yellow-400 transition" />
+              <span className="absolute -top-2 -right-1 bg-gray-800 text-yellow-300 text-[10px] font-bold rounded-full px-1 shadow">{client.coins || 0}</span>
+              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                {lang === "ar" ? "الرصيد" : "Coins"}
+              </span>
+              {showCoinsMenu && (
+                <div className="absolute top-10 right-0 w-56 bg-white shadow-xl rounded-lg p-4 z-50">
+                  <div className="font-bold text-yellow-600 mb-2">{lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}</div>
+                  <div className="text-2xl font-black text-yellow-500">{client.coins || 0}</div>
+                  <div className="text-xs text-gray-600 mt-2">
+                    {lang === "ar"
+                      ? "يمكنك استخدام الكوينات في خدمات مختارة."
+                      : "You can use coins in selected services."}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Wallet */}
+            <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu(v => !v)}>
+              <FaWallet size={22} className="text-emerald-400 hover:text-emerald-600 transition" />
+              <span className="absolute -top-2 -right-1 bg-emerald-700 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                {client.walletBalance || 0}
+              </span>
+              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                {lang === "ar" ? "المحفظة" : "Wallet"}
+              </span>
+              {showWalletMenu && (
+                <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
+                  <div className="font-bold text-emerald-700 mb-2">{lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}</div>
+                  <div className="text-2xl font-black text-emerald-600">{client.walletBalance || 0}</div>
+                  <div className="text-xs text-gray-600 mt-2 mb-4">
+                    {lang === "ar"
+                      ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد."
+                      : "You can top-up or pay directly from your wallet balance."}
+                  </div>
+                  <div className="flex flex-col gap-2 mb-2">
+                    <button
+                      className="w-full py-2 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold shadow"
+                      onClick={() => handleWalletCharge(100)}
+                    >
+                      {lang === "ar" ? "شحن 100 درهم+(50 كوين مجانا)" : "Charge 100 AED (+50 coins)"}
+                    </button>
+                    <button
+                      className="w-full py-2 rounded-full bg-emerald-200 hover:bg-emerald-300 text-emerald-900 font-bold shadow"
+                      onClick={() => handleWalletCharge(500)}
+                    >
+                      {lang === "ar" ? "شحن 500 درهم+(250 كوين مجانا)" : "Charge 500 AED (+250 coins)"}
+                    </button>
+                    <button
+                      className="w-full py-2 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold shadow"
+                      onClick={() => handleWalletCharge(1000)}
+                    >
+                      {lang === "ar" ? "شحن 1000 درهم+(500 كوين مجانا)" : "Charge 1000 AED (+500 coins)"}
+                    </button>
+                    <button
+                      className="w-full py-2 rounded-full bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold shadow"
+                      onClick={() => handleWalletCharge(5000)}
+                    >
+                      {lang === "ar" ? "شحن 5000 درهم+(2500 كوين مجانا)" : "Charge 5000 AED (+2500 coins)"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Messages */}
+            <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
+              <FaEnvelopeOpenText size={22} className="text-cyan-200 hover:text-cyan-300 transition" />
+              {client.unreadMessages > 0 && (
+                <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                  {client.unreadMessages}
+                </span>
+              )}
+              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+                {lang === "ar" ? "الرسائل الواردة" : "Admin Messages"}
+              </span>
+              {showMessagesMenu && (
+                <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
+                  <div className="font-bold text-cyan-800 mb-2">{lang === "ar" ? "الرسائل" : "Messages"}</div>
+                  {client.messages && client.messages.length > 0 ? (
+                    <ul className="space-y-2 max-h-60 overflow-y-auto">
+                      {client.messages.map((msg, i) => (
+                        <li key={i} className="border-b pb-2">
+                          <div className="font-bold text-cyan-700">{msg.title || ""}</div>
+                          <div className="text-gray-700">{msg.body || ""}</div>
+                          <div className="text-gray-400 text-[10px] mt-1">{msg.time || ""}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-gray-400 text-center">
+                      {lang === "ar" ? "لا توجد رسائل" : "No messages"}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <span className="hidden sm:inline">
+              <WeatherTimeWidget isArabic={lang === "ar"} />
+            </span>
+            <button
+              onClick={toggleLang}
+              className="px-3 py-1.5 rounded-full border border-emerald-500 bg-[#16222c] text-emerald-200 hover:bg-emerald-500 hover:text-white text-xs sm:text-sm font-bold shadow transition cursor-pointer"
+              title={lang === "ar" ? "English" : "عربي"}
+            >
+              {lang === "ar" ? "ENGLISH" : "عربي"}
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full shadow transition cursor-pointer"
+              title={lang === "ar" ? "تسجيل الخروج" : "Logout"}
+            >
+              <FaSignOutAlt /> {lang === "ar" ? "تسجيل الخروج" : "Logout"}
+            </button>
+          </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
-          {/* كل قسم يظهر حسب السلايدبار */}
+          {/* بيانات العميل */}
           {selectedSection === "personal" && (
             <>
               {clientType === "resident" && (
@@ -360,6 +557,8 @@ function ClientProfilePageInner({ userId }) {
               )}
             </>
           )}
+
+          {/* الطلبات */}
           {selectedSection === "orders" && (
             <>
               <div className="w-full flex items-center my-8 select-none">
@@ -374,160 +573,39 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
 
-          {selectedSection === "services" && (
+          {/* الخدمات المختارة فقط حسب الزر من السايدبار */}
+          {["residentServices","companyServices","nonresidentServices","otherServices"].includes(selectedServiceSection) && (
             <>
-              {/* بحث الخدمات */}
-              <div className="w-full flex items-center justify-center mb-10">
-                <div
-                  className={`
-                    flex items-center gap-2 w-full max-w-lg bg-white/80
-                    rounded-full px-5 py-3 shadow-xl ring-1 ring-emerald-200
-                    backdrop-blur-2xl border border-emerald-100/50
-                    transition-all duration-200
-                    focus-within:ring-2 focus-within:ring-emerald-400
-                  `}
-                  style={{
-                    boxShadow: "0 4px 24px #05966922",
-                  }}
-                >
-                  <svg className="text-emerald-500 text-lg" width="20" height="20" fill="none" viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="8" stroke="#059669" strokeWidth="2"/>
-                    <path d="M21 21l-3.5-3.5" stroke="#059669" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                  <input
-                    className="flex-1 bg-transparent outline-none border-none text-emerald-900 text-base placeholder-gray-400 font-bold"
-                    style={{ direction: dir }}
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder={lang === "ar" ? "ابحث عن خدمة..." : "Search for a service..."}
+              <SectionTitle
+                icon={sectionTitles[selectedServiceSection].icon}
+                color={sectionTitles[selectedServiceSection].color}
+              >
+                {lang === "ar"
+                  ? sectionTitles[selectedServiceSection].ar
+                  : sectionTitles[selectedServiceSection].en}
+              </SectionTitle>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                {sectionToServices[selectedServiceSection].filter(filterFn).map((srv, i) => (
+                  <ServiceProfileCard
+                    key={srv.name + i}
+                    category={selectedServiceSection.replace("Services","")}
+                    name={srv.name}
+                    description={srv.description}
+                    price={srv.price}
+                    duration={srv.duration}
+                    requiredDocs={srv.documents || []}
+                    requireUpload={srv.requireUpload}
+                    coins={srv.coins || 0}
+                    lang={lang}
+                    userId={client.userId}
+                    userWallet={client.walletBalance || 0}
+                    userCoins={client.coins || 0}
+                    onPaid={handleServicePaid}
+                    coinsPercent={0.1}
+                    addNotification={addNotification}
                   />
-                </div>
+                ))}
               </div>
-
-              {/* ----------- خدمات المقيم ----------- */}
-              {clientType === "resident" && services.resident.length > 0 && (
-                <>
-                  <SectionTitle icon="resident" color="emerald">
-                    {lang === "ar" ? "خدمات المقيم" : "Resident Services"}
-                  </SectionTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                    {services.resident.filter(filterService).map((srv, i) => (
-                      <ServiceProfileCard
-                        key={srv.name + i}
-                        category="resident"
-                        name={srv.name}
-                        description={srv.description}
-                        price={srv.price}
-                        duration={srv.duration}
-                        requiredDocs={srv.documents || []}
-                        requireUpload={srv.requireUpload}
-                        coins={srv.coins || 0}
-                        lang={lang}
-                        userId={client.userId}
-                        userWallet={client.walletBalance || 0}
-                        userCoins={client.coins || 0}
-                        onPaid={handleServicePaid}
-                        coinsPercent={0.1}
-                        addNotification={addNotification}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* ----------- خدمات الشركات ----------- */}
-              {clientType === "company" && services.company.length > 0 && (
-                <>
-                  <SectionTitle icon="company" color="blue">
-                    {lang === "ar" ? "خدمات الشركات" : "Company Services"}
-                  </SectionTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                    {services.company.filter(filterService).map((srv, i) => (
-                      <ServiceProfileCard
-                        key={srv.name + i}
-                        category="company"
-                        name={srv.name}
-                        description={srv.description}
-                        price={srv.price}
-                        duration={srv.duration}
-                        requiredDocs={srv.documents || []}
-                        requireUpload={srv.requireUpload}
-                        coins={srv.coins || 0}
-                        lang={lang}
-                        userId={client.userId}
-                        userWallet={client.walletBalance || 0}
-                        userCoins={client.coins || 0}
-                        onPaid={handleServicePaid}
-                        coinsPercent={0.1}
-                        addNotification={addNotification}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* ----------- خدمات غير المقيم ----------- */}
-              {clientType === "nonresident" && services.nonresident.length > 0 && (
-                <>
-                  <SectionTitle icon="nonresident" color="yellow">
-                    {lang === "ar" ? "خدمات غير المقيم" : "Non-Resident Services"}
-                  </SectionTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                    {services.nonresident.filter(filterService).map((srv, i) => (
-                      <ServiceProfileCard
-                        key={srv.name + i}
-                        category="nonresident"
-                        name={srv.name}
-                        description={srv.description}
-                        price={srv.price}
-                        duration={srv.duration}
-                        requiredDocs={srv.documents || []}
-                        requireUpload={srv.requireUpload}
-                        coins={srv.coins || 0}
-                        lang={lang}
-                        userId={client.userId}
-                        userWallet={client.walletBalance || 0}
-                        userCoins={client.coins || 0}
-                        onPaid={handleServicePaid}
-                        coinsPercent={0.1}
-                        addNotification={addNotification}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* ----------- خدمات أخرى (دائمًا آخر الصفحة) ----------- */}
-              {services.other.length > 0 && (
-                <>
-                  <SectionTitle icon="other" color="gray">
-                    {lang === "ar" ? "خدمات أخرى" : "Other Services"}
-                  </SectionTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                    {services.other.filter(filterService).map((srv, i) => (
-                      <ServiceProfileCard
-                        key={srv.name + i}
-                        category="other"
-                        name={srv.name}
-                        description={srv.description}
-                        price={srv.price}
-                        duration={srv.duration}
-                        requiredDocs={srv.documents || []}
-                        requireUpload={srv.requireUpload}
-                        coins={srv.coins || 0}
-                        lang={lang}
-                        userId={client.userId}
-                        userWallet={client.walletBalance || 0}
-                        userCoins={client.coins || 0}
-                        onPaid={handleServicePaid}
-                        coinsPercent={0.1}
-                        addNotification={addNotification}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
             </>
           )}
         </main>

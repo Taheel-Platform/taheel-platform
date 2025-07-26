@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { FaUser, FaClipboardList, FaServicestack, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import {
+  FaUser, FaClipboardList, FaServicestack,
+  FaBuilding, FaUserTie, FaTag,
+  FaChevronLeft, FaChevronRight
+} from "react-icons/fa";
 
-const SECTIONS = [
+// الأقسام الأساسية
+const MAIN_SECTIONS = [
   {
     key: "personal",
     icon: <FaUser size={22} />,
@@ -14,21 +19,66 @@ const SECTIONS = [
     ar: "الطلبات الحالية",
     en: "Current Orders",
   },
-  {
-    key: "services",
-    icon: <FaServicestack size={22} />,
-    ar: "الخدمات",
-    en: "Services",
-  },
 ];
 
-export default function Sidebar({ selected, onSelect, lang = "ar" }) {
+// أقسام الخدمات حسب نوع العميل
+const SERVICE_SECTIONS = {
+  resident: [
+    {
+      key: "residentServices",
+      icon: <FaServicestack size={22} />,
+      ar: "خدمات المقيم",
+      en: "Resident Services",
+    },
+    {
+      key: "otherServices",
+      icon: <FaTag size={22} />,
+      ar: "خدمات أخرى",
+      en: "Other Services",
+    },
+  ],
+  nonresident: [
+    {
+      key: "nonresidentServices",
+      icon: <FaUserTie size={22} />,
+      ar: "خدمات غير المقيم",
+      en: "Non-Resident Services",
+    },
+    {
+      key: "otherServices",
+      icon: <FaTag size={22} />,
+      ar: "خدمات أخرى",
+      en: "Other Services",
+    },
+  ],
+  company: [
+    {
+      key: "companyServices",
+      icon: <FaBuilding size={22} />,
+      ar: "خدمات الشركات",
+      en: "Company Services",
+    },
+    {
+      key: "residentServices",
+      icon: <FaServicestack size={22} />,
+      ar: "خدمات المقيم",
+      en: "Resident Services",
+    },
+    {
+      key: "otherServices",
+      icon: <FaTag size={22} />,
+      ar: "خدمات أخرى",
+      en: "Other Services",
+    },
+  ],
+};
+
+export default function Sidebar({ selected, onSelect, lang = "ar", clientType = "resident" }) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const headerHeight = 95; // عدل الرقم لو الهيدر أكبر أو أصغر
+  const headerHeight = 95;
 
-  // غلق القائمة عند الضغط خارجها
   useEffect(() => {
     function handleClick(e) {
       if (opened && sidebarRef.current && !sidebarRef.current.contains(e.target)) {
@@ -38,6 +88,8 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [opened]);
+
+  const serviceSections = SERVICE_SECTIONS[clientType] || [];
 
   return (
     <aside
@@ -88,9 +140,33 @@ export default function Sidebar({ selected, onSelect, lang = "ar" }) {
         </div>
       </div>
 
-      {/* قائمة التنقل */}
+      {/* قائمة التنقل الرئيسية */}
       <nav className="flex flex-col gap-2 mt-2">
-        {SECTIONS.map((section) => (
+        {MAIN_SECTIONS.map((section) => (
+          <button
+            key={section.key}
+            className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
+              ${selected === section.key
+                ? "bg-emerald-700/20 text-emerald-300 shadow"
+                : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
+              }
+              `}
+            onClick={() => onSelect(section.key)}
+            style={{
+              justifyContent: "flex-start",
+              cursor: "pointer",
+            }}
+            tabIndex={0}
+          >
+            <span className={`transition-all ${opened ? "" : "mx-auto"}`}>{section.icon}</span>
+            {opened && (
+              <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
+            )}
+          </button>
+        ))}
+
+        {/* أقسام الخدمات حسب نوع العميل */}
+        {serviceSections.map((section) => (
           <button
             key={section.key}
             className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
