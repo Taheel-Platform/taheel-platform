@@ -15,6 +15,9 @@ export default function ServiceSection({
   // تأمين المتغير ليكون دائماً مصفوفة
   const safeServices = Array.isArray(services) ? services : [];
 
+  // تأمين الفلتر ليكون دالة دائماً
+  const filterFn = typeof filterService === "function" ? filterService : () => true;
+
   if (!safeServices.length) return null;
 
   return (
@@ -24,7 +27,7 @@ export default function ServiceSection({
       </SectionTitle>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         {safeServices
-          .filter(filterService || (() => true))
+          .filter(filterFn)
           .map((srv, i) => (
             <ServiceProfileCard
               key={srv.name + i}
