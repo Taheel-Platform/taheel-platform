@@ -14,8 +14,8 @@ import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
-import ServiceSection from "@/components/ProfileSidebarLayout/Sidebar";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
+import ServiceSection from "@/components/ProfileSidebarLayout/ServiceSection";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy
 } from "firebase/firestore";

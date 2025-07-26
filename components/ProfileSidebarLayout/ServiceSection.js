@@ -1,7 +1,7 @@
 import SectionTitle from "@/components/services/SectionTitle";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 
-export default function Sidebar({
+export default function ServiceSection({
   icon,
   color,
   title,
@@ -12,7 +12,6 @@ export default function Sidebar({
   onPaid,
   addNotification,
 }) {
-  // حماية إضافية
   if (!Array.isArray(services)) services = [];
   if (!services.length) return null;
 
