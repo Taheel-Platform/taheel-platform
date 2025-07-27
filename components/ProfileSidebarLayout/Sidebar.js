@@ -91,26 +91,39 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
 
   const serviceSections = SERVICE_SECTIONS[clientType] || [];
 
-  // زر عائم في منتصف ارتفاع السايدبار على الحافة الخارجية
+  // زر عائم صغير على الحافة الخارجية (يمين أو يسار حسب اللغة)
   const floatingBtnStyle = {
     position: "absolute",
-    top: "50%", // في منتصف السايدبار
-    right: dir === "rtl" ? "-28px" : undefined,
-    left: dir === "ltr" ? "-28px" : undefined,
-    transform: "translateY(-50%)",
-    background: "#10b981",
-    color: "#fff",
+    top: "26px", // أعلى السايدبار تقريباً
+    right: dir === "rtl" ? "-18px" : undefined,
+    left: dir === "ltr" ? "-18px" : undefined,
+    width: "36px",
+    height: "36px",
+    background: "#fff",
+    color: "#10b981",
     borderRadius: "50%",
-    boxShadow: "0 6px 24px 0 rgba(16,185,129,0.28)",
-    padding: "16px",
-    border: "3px solid #fff",
+    boxShadow: "0 2px 12px 0 rgba(16,185,129,0.18)",
+    border: "2px solid #10b981",
     cursor: "pointer",
     zIndex: 99,
-    transition: "background 0.3s, box-shadow 0.3s",
+    transition: "background 0.25s, color 0.25s, border-color 0.25s, box-shadow 0.25s",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    fontSize: "18px",
+    outline: "none",
   };
+
+  // حركة ديناميكية عند التحويم
+  const floatingBtnHoverStyle = {
+    background: "#10b981",
+    color: "#fff",
+    borderColor: "#059669",
+    boxShadow: "0 4px 24px 0 rgba(16,185,129,0.32)",
+  };
+
+  // دمج ستايل التحويم
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <aside
@@ -135,15 +148,17 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
         flexDirection: "column",
       }}
     >
-      {/* زر فتح/غلق عائم في منتصف الحافة */}
+      {/* زر فتح/غلق عائم صغير وديناميكي */}
       <button
-        style={floatingBtnStyle}
+        style={isHovered ? { ...floatingBtnStyle, ...floatingBtnHoverStyle } : floatingBtnStyle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onClick={() => setOpened(v => !v)}
         title={opened ? (lang === "ar" ? "إغلاق القائمة" : "Close sidebar") : (lang === "ar" ? "فتح القائمة" : "Open sidebar")}
       >
         {opened
-          ? <FaChevronLeft size={28} />
-          : <FaChevronRight size={28} />
+          ? <FaChevronLeft size={20} />
+          : <FaChevronRight size={20} />
         }
       </button>
 
