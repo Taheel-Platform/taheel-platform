@@ -77,7 +77,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const headerHeight = 150;
+  const headerHeight = 140;
 
   useEffect(() => {
     function handleClick(e) {

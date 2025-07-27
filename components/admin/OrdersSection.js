@@ -19,7 +19,7 @@ import {
 import {
   FaUserTie, FaUserAlt, FaBuilding, FaUserCheck, FaUserSlash
 } from "react-icons/fa";
-import ChatWidgetFull from "@/components/ChatWidgetFull";
+import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 
 const statusIcons = {
   new: "🆕",

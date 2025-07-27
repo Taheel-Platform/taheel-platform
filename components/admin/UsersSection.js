@@ -21,7 +21,7 @@ import {
   where
 } from "firebase/firestore";
 import { firestore, auth } from "@/lib/firebase.client";
-import ChatWidgetFull from "@/components/ChatWidgetFull";
+import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 import { GlobalLoader } from '@/components/GlobalLoader'
 
 const typeTabs = [

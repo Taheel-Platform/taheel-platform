@@ -16,7 +16,7 @@ import {
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
 import CompanyCardGold from "@/components/cards/CompanyCard";
-import ChatWidgetFull from "@/components/ChatWidgetFull";
+import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 import { NonResidentCard } from "@/components/cards/NonResidentCard";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
 import { firestore } from "@/lib/firebase.client";
