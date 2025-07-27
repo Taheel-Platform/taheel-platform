@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
-import countriesData from "../lib/countries-ar-en.js"; // ملف فيه كل اللغات والاعلام
+// لا تستورد countriesData هنا! استقبلها من الـ props
 
-export default function LanguageSelectModal({ defaultLang = "ar", userName = "زائر", onSelect }) {
+export default function LanguageSelectModal({ defaultLang = "ar", userName = "زائر", countries, onSelect }) {
   const [selectedLang, setSelectedLang] = useState(defaultLang);
 
   // رسالة الترحيب حسب اللغة
@@ -24,8 +24,8 @@ export default function LanguageSelectModal({ defaultLang = "ar", userName = "ز
         </p>
         <div className="w-full mb-4">
           <FlagsSelect
-            countries={Object.keys(countriesData)}
-            customLabels={countriesData}
+            countries={Object.keys(countries)}
+            customLabels={countries}
             selected={selectedLang}
             onSelect={setSelectedLang}
             showSelectedLabel={true}
@@ -48,11 +48,3 @@ export default function LanguageSelectModal({ defaultLang = "ar", userName = "ز
     </div>
   );
 }
-
-{showLangModal && (
-  <LanguageSelectModal
-    userName={safeUserName}
-    countries={countriesData}
-    onSelect={handleLangCountrySelect}
-  />
-)}

@@ -376,7 +376,7 @@ export default function ChatWidgetFull({
         }
       `}</style>
       {showLangModal && (
-        <LanguageSelectModal
+<LanguageSelectModal
   userName={safeUserName}
   countries={countriesData}
   onSelect={handleLangCountrySelect}
