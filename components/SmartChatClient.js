@@ -6,7 +6,6 @@ import {
   push,
   onValue,
   update,
-  set,
 } from "firebase/database";
 import { FaPaperPlane, FaSmile } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
@@ -26,7 +25,9 @@ async function translateText(text, targetLang) {
 export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }) {
   const db = getDatabase();
 
-  // بيانات حالة الشات
+  // قائمة عملاء الانتظار (الغرف)
+  const [waitingRooms, setWaitingRooms] = useState([]);
+  // الغرفة المختارة/شات الموظف الحالي
   const [chatRoom, setChatRoom] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -37,24 +38,22 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
   const chatEndRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  // البحث عن غرفة شات مفتوحة (موظف يختار من قائمة أو يتم الربط تلقائيًا)
+  // جلب قائمة العملاء المنتظرين
   useEffect(() => {
-    // هنا يمكنك إضافة منطق اختيار غرفة معينة أو جلبها من قائمة أو من URL
-    // سأفترض جلب أول غرفة مفتوحة غير مغلقة
     const chatsRef = dbRef(db, "chats");
     const unsub = onValue(chatsRef, (snap) => {
-      let found = null;
+      const waiting = [];
       snap.forEach((room) => {
         const c = { ...room.val(), id: room.key };
-        if (c.status === "open" && c.waitingForAgent) found = c;
+        // العملاء المنتظرين فقط (لم يتم قبولهم من موظف بعد)
+        if (c.status === "open" && c.waitingForAgent && !c.agentId) waiting.push(c);
       });
-      setChatRoom(found);
-      setChatClosed(false);
+      setWaitingRooms(waiting);
     });
     return () => unsub();
   }, []);
 
-  // مراقبة الرسائل
+  // جلب رسائل الغرفة المختارة
   useEffect(() => {
     if (!chatRoom) {
       setMessages([]);
@@ -97,27 +96,26 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmoji]);
 
-  // قبول المحادثة (يغير حالة الغرفة)
-  const handleAcceptChat = async () => {
-    if (!chatRoom) return;
-    await update(dbRef(db, `chats/${chatRoom.id}`), {
+  // قبول المحادثة (تعيين الموظف للغرفة)
+  const handleAcceptChat = async (room) => {
+    await update(dbRef(db, `chats/${room.id}`), {
       waitingForAgent: false,
       agentId,
       agentName,
       agentLang,
       acceptedAt: Date.now(),
     });
+    setChatRoom({ ...room, waitingForAgent: false, agentId, agentName, agentLang });
+    setWaitingRooms(waitingRooms.filter(r => r.id !== room.id)); // إزالة الغرفة من قائمة الانتظار
   };
 
   // إرسال رسالة للعميل مع ترجمة تلقائية
   const sendMessage = async () => {
     if (!chatRoom || !input.trim() || chatClosed) return;
 
-    // جلب لغة العميل من بيانات الغرفة
     const clientLang = chatRoom.clientLang || "ar";
     let translatedMsg = input;
 
-    // لو لغة الموظف != لغة العميل، ترجم قبل الإرسال
     if (agentLang !== clientLang) {
       translatedMsg = await translateText(input, clientLang);
     }
@@ -146,6 +144,7 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
     });
     await update(dbRef(db, `chats/${chatRoom.id}`), { status: "closed_by_agent" });
     setChatClosed(true);
+    setChatRoom(null); // يرجع لقائمة العملاء بعد الإغلاق
   };
 
   // إدراج إيموجي
@@ -163,7 +162,6 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
     let showTranslation = false;
     let displayText = msg.text;
 
-    // لو الرسالة أصلها بلغة مختلفة عن الموظف وفيها ترجمة، اعرض الترجمة
     if (!self && msg.translatedText && msg.agentLang === agentLang) {
       showTranslation = true;
       displayText = msg.translatedText;
@@ -211,7 +209,7 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
       className="h-full w-full flex flex-col rounded-2xl shadow-lg border border-blue-900"
       style={{
         minHeight: "400px",
-        maxWidth: 420,
+        maxWidth: 480,
         background: "linear-gradient(120deg, #eaf6ff 60%, #e0eaff 100%)",
       }}
     >
@@ -275,31 +273,25 @@ export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }
           <span>اللغة: <b>{chatRoom.clientLang === "ar" ? "العربية" : "English"}</b></span>
         </div>
       )}
-      {/* لا يوجد شات بعد */}
+      {/* قائمة العملاء المنتظرين */}
       {!chatRoom && (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-          <div className="mb-2 text-blue-700 font-bold">لا يوجد محادثة حالياً</div>
-        </div>
-      )}
-      {/* شاشة قبول الدردشة */}
-      {chatRoom && chatRoom.waitingForAgent && !chatClosed && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
-          <div className="animate-pulse text-blue-800 font-bold text-xl mb-3">
-            هناك عميل ينتظر الانضمام للمحادثة...
-          </div>
-          <div className="text-blue-500 text-sm">يمكنك قبول المحادثة بالضغط على الزر.</div>
-          <button
-            className="agent-btn bg-blue-600 text-white px-5 py-2 rounded-full mt-3"
-            onClick={handleAcceptChat}
-          >
-            قبول المحادثة
-          </button>
-          <button
-            className="agent-close bg-red-100 text-red-700 px-3 py-1 rounded-full shadow text-sm font-bold border border-red-200 transition mt-3"
-            onClick={handleCloseChat}
-          >
-            رفض واغلاق
-          </button>
+          <div className="mb-2 text-blue-700 font-bold">قائمة العملاء في الانتظار</div>
+          {waitingRooms.length === 0 && <div className="text-blue-600">لا يوجد عملاء في الانتظار حاليًا.</div>}
+          {waitingRooms.map(room => (
+            <div key={room.id} className="w-full flex justify-between items-center bg-blue-50 border rounded-xl mb-2 px-4 py-2">
+              <div>
+                <div><b>{room.clientName}</b></div>
+                <div className="text-xs text-blue-400">اللغة: {room.clientLang === "ar" ? "العربية" : "English"}</div>
+              </div>
+              <button
+                className="agent-btn bg-blue-600 text-white px-5 py-2 rounded-full"
+                onClick={() => handleAcceptChat(room)}
+              >
+                قبول المحادثة
+              </button>
+            </div>
+          ))}
         </div>
       )}
       {/* الشات الفعلي */}
