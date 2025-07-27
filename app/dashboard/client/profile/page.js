@@ -30,7 +30,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// Helper functions
+// ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
@@ -58,15 +58,13 @@ async function addNotification(userId, title, body, type = "wallet") {
   };
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
-
-// تحويل أي Object لخدمات إلى Array (يحمي ضد خطأ الفلترة)
 function objectToArray(obj) {
   if (Array.isArray(obj)) return obj;
   if (obj && typeof obj === "object") return Object.values(obj);
   return [];
 }
 
-// عناوين وألوان الأقسام
+// ========== Section Titles ==========
 const sectionTitles = {
   residentServices: { icon: "resident", color: "emerald", ar: "خدمات المقيم", en: "Resident Services" },
   companyServices: { icon: "company", color: "blue", ar: "خدمات الشركات", en: "Company Services" },
@@ -74,12 +72,11 @@ const sectionTitles = {
   otherServices: { icon: "other", color: "gray", ar: "خدمات أخرى", en: "Other Services" },
 };
 
-// مكون عنوان القسم (نفس منطقك القديم)
 function SectionTitle({ icon, color = "emerald", children }) {
   const iconMap = {
-    resident: <FaComments className={`text-emerald-500`} />,
-    company: <FaBuilding className={`text-blue-500`} />,
-    nonresident: <FaEnvelopeOpenText className={`text-yellow-500`} />,
+    resident: <FaComments className="text-emerald-500" />,
+    company: <FaBuilding className="text-blue-500" />,
+    nonresident: <FaEnvelopeOpenText className="text-yellow-500" />,
     other: <FaTag className="text-gray-500" />,
   };
   return (
@@ -93,11 +90,12 @@ function SectionTitle({ icon, color = "emerald", children }) {
   );
 }
 
+// ========== Main Component ==========
 function ClientProfilePageInner({ userId }) {
+  // ---------- States & Refs ----------
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState("personal");
-  // قسم الخدمات المختار في السايدبار
   const [selectedServiceSection, setSelectedServiceSection] = useState("residentServices");
   const [client, setClient] = useState(null);
   const [companies, setCompanies] = useState([]);
@@ -117,10 +115,10 @@ function ClientProfilePageInner({ userId }) {
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
 
+  // ---------- Effects ----------
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-
       const userDoc = await getDoc(doc(firestore, "users", userId));
       const user = userDoc.exists() ? userDoc.data() : null;
       setClient(user);
@@ -206,18 +204,18 @@ function ClientProfilePageInner({ userId }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ---------- Data Processing ----------
   const clientType = (client?.type || client?.accountType || "").toLowerCase();
-
   const residentServices = objectToArray(services.resident);
   const companyServices = objectToArray(services.company);
   const nonresidentServices = objectToArray(services.nonresident);
   const otherServices = objectToArray(services.other);
 
   const sectionToServices = {
-    residentServices: residentServices,
-    companyServices: companyServices,
-    nonresidentServices: nonresidentServices,
-    otherServices: otherServices,
+    residentServices,
+    companyServices,
+    nonresidentServices,
+    otherServices,
   };
 
   useEffect(() => {
@@ -229,25 +227,23 @@ function ClientProfilePageInner({ userId }) {
   const filterFn = typeof filterService === "function" ? filterService : () => true;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
+  // ---------- Event Handlers ----------
   function toggleLang() {
     setLang(l => (l === "ar" ? "en" : "ar"));
   }
-
   function handleServicePaid() {
     setReloadClient(v => !v);
   }
-
   async function markNotifAsRead(notifId) {
     await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
     setReloadClient(v => !v);
   }
-
   async function handleWalletCharge(amount) {
     if (!client) return;
     window.Paytabs.open({
       secretKey: "PUT_YOUR_SECRET_KEY",
       merchantEmail: "your@email.com",
-      amount: amount,
+      amount,
       currency: "AED",
       customer_phone: client.phone || "",
       customer_email: client.email || "",
@@ -288,7 +284,6 @@ function ClientProfilePageInner({ userId }) {
       }
     });
   }
-
   async function handleLogout() {
     if (client?.userId) {
       const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
@@ -302,14 +297,13 @@ function ClientProfilePageInner({ userId }) {
     await signOut(auth);
     router.replace("/login");
   }
-
   function filterService(service) {
     return (lang === "ar" ? service.name : (service.name_en || service.name))
       .toLowerCase()
       .includes(search.trim().toLowerCase());
   }
 
-  // الشروط بعد الهوكس مباشرة
+  // ---------- Conditional Rendering ----------
   if (loading) return <GlobalLoader />;
   if (!client) {
     return (
@@ -326,13 +320,14 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
+  // ---------- Main Render ----------
   return (
     <div
       className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
       dir={dir}
       lang={lang}
     >
-      {/* دمج: مرر selected/onSelect للسايدبار ليتحكم في القسم المختار للخدمات */}
+      {/* Sidebar */}
       <Sidebar
         selected={selectedServiceSection}
         onSelect={setSelectedServiceSection}
@@ -535,7 +530,6 @@ function ClientProfilePageInner({ userId }) {
 
         {/* Main Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
-          {/* بيانات العميل */}
           {selectedSection === "personal" && (
             <>
               {clientType === "resident" && (
@@ -564,7 +558,6 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
 
-          {/* الطلبات */}
           {selectedSection === "orders" && (
             <>
               <div className="w-full flex items-center my-8 select-none">
@@ -579,7 +572,6 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
 
-          {/* الخدمات المختارة فقط حسب الزر من السايدبار */}
           {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedServiceSection) && (
             <>
               <SectionTitle
