@@ -240,6 +240,40 @@ export default function ChatWidgetFull({
     if (onClose) onClose();
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleRecord = async () => {
+    if (!recording) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } else {
+      mediaRecorder.stop();
+      setRecording(false);
+    }
+  };
+
+  const handleSelectEmoji = (emoji) => {
+    setInput((prev) => prev + emoji.native);
+    setShowEmoji(false);
+  };
+
   function renderMsgBubble(msg) {
     let isSelf = msg.senderId === safeUserId;
     let isBot = msg.type === "bot";
@@ -440,8 +474,7 @@ export default function ChatWidgetFull({
                   disabled={
                     uploading ||
                     recording ||
-                    (waitingForAgent && !agentAccepted) ||
-                    chatClosed
+                    (waitingForAgent && !agentAccepted)
                   }
                   style={{ fontSize: "1rem" }}
                 />
@@ -449,7 +482,7 @@ export default function ChatWidgetFull({
                   type="submit"
                   className="bg-gradient-to-br from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow chat-action-btn"
                   title={lang === "ar" ? "إرسال" : lang === "en" ? "Send" : "Envoyer"}
-                  disabled={uploading || (waitingForAgent && !agentAccepted) || chatClosed}
+                  disabled={uploading || (waitingForAgent && !agentAccepted)}
                   style={{ cursor: "pointer" }}
                 >
                   <FaPaperPlane />
