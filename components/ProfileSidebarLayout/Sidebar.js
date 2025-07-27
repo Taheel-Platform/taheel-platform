@@ -91,21 +91,22 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
 
   const serviceSections = SERVICE_SECTIONS[clientType] || [];
 
-  // زر عائم في منتصف السايدبار
+  // زر عائم في منتصف ارتفاع السايدبار على الحافة الخارجية
   const floatingBtnStyle = {
     position: "absolute",
-    top: "50%",
-    left: opened ? "100%" : "100%",
-    transform: "translate(-50%, -50%)",
+    top: "50%", // في منتصف السايدبار
+    right: dir === "rtl" ? "-28px" : undefined,
+    left: dir === "ltr" ? "-28px" : undefined,
+    transform: "translateY(-50%)",
     background: "#10b981",
     color: "#fff",
     borderRadius: "50%",
-    boxShadow: "0 6px 24px 0 rgba(16,185,129,0.25)",
-    padding: "12px",
-    border: "2px solid #d1fae5",
+    boxShadow: "0 6px 24px 0 rgba(16,185,129,0.28)",
+    padding: "16px",
+    border: "3px solid #fff",
     cursor: "pointer",
-    zIndex: 50,
-    transition: "background 0.2s, left 0.5s, top 0.5s",
+    zIndex: 99,
+    transition: "background 0.3s, box-shadow 0.3s",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -134,15 +135,15 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
         flexDirection: "column",
       }}
     >
-      {/* زر فتح/غلق عائم في منتصف السايدبار */}
+      {/* زر فتح/غلق عائم في منتصف الحافة */}
       <button
         style={floatingBtnStyle}
         onClick={() => setOpened(v => !v)}
         title={opened ? (lang === "ar" ? "إغلاق القائمة" : "Close sidebar") : (lang === "ar" ? "فتح القائمة" : "Open sidebar")}
       >
         {opened
-          ? <FaChevronLeft size={22} />
-          : <FaChevronRight size={22} />
+          ? <FaChevronLeft size={28} />
+          : <FaChevronRight size={28} />
         }
       </button>
 
