@@ -237,7 +237,7 @@ export default function ChatWidgetFull({
       status: "closed",
     });
     setChatClosed(true);
-    if (typeof onClose === "function") onClose();
+    if (onClose) onClose();
   };
 
   function renderMsgBubble(msg) {
@@ -339,6 +339,7 @@ export default function ChatWidgetFull({
                   : "Chat intelligente"}
               </span>
               <div className="chat-header-buttons">
+                {/* زر التصغير ثم زر الإغلاق للغة العربية - العكس للإنجليزية/الفرنسية */}
                 <button
                   onClick={() => setMinimized(true)}
                   className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
@@ -439,8 +440,8 @@ export default function ChatWidgetFull({
                   disabled={
                     uploading ||
                     recording ||
-                    (waitingForAgent && !agentAccepted)
-                    || chatClosed
+                    (waitingForAgent && !agentAccepted) ||
+                    chatClosed
                   }
                   style={{ fontSize: "1rem" }}
                 />
