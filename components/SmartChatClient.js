@@ -6,24 +6,30 @@ import {
   push,
   onValue,
   update,
-  get,
   set,
-  remove,
 } from "firebase/database";
-import {
-  FaPaperPlane,
-  FaSmile,
-} from "react-icons/fa";
+import { FaPaperPlane, FaSmile } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
 
-export default function ChatWidgetClient({ clientId, clientName }) {
+// دالة الترجمة
+async function translateText(text, targetLang) {
+  const res = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, targetLang }),
+  });
+  const data = await res.json();
+  return data.translatedText;
+}
+
+export default function ChatWidgetAgent({ agentId, agentName, agentLang = "ar" }) {
   const db = getDatabase();
 
   // بيانات حالة الشات
-  const [chatRoom, setChatRoom] = useState(null); // بيانات غرفة الشات
-  const [messages, setMessages] = useState([]);   // الرسائل
-  const [input, setInput] = useState("");         // النص
+  const [chatRoom, setChatRoom] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const [chatClosed, setChatClosed] = useState(false);
 
@@ -31,21 +37,22 @@ export default function ChatWidgetClient({ clientId, clientName }) {
   const chatEndRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  // البحث أو إنشاء غرفة الشات لهذا العميل (مرة واحدة فقط)
+  // البحث عن غرفة شات مفتوحة (موظف يختار من قائمة أو يتم الربط تلقائيًا)
   useEffect(() => {
+    // هنا يمكنك إضافة منطق اختيار غرفة معينة أو جلبها من قائمة أو من URL
+    // سأفترض جلب أول غرفة مفتوحة غير مغلقة
     const chatsRef = dbRef(db, "chats");
-    // البحث عن شات مفتوح بنفس clientId
     const unsub = onValue(chatsRef, (snap) => {
       let found = null;
       snap.forEach((room) => {
         const c = { ...room.val(), id: room.key };
-        if (c.clientId === clientId && c.status === "open") found = c;
+        if (c.status === "open" && c.waitingForAgent) found = c;
       });
       setChatRoom(found);
       setChatClosed(false);
     });
     return () => unsub();
-  }, [clientId]);
+  }, []);
 
   // مراقبة الرسائل
   useEffect(() => {
@@ -90,52 +97,54 @@ export default function ChatWidgetClient({ clientId, clientName }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showEmoji]);
 
-  // إرسال رسالة نصية
+  // قبول المحادثة (يغير حالة الغرفة)
+  const handleAcceptChat = async () => {
+    if (!chatRoom) return;
+    await update(dbRef(db, `chats/${chatRoom.id}`), {
+      waitingForAgent: false,
+      agentId,
+      agentName,
+      agentLang,
+      acceptedAt: Date.now(),
+    });
+  };
+
+  // إرسال رسالة للعميل مع ترجمة تلقائية
   const sendMessage = async () => {
     if (!chatRoom || !input.trim() || chatClosed) return;
+
+    // جلب لغة العميل من بيانات الغرفة
+    const clientLang = chatRoom.clientLang || "ar";
+    let translatedMsg = input;
+
+    // لو لغة الموظف != لغة العميل، ترجم قبل الإرسال
+    if (agentLang !== clientLang) {
+      translatedMsg = await translateText(input, clientLang);
+    }
+
     await push(dbRef(db, `chats/${chatRoom.id}/messages`), {
-      senderId: clientId,
-      senderName: clientName || "عميل",
-      senderType: "client",
+      senderId: agentId,
+      senderName: agentName || "موظف",
+      senderType: "agent",
       text: input,
+      translatedText: translatedMsg,
       type: "text",
       createdAt: Date.now(),
+      agentLang,
+      clientLang,
     });
     setInput("");
   };
 
-  // بدء شات جديد (أول رسالة)
-  const startChat = async () => {
-    if (!input.trim()) return;
-    // إنشاء غرفة جديدة
-    const chatData = {
-      clientId,
-      clientName: clientName || "عميل",
-      status: "open",
-      waitingForAgent: true,
-      createdAt: Date.now(),
-    };
-    const roomRef = push(dbRef(db, "chats"), chatData);
-    await set(dbRef(db, `chats/${roomRef.key}/messages/first`), {
-      senderId: clientId,
-      senderName: clientName || "عميل",
-      senderType: "client",
-      text: input,
-      type: "text",
-      createdAt: Date.now(),
-    });
-    setInput("");
-  };
-
-  // غلق الشات من العميل
+  // غلق الشات من الموظف
   const handleCloseChat = async () => {
     if (!chatRoom) return;
     await push(dbRef(db, `chats/${chatRoom.id}/messages`), {
-      text: "تم اغلاق المحادثة من طرف العميل",
+      text: "تم اغلاق المحادثة من طرف الموظف",
       type: "system",
       createdAt: Date.now(),
     });
-    await update(dbRef(db, `chats/${chatRoom.id}`), { status: "closed_by_client" });
+    await update(dbRef(db, `chats/${chatRoom.id}`), { status: "closed_by_agent" });
     setChatClosed(true);
   };
 
@@ -146,100 +155,150 @@ export default function ChatWidgetClient({ clientId, clientName }) {
     inputRef.current?.focus();
   };
 
-  // عرض الرسائل
+  // عرض الرسائل حسب لغة الموظف
   function renderMsgBubble(msg) {
     let bubbleClass =
       "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
-    let self = msg.senderType === "client";
+    let self = msg.senderType === "agent";
+    let showTranslation = false;
+    let displayText = msg.text;
+
+    // لو الرسالة أصلها بلغة مختلفة عن الموظف وفيها ترجمة، اعرض الترجمة
+    if (!self && msg.translatedText && msg.agentLang === agentLang) {
+      showTranslation = true;
+      displayText = msg.translatedText;
+    }
+
     if (msg.type === "system") {
       bubbleClass += " bg-yellow-50 text-blue-800 border border-blue-200 mx-auto";
     } else if (self) {
-      bubbleClass += " bg-gradient-to-br from-green-400 to-green-500 text-white ml-auto self-end";
+      bubbleClass += " bg-gradient-to-br from-blue-400 to-blue-600 text-white ml-auto self-end";
     } else {
       bubbleClass += " bg-white text-blue-900 border border-blue-200 self-start";
     }
+
     return (
       <div className={bubbleClass} key={msg.id}>
-        {["text", "system"].includes(msg.type) && <span>{msg.text}</span>}
+        {["text", "system"].includes(msg.type) && (
+          <span>
+            {displayText}
+            {showTranslation && (
+              <span className="block text-xs text-gray-400 mt-1">
+                (ترجمة تلقائية)
+              </span>
+            )}
+          </span>
+        )}
         <div className="text-[10px] text-blue-400 mt-1 text-left ltr:text-left rtl:text-right">
           {msg.type !== "system" ? msg.senderName : "النظام"}
           {" · "}
           {msg.createdAt
-            ? new Date(msg.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })
+            ? new Date(msg.createdAt).toLocaleTimeString(
+                agentLang === "ar" ? "ar-EG" : "en-US",
+                { hour: "2-digit", minute: "2-digit" }
+              )
             : ""}
         </div>
       </div>
     );
   }
 
-  // منطق الواجهة
-  // 1- لو لا يوجد شات بعد: عرض واجهة بدء الشات
-  // 2- لو يوجد شات && waitingForAgent: عرض شاشة الانتظار
-  // 3- لو يوجد شات && تم القبول: عرض الشات
-  // 4- لو الشات مغلق: عرض تنبيه الإغلاق
+  // واجهة اختيار اللغة للموظف
+  const [showLangSelect, setShowLangSelect] = useState(false);
 
   return (
     <div
-      className="h-full w-full flex flex-col rounded-2xl shadow-lg border border-green-900"
+      className="h-full w-full flex flex-col rounded-2xl shadow-lg border border-blue-900"
       style={{
         minHeight: "400px",
-        maxWidth: 400,
-        background:
-          "linear-gradient(120deg, #eaffea 60%, #e0ffe7 100%)",
+        maxWidth: 420,
+        background: "linear-gradient(120deg, #eaf6ff 60%, #e0eaff 100%)",
       }}
     >
       <style>{`
-        .client-btn:hover, .client-btn:focus { background: #e6f4fa; cursor: pointer; }
-        .client-close:hover, .client-close:focus { background: #ef4444; color: white; cursor: pointer; }
+        .agent-btn:hover, .agent-btn:focus { background: #e6f4fa; cursor: pointer; }
+        .agent-close:hover, .agent-close:focus { background: #ef4444; color: white; cursor: pointer; }
         button, .cursor-pointer, [role="button"] { cursor: pointer !important; }
       `}</style>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-green-800 bg-gradient-to-l from-green-100 to-white rounded-t-2xl">
-        <span className="text-lg font-bold text-green-700 tracking-wide">
-          خدمة الدعم الفني
+      <div className="flex items-center justify-between px-4 py-2 border-b border-blue-800 bg-gradient-to-l from-blue-100 to-white rounded-t-2xl">
+        <span className="text-lg font-bold text-blue-700 tracking-wide">
+          لوحة الموظف - الدعم الفني
         </span>
-        {chatRoom && !chatClosed && (
+        <div className="flex gap-2 items-center">
+          {chatRoom && !chatClosed && (
+            <button
+              className="agent-close bg-red-100 text-red-700 px-3 py-1 rounded-full shadow text-sm font-bold border border-red-200 transition"
+              onClick={handleCloseChat}
+            >
+              إنهاء
+            </button>
+          )}
+          {/* اختيار اللغة */}
           <button
-            className="client-close bg-red-100 text-red-700 px-3 py-1 rounded-full shadow text-sm font-bold border border-red-200 transition"
-            onClick={handleCloseChat}
+            className="agent-btn bg-blue-100 border border-blue-300 text-blue-700 px-3 py-1 rounded-full shadow text-sm font-bold transition"
+            onClick={() => setShowLangSelect((v) => !v)}
           >
-            إنهاء
+            {agentLang === "ar" ? "العربية" : "English"}
           </button>
-        )}
+          {showLangSelect && (
+            <div className="absolute left-6 top-12 bg-white border border-blue-300 rounded-xl shadow-lg z-50 p-3 flex gap-2">
+              <button
+                className={`agent-btn px-3 py-2 rounded font-bold ${
+                  agentLang === "ar" ? "bg-blue-200 text-blue-700" : ""
+                }`}
+                onClick={() => {
+                  setShowLangSelect(false);
+                  window.location.reload();
+                }}
+              >
+                العربية
+              </button>
+              <button
+                className={`agent-btn px-3 py-2 rounded font-bold ${
+                  agentLang === "en" ? "bg-blue-200 text-blue-700" : ""
+                }`}
+                onClick={() => {
+                  setShowLangSelect(false);
+                  window.location.reload();
+                }}
+              >
+                English
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+      {/* بيانات العميل */}
+      {chatRoom && (
+        <div className="px-4 py-2 border-b bg-blue-50 text-blue-800 flex gap-4 items-center text-sm">
+          <span>العميل: <b>{chatRoom.clientName}</b></span>
+          <span>اللغة: <b>{chatRoom.clientLang === "ar" ? "العربية" : "English"}</b></span>
+        </div>
+      )}
       {/* لا يوجد شات بعد */}
       {!chatRoom && (
-        <form
-          className="flex-1 flex flex-col items-center justify-center gap-2 p-8"
-          onSubmit={e => {
-            e.preventDefault();
-            startChat();
-          }}
-        >
-          <div className="mb-2 text-green-700 font-bold">ابدأ محادثة جديدة</div>
-          <input
-            type="text"
-            className="border rounded-full px-4 py-2 w-full max-w-xs outline-none"
-            placeholder="اكتب رسالتك الأولى..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-          />
-          <button type="submit" className="client-btn bg-green-600 text-white px-5 py-2 rounded-full mt-2">
-            إرسال
-          </button>
-        </form>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+          <div className="mb-2 text-blue-700 font-bold">لا يوجد محادثة حالياً</div>
+        </div>
       )}
-      {/* شاشة الانتظار */}
+      {/* شاشة قبول الدردشة */}
       {chatRoom && chatRoom.waitingForAgent && !chatClosed && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6">
-          <div className="animate-pulse text-green-800 font-bold text-xl mb-3">
-            جاري الانتظار لربطك بأحد الموظفين...
+          <div className="animate-pulse text-blue-800 font-bold text-xl mb-3">
+            هناك عميل ينتظر الانضمام للمحادثة...
           </div>
-          <div className="text-green-500 text-sm">سيتم فتح الدردشة تلقائيًا عند قبول موظف لطلبك.</div>
+          <div className="text-blue-500 text-sm">يمكنك قبول المحادثة بالضغط على الزر.</div>
           <button
-            className="client-close bg-red-100 text-red-700 px-3 py-1 rounded-full shadow text-sm font-bold border border-red-200 transition mt-3"
+            className="agent-btn bg-blue-600 text-white px-5 py-2 rounded-full mt-3"
+            onClick={handleAcceptChat}
+          >
+            قبول المحادثة
+          </button>
+          <button
+            className="agent-close bg-red-100 text-red-700 px-3 py-1 rounded-full shadow text-sm font-bold border border-red-200 transition mt-3"
             onClick={handleCloseChat}
           >
-            إلغاء الطلب
+            رفض واغلاق
           </button>
         </div>
       )}
@@ -247,10 +306,10 @@ export default function ChatWidgetClient({ clientId, clientName }) {
       {chatRoom && !chatRoom.waitingForAgent && (
         <div className="flex-1 flex flex-col">
           {/* الرسائل */}
-          <div className="flex-1 px-5 py-4 overflow-y-auto flex flex-col-reverse" style={{ direction: "rtl" }}>
+          <div className="flex-1 px-5 py-4 overflow-y-auto flex flex-col-reverse" style={{ direction: agentLang === "ar" ? "rtl" : "ltr" }}>
             <div ref={chatEndRef} />
             {chatClosed ? (
-              <div className="rounded-2xl px-4 py-3 mb-2 shadow max-w-[78%] mx-auto bg-yellow-50 border border-yellow-300 text-green-800 text-center font-bold">
+              <div className="rounded-2xl px-4 py-3 mb-2 shadow max-w-[78%] mx-auto bg-yellow-50 border border-yellow-300 text-blue-800 text-center font-bold">
                 تم اغلاق المحادثة من طرف العميل أو الموظف
               </div>
             ) : (
@@ -285,7 +344,7 @@ export default function ChatWidgetClient({ clientId, clientName }) {
                       data={emojiData}
                       onEmojiSelect={handleSelectEmoji}
                       theme="light"
-                      locale="ar"
+                      locale={agentLang}
                     />
                   </div>
                 )}
@@ -293,8 +352,8 @@ export default function ChatWidgetClient({ clientId, clientName }) {
               <input
                 ref={inputRef}
                 type="text"
-                className="flex-1 bg-green-50 rounded-full px-4 py-2 outline-none text-green-900 shadow border"
-                placeholder="اكتب رسالة..."
+                className="flex-1 bg-blue-50 rounded-full px-4 py-2 outline-none text-blue-900 shadow border"
+                placeholder={agentLang === "ar" ? "اكتب رسالة..." : "Type a message..."}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 style={{ fontSize: "1rem" }}
@@ -302,8 +361,8 @@ export default function ChatWidgetClient({ clientId, clientName }) {
               />
               <button
                 type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow"
-                title="إرسال"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow"
+                title={agentLang === "ar" ? "إرسال" : "Send"}
                 disabled={chatClosed}
               >
                 <FaPaperPlane />

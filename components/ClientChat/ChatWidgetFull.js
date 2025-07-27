@@ -6,7 +6,6 @@ import {
   set,
   push,
   onValue,
-  update,
 } from "firebase/database";
 import {
   FaPaperPlane,
@@ -31,6 +30,17 @@ function blobToBase64(blob) {
     reader.onloadend = () => resolve(reader.result);
     reader.readAsDataURL(blob);
   });
+}
+
+// دالة الترجمة
+async function translateText(text, targetLang) {
+  const res = await fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, targetLang }),
+  });
+  const data = await res.json();
+  return data.translatedText;
 }
 
 export default function ChatWidgetFull({
@@ -63,6 +73,9 @@ export default function ChatWidgetFull({
 
   // لحساب عدد الرسائل السابقة
   const prevMsgCount = useRef(0);
+
+  // تحديد لغة الموظف (ثابت أو من إعدادات الموظف)
+  const agentLang = "ar"; // يمكن تغييرها حسب احتياجك
 
   // fallback في حالة عدم وجود بيانات مستخدم
   const safeUserId = userId || "guest";
@@ -110,8 +123,10 @@ export default function ChatWidgetFull({
       clientName: safeUserName,
       createdAt: Date.now(),
       status: "open",
+      clientLang: lang,
+      agentLang: agentLang,
     });
-  }, [db, roomId, safeUserId, safeUserName]);
+  }, [db, roomId, safeUserId, safeUserName, lang, agentLang]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -161,16 +176,30 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // إرسال رسالة
+  // إرسال رسالة مع ترجمة إذا كانت للموظف
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
+
+    let msgText = content.text || "";
+    let translatedMsg = msgText;
+
+    // لو العميل يتواصل مع الموظف، ترجم للغة الموظف
+    if (waitingForAgent && type === "text" && lang !== agentLang) {
+      translatedMsg = await translateText(msgText, agentLang);
+    }
+
     const msg = {
       senderId: type === "bot" ? "taheel-ai" : safeUserId,
       senderName: type === "bot" ? (lang === "ar" ? "تأهيل AI" : "Taheel AI") : safeUserName,
       type,
       createdAt: Date.now(),
+      text: msgText,
+      translatedText: translatedMsg,
+      clientLang: lang,
+      agentLang: agentLang,
       ...content,
     };
+
     await push(dbRef(db, `chats/${roomId}/messages`), msg);
     if (type === "image" || type === "audio") setUploading(false);
 
@@ -201,10 +230,7 @@ export default function ChatWidgetFull({
     }
     const textMsg = input.trim();
     if (!textMsg) return;
-
-    // هنا ممكن دمج الذكاء الصناعي لاحقاً
     await sendMessage("text", { text: textMsg });
-
     setInput("");
   };
 
@@ -245,10 +271,13 @@ export default function ChatWidgetFull({
     setShowEmoji(false);
   };
 
-  // شكل الرسالة
+  // شكل الرسالة (يظهر للعميل بلغته)
   function renderMsgBubble(msg) {
     const isSelf = msg.senderId === safeUserId;
     const isBot = msg.senderId === "taheel-ai";
+    // الرسالة تظهر بلغتها الأصلية للعميل
+    const displayText = msg.text;
+
     const base =
       "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
     const align = isSelf
@@ -264,7 +293,6 @@ export default function ChatWidgetFull({
         : "bg-gradient-to-r from-white via-emerald-50 to-white text-gray-900 border border-gray-200";
     return (
       <div className={`${base} ${align} ${color} flex gap-2 items-center`} key={msg.id}>
-        {/* لوجو بوت لو الرد من تأهيل AI */}
         {isBot && (
           <img
             src="/taheel-bot.png"
@@ -280,8 +308,7 @@ export default function ChatWidgetFull({
           />
         )}
         <div style={{ flex: 1 }}>
-          {msg.type === "text" && <span>{msg.text}</span>}
-          {msg.type === "bot" && <span>{msg.text}</span>}
+          {(msg.type === "text" || msg.type === "bot") && <span>{displayText}</span>}
           {msg.type === "image" && (
             <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
           )}
