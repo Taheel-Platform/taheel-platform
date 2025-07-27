@@ -77,7 +77,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
-  const headerHeight = 95;
+  const headerHeight = 120;
 
   useEffect(() => {
     function handleClick(e) {
@@ -90,6 +90,26 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
   }, [opened]);
 
   const serviceSections = SERVICE_SECTIONS[clientType] || [];
+
+  // زر عائم في منتصف السايدبار
+  const floatingBtnStyle = {
+    position: "absolute",
+    top: "50%",
+    left: opened ? "100%" : "100%",
+    transform: "translate(-50%, -50%)",
+    background: "#10b981",
+    color: "#fff",
+    borderRadius: "50%",
+    boxShadow: "0 6px 24px 0 rgba(16,185,129,0.25)",
+    padding: "12px",
+    border: "2px solid #d1fae5",
+    cursor: "pointer",
+    zIndex: 50,
+    transition: "background 0.2s, left 0.5s, top 0.5s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
 
   return (
     <aside
@@ -114,18 +134,16 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
         flexDirection: "column",
       }}
     >
-      {/* زر فتح/غلق القائمة */}
+      {/* زر فتح/غلق عائم في منتصف السايدبار */}
       <button
-        className="absolute top-6 right-[-20px] bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-lg p-2 border border-emerald-200"
-        style={{
-          zIndex: 50,
-          cursor: "pointer",
-          transition: "background 0.2s",
-        }}
+        style={floatingBtnStyle}
         onClick={() => setOpened(v => !v)}
         title={opened ? (lang === "ar" ? "إغلاق القائمة" : "Close sidebar") : (lang === "ar" ? "فتح القائمة" : "Open sidebar")}
       >
-        {opened ? <FaChevronLeft /> : <FaChevronRight />}
+        {opened
+          ? <FaChevronLeft size={22} />
+          : <FaChevronRight size={22} />
+        }
       </button>
 
       {/* اللوجو */}
