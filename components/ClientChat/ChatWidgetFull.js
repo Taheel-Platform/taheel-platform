@@ -19,12 +19,8 @@ import {
 } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
-
-const FAQ = [
-  { q: "ما هي ساعات العمل", a: "ساعات العمل من 8 صباحاً حتى 5 مساءً من الأحد للخميس." },
-  { q: "كيف أستخرج بطاقة", a: "يرجى تعبئة النموذج على المنصة وسيتم التواصل معك خلال 24 ساعة." },
-  { q: "ما هي طرق الدفع المتاحة", a: "نوفر الدفع بالبطاقات البنكية والتحويل البنكي." },
-];
+import faqData from "./faqData";
+import { findFaqAnswer } from "./faqSearch";
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -60,7 +56,6 @@ export default function ChatWidgetFull({
 
   const chatEndRef = useRef(null);
 
-  // fallback in case userId/userName are missing
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
@@ -127,7 +122,6 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // رسالة ترحيب عند أول دخول
   useEffect(() => {
     if (messages.length === 0 && roomId && !waitingForAgent && !agentAccepted) {
       sendMessage("bot", {
@@ -177,9 +171,9 @@ export default function ChatWidgetFull({
 
     if (!waitingForAgent && !agentAccepted) {
       await sendMessage("text", { text: textMsg });
-      let found = FAQ.find(f => textMsg.includes(f.q) || f.q.includes(textMsg));
-      if (found) {
-        await sendMessage("bot", { text: found.a });
+      let foundAnswer = findFaqAnswer(textMsg, lang);
+      if (foundAnswer) {
+        await sendMessage("bot", { text: foundAnswer });
         setNoBotHelpCount(0);
       } else {
         setNoBotHelpCount(c => c + 1);
@@ -201,9 +195,9 @@ export default function ChatWidgetFull({
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
-    let found = FAQ.find(f => q.includes(f.q) || f.q.includes(q));
-    if (found) {
-      await sendMessage("bot", { text: found.a });
+    let foundAnswer = findFaqAnswer(q, lang);
+    if (foundAnswer) {
+      await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
     } else {
       setNoBotHelpCount(c => c + 1);
@@ -373,7 +367,6 @@ export default function ChatWidgetFull({
                   : "Chat intelligente"}
               </span>
               <div className="chat-header-buttons">
-                {/* زر التصغير ثم زر الإغلاق للغة العربية - العكس للإنجليزية/الفرنسية */}
                 <button
                   onClick={() => setMinimized(true)}
                   className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
@@ -513,13 +506,13 @@ export default function ChatWidgetFull({
             )}
             {messages.length === 0 && !waitingForAgent && !agentAccepted && (
               <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                {FAQ.map(f => (
+                {faqData.map((f, i) => (
                   <button
-                    key={f.q}
-                    onClick={() => handleQuickFAQ(f.q)}
+                    key={i}
+                    onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
                     className="bg-gradient-to-br from-emerald-200 to-emerald-100 hover:from-emerald-300 hover:to-emerald-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
                   >
-                    {f.q}
+                    {f.q[lang] || f.q.en}
                   </button>
                 ))}
               </div>

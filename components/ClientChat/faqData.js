@@ -1,11 +1,16 @@
-export const FAQ_AR = [
-  { q: "ما هي ساعات العمل؟", a: "ساعات العمل من 8 صباحاً حتى 5 مساءً من الأحد للخميس." },
-  { q: "كيف أستخرج بطاقة؟", a: "يرجى تعبئة النموذج وسيتم التواصل معك." },
-  { q: "ما هي طرق الدفع المتاحة؟", a: "نوفر الدفع بالبطاقات البنكية والتحويل البنكي." },
+const faqData = [
+  {
+    q: { ar: "ما هي ساعات العمل", en: "What are working hours" },
+    a: { ar: "ساعات العمل من 8 صباحاً حتى 5 مساءً من الأحد للخميس.", en: "Working hours are 8am to 5pm, Sunday to Thursday." }
+  },
+  {
+    q: { ar: "كيف أستخرج بطاقة", en: "How to get a card" },
+    a: { ar: "يرجى تعبئة النموذج على المنصة وسيتم التواصل معك خلال 24 ساعة.", en: "Please fill the form on the platform and you will be contacted within 24 hours." }
+  },
+  {
+    q: { ar: "ما هي طرق الدفع المتاحة", en: "What are payment methods" },
+    a: { ar: "نوفر الدفع بالبطاقات البنكية والتحويل البنكي.", en: "We provide payment via bank cards and wire transfer." }
+  },
 ];
 
-export const FAQ_EN = [
-  { q: "What are the working hours?", a: "Working hours are from 8 AM to 5 PM, Sunday to Thursday." },
-  { q: "How do I get a card?", a: "Please fill out the form and we will contact you." },
-  { q: "What payment methods are available?", a: "We offer payment by bank cards and bank transfer." },
-];
+export default faqData;
