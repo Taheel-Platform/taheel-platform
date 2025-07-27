@@ -314,4 +314,4 @@ export default function ChatWidgetClient({ clientId, clientName }) {
       )}
     </div>
   );
-}
+} 
