@@ -68,10 +68,6 @@ export default function ChatWidgetFull({
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
 
-  // محاولات الأسئلة الخاطئة
-  const [wrongAttempts, setWrongAttempts] = useState(0);
-  const maxWrongAttempts = 3;
-
   const chatEndRef = useRef(null);
   const db = getDatabase();
 
@@ -85,64 +81,17 @@ export default function ChatWidgetFull({
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
-  // اختيار اللغة تلقائيًا من المتصفح عند أول فتح
-  useEffect(() => {
-    if (!lang && typeof window !== "undefined") {
-      const browserLang = navigator.language?.startsWith("ar") ? "ar" : "en";
-      setLang(browserLang);
-      setFaqList(browserLang === "ar" ? FAQ_AR : FAQ_EN);
-      setStep("faq");
-    }
-  }, [lang]);
-
-  // اختيار اللغة يدويًا من زر أو حقل إدخال
+  // اختيار اللغة
   const handleLangSelect = (l) => {
     setLang(l);
     setFaqList(l === "ar" ? FAQ_AR : FAQ_EN);
     setStep("faq");
   };
 
-  // دالة للتحقق هل السؤال موجود في الأسئلة الجاهزة
-  function getFaqAnswer(userQuestion) {
-    const list = lang === "ar" ? FAQ_AR : FAQ_EN;
-    const found = list.find(f => f.q.trim().toLowerCase() === userQuestion.trim().toLowerCase());
-    return found ? found.a : null;
-  }
-
-  // إرسال السؤال من العميل في مرحلة FAQ
-  const handleAskFaq = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    const answer = getFaqAnswer(input);
-    if (answer) {
-      // سؤال موجود: أظهر الإجابة
-      await sendMessage("text", { text: input });
-      await sendMessage("bot", { text: answer });
-      setInput("");
-      setWrongAttempts(0);
-      setStep("chat");
-    } else {
-      // سؤال غير موجود
-      await sendMessage("text", { text: input });
-      await sendMessage("bot", { text: lang === "ar" ? "عذرًا لم أجد إجابة لهذا السؤال! جرب سؤال آخر." : "Sorry, I couldn't find an answer for that!" });
-      setWrongAttempts(prev => prev + 1);
-      setInput("");
-    }
-  };
-
-  // عرض زر التواصل مع الموظف إذا تجاوز العميل عدد المحاولات
-  const showContactAgentButton = wrongAttempts >= maxWrongAttempts;
-
-  // عند الضغط عليه يبدأ مرحلة التواصل مع الموظف
-  const handleContactAgent = () => {
-    setStep("chat");
-    setWaitingForAgent(true);
-    sendMessage("system", { text: lang === "ar" ? "العميل يحتاج التواصل مع موظف." : "Customer needs to contact an agent." });
-  };
-
-  // بدء محادثة من سؤال FAQ جاهز
+  // بدء محادثة من سؤال FAQ
   const handleFaqSelect = async (q, a) => {
     setStep("chat");
+    // أضف السؤال والرد كرسالة في الدردشة
     await sendMessage("text", { text: q });
     await sendMessage("bot", { text: a });
   };
@@ -326,6 +275,7 @@ export default function ChatWidgetFull({
   function renderMsgBubble(msg) {
     const isSelf = msg.senderId === safeUserId;
     const isBot = msg.senderId === "taheel-ai";
+    // الرسالة تظهر بلغتها الأصلية للعميل
     const displayText = msg.text;
 
     const base =
@@ -381,106 +331,6 @@ export default function ChatWidgetFull({
       </div>
     );
   }
-
-  // واجهة اختيار اللغة - يظهر تلقائي من المتصفح ويمكن للعميل اختيار أو كتابة لغته
-  const LanguageStep = (
-    <div className="flex flex-col items-center justify-center h-full gap-3">
-      <span
-        className="font-semibold text-base mb-2"
-        style={{
-          color: lang === "ar" ? "#10b981" : "#2563eb",
-          background: "#f6fff6",
-          padding: "8px 20px",
-          borderRadius: "14px",
-          fontSize: "1.25rem",
-          fontWeight: "bold",
-          border: `2px solid ${lang === "ar" ? "#10b981" : "#2563eb"}`,
-          boxShadow: "0 2px 8px rgba(16,185,129,0.08)",
-        }}
-      >
-        {lang === "ar" ? "اختر اللغة المفضلة" : "Choose your preferred language"}
-      </span>
-      <div className="flex gap-2">
-        <button
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
-          onClick={() => handleLangSelect("ar")}
-        >
-          العربية
-        </button>
-        <button
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 font-bold shadow"
-          onClick={() => handleLangSelect("en")}
-        >
-          English
-        </button>
-      </div>
-      <input
-        type="text"
-        className="border rounded-full px-4 py-2 w-full max-w-xs outline-none mt-2"
-        placeholder={lang === "ar" ? "اكتب اللغة مثل ar أو en" : "Type your language e.g. ar or en"}
-        onChange={e => setLang(e.target.value.trim().toLowerCase())}
-        value={lang}
-      />
-      <button
-        className="bg-gray-500 hover:bg-gray-700 text-white rounded-full px-6 py-2 font-bold shadow mt-2"
-        onClick={() => {
-          if (lang === "ar" || lang === "en") {
-            setFaqList(lang === "ar" ? FAQ_AR : FAQ_EN);
-            setStep("faq");
-          }
-        }}
-      >
-        {lang === "ar" ? "تأكيد اللغة" : "Confirm Language"}
-      </button>
-    </div>
-  );
-
-  // واجهة الأسئلة ومحاولة الإجابة + زر التواصل مع الموظف بعد محاولات خاطئة
-  const FaqStep = (
-    <div className="flex flex-col items-center gap-3">
-      <span className="font-semibold text-base mb-2">
-        {lang === "ar" ? "اكتب سؤالك أو اختر من القائمة" : "Type your question or choose from the list"}
-      </span>
-      <form onSubmit={handleAskFaq} className="w-full flex flex-col items-center gap-2">
-        <input
-          type="text"
-          className="border rounded-full px-4 py-2 w-full max-w-xs outline-none"
-          placeholder={lang === "ar" ? "اكتب سؤالك هنا..." : "Type your question here..."}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
-        >
-          {lang === "ar" ? "اسأل" : "Ask"}
-        </button>
-      </form>
-      {faqList.map(f => (
-        <button
-          key={f.q}
-          onClick={() => handleFaqSelect(f.q, f.a)}
-          className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow w-full"
-        >
-          {f.q}
-        </button>
-      ))}
-      <button
-        className="bg-white border border-emerald-400 text-emerald-700 rounded-full px-4 py-2 text-sm font-semibold shadow w-full mt-2"
-        onClick={handleStartChatDirectly}
-      >
-        {lang === "ar" ? "بدء المحادثة مباشرة" : "Start chat directly"}
-      </button>
-      {showContactAgentButton && (
-        <button
-          className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-6 py-2 font-bold shadow mt-2"
-          onClick={handleContactAgent}
-        >
-          {lang === "ar" ? "التواصل مع موظف" : "Contact Support Agent"}
-        </button>
-      )}
-    </div>
-  );
 
   // زر الفتح العائم
   if (minimized) {
@@ -543,10 +393,43 @@ export default function ChatWidgetFull({
           </div>
           {/* مراحل الشات */}
           <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-            {/* اختيار اللغة تلقائي أو يدوي أو إدخال حقل */}
-            {step === "language" && LanguageStep}
-            {/* صفحة الأسئلة ومحاولات الإجابة وزر التواصل مع الموظف */}
-            {step === "faq" && FaqStep}
+            {/* اختيار اللغة */}
+            {step === "language" && (
+              <div className="flex flex-col items-center justify-center h-full gap-3">
+                <span className="font-semibold text-base mb-2">اختر اللغة المفضلة</span>
+                <button
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
+                  onClick={() => handleLangSelect("ar")}
+                >العربية</button>
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 font-bold shadow"
+                  onClick={() => handleLangSelect("en")}
+                >English</button>
+              </div>
+            )}
+            {/* صفحة الأسئلة حسب اللغة */}
+            {step === "faq" && (
+              <div className="flex flex-col items-center gap-3">
+                <span className="font-semibold text-base mb-2">
+                  {lang === "ar" ? "اختر سؤال أو ابدأ المحادثة مباشرة" : "Choose a question or start chat"}
+                </span>
+                {faqList.map(f => (
+                  <button
+                    key={f.q}
+                    onClick={() => handleFaqSelect(f.q, f.a)}
+                    className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow w-full"
+                  >
+                    {f.q}
+                  </button>
+                ))}
+                <button
+                  className="bg-white border border-emerald-400 text-emerald-700 rounded-full px-4 py-2 text-sm font-semibold shadow w-full mt-2"
+                  onClick={handleStartChatDirectly}
+                >
+                  {lang === "ar" ? "بدء المحادثة مباشرة" : "Start chat directly"}
+                </button>
+              </div>
+            )}
             {/* شات عادي */}
             {step === "chat" && (
               <>
