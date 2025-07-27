@@ -48,3 +48,11 @@ export default function LanguageSelectModal({ defaultLang = "ar", userName = "ز
     </div>
   );
 }
+
+{showLangModal && (
+  <LanguageSelectModal
+    userName={safeUserName}
+    countries={countriesData}
+    onSelect={handleLangCountrySelect}
+  />
+)}

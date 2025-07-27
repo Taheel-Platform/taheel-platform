@@ -22,7 +22,7 @@ import emojiData from "@emoji-mart/data";
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
-import countriesList from "./countriesList";
+import countriesData from "../lib/countries-ar-en.js";
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -377,10 +377,10 @@ export default function ChatWidgetFull({
       `}</style>
       {showLangModal && (
         <LanguageSelectModal
-          userName={safeUserName}
-          countries={countriesList}
-          onSelect={handleLangCountrySelect}
-        />
+  userName={safeUserName}
+  countries={countriesData}
+  onSelect={handleLangCountrySelect}
+/>
       )}
       {minimized ? (
         <button
