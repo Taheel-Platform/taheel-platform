@@ -96,7 +96,6 @@ function ClientProfilePageInner({ userId }) {
   const [lang, setLang] = useState("ar");
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState("personal");
-  const [selectedServiceSection, setSelectedServiceSection] = useState("residentServices");
   const [client, setClient] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
@@ -218,12 +217,6 @@ function ClientProfilePageInner({ userId }) {
     otherServices,
   };
 
-  useEffect(() => {
-    if (clientType === "resident") setSelectedServiceSection("residentServices");
-    else if (clientType === "company") setSelectedServiceSection("companyServices");
-    else if (clientType === "nonresident") setSelectedServiceSection("nonresidentServices");
-  }, [clientType]);
-
   const filterFn = typeof filterService === "function" ? filterService : () => true;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
@@ -329,8 +322,8 @@ function ClientProfilePageInner({ userId }) {
     >
       {/* Sidebar */}
       <Sidebar
-        selected={selectedServiceSection}
-        onSelect={setSelectedServiceSection}
+        selected={selectedSection}
+        onSelect={setSelectedSection}
         lang={lang}
         clientType={clientType}
       />
@@ -530,83 +523,83 @@ function ClientProfilePageInner({ userId }) {
 
         {/* Main Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
-  {selectedSection === "personal" && (
-    <>
-      {clientType === "resident" && (
-        <ResidentCard client={client} lang={lang} />
-      )}
-      {(client.type === "nonResident" || client.type === "nonresident") && (
-        <NonResidentCard client={client} lang={lang} />
-      )}
-      {clientType === "company" && (
-        <>
-          <CompanyCardGold company={client} lang={lang} />
-          <ResidentCard
-            client={{
-              firstName: client.ownerFirstName,
-              middleName: client.ownerMiddleName,
-              lastName: client.ownerLastName,
-              birthDate: client.ownerBirthDate,
-              gender: client.ownerGender,
-              nationality: client.ownerNationality,
-              phone: client.phone,
-            }}
-            lang={lang}
-          />
-        </>
-      )}
-    </>
-  )}
+          {selectedSection === "personal" && (
+            <>
+              {clientType === "resident" && (
+                <ResidentCard client={client} lang={lang} />
+              )}
+              {(client.type === "nonResident" || client.type === "nonresident") && (
+                <NonResidentCard client={client} lang={lang} />
+              )}
+              {clientType === "company" && (
+                <>
+                  <CompanyCardGold company={client} lang={lang} />
+                  <ResidentCard
+                    client={{
+                      firstName: client.ownerFirstName,
+                      middleName: client.ownerMiddleName,
+                      lastName: client.ownerLastName,
+                      birthDate: client.ownerBirthDate,
+                      gender: client.ownerGender,
+                      nationality: client.ownerNationality,
+                      phone: client.phone,
+                    }}
+                    lang={lang}
+                  />
+                </>
+              )}
+            </>
+          )}
 
-  {selectedSection === "orders" && (
-    <>
-      <div className="w-full flex items-center my-8 select-none">
-        {/* عنوان الطلبات الحالية */}
-      </div>
-      <ClientOrdersTracking
-        clientId={client.userId}
-        lang={lang}
-        orders={orders}
-        showStatus
-      />
-    </>
-  )}
+          {selectedSection === "orders" && (
+            <>
+              <div className="w-full flex items-center my-8 select-none">
+                {/* عنوان الطلبات الحالية */}
+              </div>
+              <ClientOrdersTracking
+                clientId={client.userId}
+                lang={lang}
+                orders={orders}
+                showStatus
+              />
+            </>
+          )}
 
-  {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
-    <>
-      <SectionTitle
-        icon={sectionTitles[selectedSection].icon}
-        color={sectionTitles[selectedSection].color}
-      >
-        {lang === "ar"
-          ? sectionTitles[selectedSection].ar
-          : sectionTitles[selectedSection].en}
-      </SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-        {sectionToServices[selectedSection].filter(filterFn).map((srv, i) => (
-          <ServiceProfileCard
-            key={srv.name + i}
-            category={selectedSection.replace("Services", "")}
-            name={srv.name}
-            description={srv.description}
-            price={srv.price}
-            duration={srv.duration}
-            requiredDocs={srv.documents || []}
-            requireUpload={srv.requireUpload}
-            coins={srv.coins || 0}
-            lang={lang}
-            userId={client.userId}
-            userWallet={client.walletBalance || 0}
-            userCoins={client.coins || 0}
-            onPaid={handleServicePaid}
-            coinsPercent={0.1}
-            addNotification={addNotification}
-          />
-        ))}
-      </div>
-    </>
-  )}
-</main>
+          {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
+            <>
+              <SectionTitle
+                icon={sectionTitles[selectedSection].icon}
+                color={sectionTitles[selectedSection].color}
+              >
+                {lang === "ar"
+                  ? sectionTitles[selectedSection].ar
+                  : sectionTitles[selectedSection].en}
+              </SectionTitle>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                {sectionToServices[selectedSection].filter(filterFn).map((srv, i) => (
+                  <ServiceProfileCard
+                    key={srv.name + i}
+                    category={selectedSection.replace("Services", "")}
+                    name={srv.name}
+                    description={srv.description}
+                    price={srv.price}
+                    duration={srv.duration}
+                    requiredDocs={srv.documents || []}
+                    requireUpload={srv.requireUpload}
+                    coins={srv.coins || 0}
+                    lang={lang}
+                    userId={client.userId}
+                    userWallet={client.walletBalance || 0}
+                    userCoins={client.coins || 0}
+                    onPaid={handleServicePaid}
+                    coinsPercent={0.1}
+                    addNotification={addNotification}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </main>
 
         {/* الفوتر وحقوق الملكية */}
         <footer className="w-full flex flex-col items-center justify-center mt-10 mb-4 z-10">
