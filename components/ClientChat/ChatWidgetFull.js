@@ -347,9 +347,10 @@ export default function ChatWidgetFull({
           display: flex;
           gap: 8px;
           position: absolute;
-          right: 12px;
           top: 12px;
           z-index: 11;
+          ${lang === "ar" ? "left: 12px;" : "right: 12px;"}
+          flex-direction: ${lang === "ar" ? "row-reverse" : "row"};
         }
       `}</style>
       {minimized ? (
@@ -372,14 +373,7 @@ export default function ChatWidgetFull({
                   : "Chat intelligente"}
               </span>
               <div className="chat-header-buttons">
-                <button
-                  onClick={closeChat}
-                  className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
-                  title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
-                  style={{ fontWeight: 700 }}
-                >
-                  <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
-                </button>
+                {/* زر التصغير ثم زر الإغلاق للغة العربية - العكس للإنجليزية/الفرنسية */}
                 <button
                   onClick={() => setMinimized(true)}
                   className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
@@ -387,6 +381,14 @@ export default function ChatWidgetFull({
                   style={{ fontWeight: 700 }}
                 >
                   <FaWindowMinimize style={{ fontWeight: 900, fontSize: 18 }} />
+                </button>
+                <button
+                  onClick={closeChat}
+                  className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
+                  title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
+                  style={{ fontWeight: 700 }}
+                >
+                  <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
                 </button>
               </div>
             </div>
