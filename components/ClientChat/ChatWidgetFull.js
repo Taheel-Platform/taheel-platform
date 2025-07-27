@@ -81,7 +81,17 @@ export default function ChatWidgetFull({
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
-  // اختيار اللغة
+  // اختيار اللغة تلقائيًا من المتصفح عند أول فتح
+  useEffect(() => {
+    if (!lang && typeof window !== "undefined") {
+      const browserLang = navigator.language?.startsWith("ar") ? "ar" : "en";
+      setLang(browserLang);
+      setFaqList(browserLang === "ar" ? FAQ_AR : FAQ_EN);
+      setStep("faq");
+    }
+  }, [lang]);
+
+  // اختيار اللغة يدويًا من زر أو حقل إدخال
   const handleLangSelect = (l) => {
     setLang(l);
     setFaqList(l === "ar" ? FAQ_AR : FAQ_EN);
@@ -91,7 +101,6 @@ export default function ChatWidgetFull({
   // بدء محادثة من سؤال FAQ
   const handleFaqSelect = async (q, a) => {
     setStep("chat");
-    // أضف السؤال والرد كرسالة في الدردشة
     await sendMessage("text", { text: q });
     await sendMessage("bot", { text: a });
   };
@@ -275,7 +284,6 @@ export default function ChatWidgetFull({
   function renderMsgBubble(msg) {
     const isSelf = msg.senderId === safeUserId;
     const isBot = msg.senderId === "taheel-ai";
-    // الرسالة تظهر بلغتها الأصلية للعميل
     const displayText = msg.text;
 
     const base =
@@ -331,6 +339,59 @@ export default function ChatWidgetFull({
       </div>
     );
   }
+
+  // واجهة اختيار اللغة - يظهر تلقائي من المتصفح ويمكن للعميل اختيار أو كتابة لغته
+  const LanguageStep = (
+    <div className="flex flex-col items-center justify-center h-full gap-3">
+      <span
+        className="font-semibold text-base mb-2"
+        style={{
+          color: lang === "ar" ? "#10b981" : "#2563eb",
+          background: "#f6fff6",
+          padding: "8px 20px",
+          borderRadius: "14px",
+          fontSize: "1.25rem",
+          fontWeight: "bold",
+          border: `2px solid ${lang === "ar" ? "#10b981" : "#2563eb"}`,
+          boxShadow: "0 2px 8px rgba(16,185,129,0.08)",
+        }}
+      >
+        {lang === "ar" ? "اختر اللغة المفضلة" : "Choose your preferred language"}
+      </span>
+      <div className="flex gap-2">
+        <button
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
+          onClick={() => handleLangSelect("ar")}
+        >
+          العربية
+        </button>
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 font-bold shadow"
+          onClick={() => handleLangSelect("en")}
+        >
+          English
+        </button>
+      </div>
+      <input
+        type="text"
+        className="border rounded-full px-4 py-2 w-full max-w-xs outline-none mt-2"
+        placeholder={lang === "ar" ? "اكتب اللغة مثل ar أو en" : "Type your language e.g. ar or en"}
+        onChange={e => setLang(e.target.value.trim().toLowerCase())}
+        value={lang}
+      />
+      <button
+        className="bg-gray-500 hover:bg-gray-700 text-white rounded-full px-6 py-2 font-bold shadow mt-2"
+        onClick={() => {
+          if (lang === "ar" || lang === "en") {
+            setFaqList(lang === "ar" ? FAQ_AR : FAQ_EN);
+            setStep("faq");
+          }
+        }}
+      >
+        {lang === "ar" ? "تأكيد اللغة" : "Confirm Language"}
+      </button>
+    </div>
+  );
 
   // زر الفتح العائم
   if (minimized) {
@@ -393,20 +454,8 @@ export default function ChatWidgetFull({
           </div>
           {/* مراحل الشات */}
           <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-            {/* اختيار اللغة */}
-            {step === "language" && (
-              <div className="flex flex-col items-center justify-center h-full gap-3">
-                <span className="font-semibold text-base mb-2">اختر اللغة المفضلة</span>
-                <button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
-                  onClick={() => handleLangSelect("ar")}
-                >العربية</button>
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 font-bold shadow"
-                  onClick={() => handleLangSelect("en")}
-                >English</button>
-              </div>
-            )}
+            {/* اختيار اللغة تلقائي أو يدوي أو إدخال حقل */}
+            {step === "language" && LanguageStep}
             {/* صفحة الأسئلة حسب اللغة */}
             {step === "faq" && (
               <div className="flex flex-col items-center gap-3">
