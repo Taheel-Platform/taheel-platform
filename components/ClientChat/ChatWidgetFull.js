@@ -14,16 +14,15 @@ import {
   FaImage,
   FaSmile,
   FaComments,
-  FaTimes,
-  FaWindowMinimize,
 } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
-import { FAQ_AR, FAQ_EN } from "./faqData";
 
-// إعداد الصوت
-const sendSound = typeof window !== "undefined" ? new Audio("/sounds/send.mp3") : null;
-const receiveSound = typeof window !== "undefined" ? new Audio("/sounds/receive.mp3") : null;
+const FAQ = [
+  { q: "ما هي ساعات العمل", a: "ساعات العمل من 8 صباحاً حتى 5 مساءً من الأحد للخميس." },
+  { q: "كيف أستخرج بطاقة", a: "يرجى تعبئة النموذج على المنصة وسيتم التواصل معك خلال 24 ساعة." },
+  { q: "ما هي طرق الدفع المتاحة", a: "نوفر الدفع بالبطاقات البنكية والتحويل البنكي." },
+];
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -38,11 +37,9 @@ export default function ChatWidgetFull({
   userName,
   initialRoomId,
   onClose,
+  lang = "ar",
 }) {
-  // مراحل الشات: اختيار اللغة > FAQ > شات
-  const [step, setStep] = useState("language");
-  const [lang, setLang] = useState("");
-  const [faqList, setFaqList] = useState([]);
+  const db = getDatabase();
   const [roomId, setRoomId] = useState(initialRoomId || "");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -55,38 +52,16 @@ export default function ChatWidgetFull({
   const [minimized, setMinimized] = useState(false);
   const [chatClosed, setChatClosed] = useState(false);
 
+  const [noBotHelpCount, setNoBotHelpCount] = useState(0);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
 
   const chatEndRef = useRef(null);
-  const db = getDatabase();
 
-  // لحساب عدد الرسائل السابقة
-  const prevMsgCount = useRef(0);
-
-  // fallback في حالة عدم وجود بيانات مستخدم
+  // fallback in case userId/userName are missing
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
-  // اختيار اللغة
-  const handleLangSelect = (l) => {
-    setLang(l);
-    setFaqList(l === "ar" ? FAQ_AR : FAQ_EN);
-    setStep("faq");
-  };
-
-  // بدء محادثة من سؤال FAQ
-  const handleFaqSelect = async (q, a) => {
-    setStep("chat");
-    // أضف السؤال والرد كرسالة في الدردشة
-    await sendMessage("text", { text: q });
-    await sendMessage("bot", { text: a });
-  };
-
-  // بدء شات بدون سؤال
-  const handleStartChatDirectly = () => setStep("chat");
-
-  // Firebase: تحضير غرفة الدردشة
   useEffect(() => {
     if (!roomId) {
       let id = initialRoomId;
@@ -129,25 +104,14 @@ export default function ChatWidgetFull({
       });
       msgs.sort((a, b) => a.createdAt - b.createdAt);
       setMessages(msgs);
+
       setTimeout(() => {
         requestAnimationFrame(() => {
           chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
         });
       }, 100);
-
-      // صوت الاستقبال عند وصول رسالة جديدة من غير المستخدم
-      if (msgs.length > prevMsgCount.current) {
-        const lastMsg = msgs[msgs.length - 1];
-        if (lastMsg && lastMsg.senderId !== safeUserId) {
-          if (receiveSound) {
-            receiveSound.currentTime = 0;
-            receiveSound.play();
-          }
-        }
-      }
-      prevMsgCount.current = msgs.length;
     });
-  }, [db, roomId, safeUserId]);
+  }, [db, roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -161,27 +125,19 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // إرسال رسالة
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
-      senderId: type === "bot" ? "taheel-ai" : safeUserId,
-      senderName: type === "bot" ? (lang === "ar" ? "تأهيل AI" : "Taheel AI") : safeUserName,
+      senderId: safeUserId,
+      senderName: safeUserName,
       type,
       createdAt: Date.now(),
       ...content,
     };
     await push(dbRef(db, `chats/${roomId}/messages`), msg);
     if (type === "image" || type === "audio") setUploading(false);
-
-    // تشغيل صوت الإرسال عند إرسال الرسالة
-    if (sendSound) {
-      sendSound.currentTime = 0;
-      sendSound.play();
-    }
   };
 
-  // إرسال رسالة من صندوق الكتابة
   const handleSend = async (e) => {
     e.preventDefault();
     if (chatClosed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
@@ -202,13 +158,48 @@ export default function ChatWidgetFull({
     const textMsg = input.trim();
     if (!textMsg) return;
 
-    // هنا ممكن دمج الذكاء الصناعي لاحقاً
-    await sendMessage("text", { text: textMsg });
-
+    if (!waitingForAgent && !agentAccepted) {
+      await sendMessage("text", { text: textMsg });
+      let found = FAQ.find(f => textMsg.includes(f.q) || f.q.includes(textMsg));
+      if (found) {
+        await sendMessage("bot", { text: found.a });
+        setNoBotHelpCount(0);
+      } else {
+        setNoBotHelpCount(c => c + 1);
+        await sendMessage("bot", { text: "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة." });
+      }
+    } else {
+      await sendMessage("text", { text: textMsg });
+    }
     setInput("");
   };
 
-  // رفع صورة
+  const handleQuickFAQ = async (q) => {
+    setInput("");
+    await sendMessage("text", { text: q });
+    let found = FAQ.find(f => q.includes(f.q) || f.q.includes(q));
+    if (found) {
+      await sendMessage("bot", { text: found.a });
+      setNoBotHelpCount(0);
+    } else {
+      setNoBotHelpCount(c => c + 1);
+      await sendMessage("bot", { text: "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة." });
+    }
+  };
+
+  const requestAgent = async () => {
+    if (!roomId || !safeUserId || !safeUserName) return;
+    await update(dbRef(db, `chats/${roomId}`), {
+      waitingForAgent: true,
+      agentAccepted: false,
+      assignedTo: null,
+      clientId: safeUserId,
+      clientName: safeUserName,
+      status: "open",
+    });
+    setNoBotHelpCount(0);
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -218,7 +209,6 @@ export default function ChatWidgetFull({
     e.target.value = "";
   };
 
-  // تسجيل صوتي
   const handleRecord = async () => {
     if (!recording) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -239,275 +229,211 @@ export default function ChatWidgetFull({
     }
   };
 
-  // اختيار ايموجي
   const handleSelectEmoji = (emoji) => {
     setInput((prev) => prev + emoji.native);
     setShowEmoji(false);
   };
 
-  // شكل الرسالة
   function renderMsgBubble(msg) {
-    const isSelf = msg.senderId === safeUserId;
-    const isBot = msg.senderId === "taheel-ai";
-    const base =
+    let isSelf = msg.senderId === safeUserId;
+    let isBot = msg.type === "bot";
+    let isSystem = msg.type === "system";
+    let base =
       "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
-    const align = isSelf
+    let align = isSelf
       ? "ml-auto self-end"
       : isBot
       ? "self-start"
+      : isSystem
+      ? "mx-auto"
       : "self-start";
-    const color =
-      isBot
-        ? "bg-gradient-to-r from-yellow-50 via-yellow-100 to-emerald-100 text-emerald-900 border border-yellow-300"
+    let color =
+      isSystem
+        ? "bg-yellow-50 text-emerald-900 border border-yellow-300"
+        : isBot
+        ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
         : isSelf
         ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
-        : "bg-gradient-to-r from-white via-emerald-50 to-white text-gray-900 border border-gray-200";
+        : "bg-white text-gray-900 border border-gray-200";
     return (
-      <div className={`${base} ${align} ${color} flex gap-2 items-center`} key={msg.id}>
-        {/* لوجو بوت لو الرد من تأهيل AI */}
-        {isBot && (
-          <img
-            src="/taheel-bot.png"
-            alt="Taheel Bot"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              border: "2px solid #10b981",
-              background: "#fff",
-              objectFit: "cover",
-            }}
-          />
+      <div className={`${base} ${align} ${color}`} key={msg.id}>
+        {msg.type === "text" && <span>{msg.text}</span>}
+        {msg.type === "bot" && <span>{msg.text}</span>}
+        {msg.type === "image" && (
+          <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
         )}
-        <div style={{ flex: 1 }}>
-          {msg.type === "text" && <span>{msg.text}</span>}
-          {msg.type === "bot" && <span>{msg.text}</span>}
-          {msg.type === "image" && (
-            <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
-          )}
-          {msg.type === "audio" && (
-            <audio controls src={msg.audioBase64} className="mt-1" />
-          )}
-          <div className="text-[10px] text-gray-400 mt-1 text-left ltr:text-left rtl:text-right">
-            {isBot
-              ? (lang === "ar" ? "تأهيل AI" : "Taheel AI")
-              : msg.senderName}
-            {" · "}
-            {msg.createdAt
-              ? new Date(msg.createdAt).toLocaleTimeString(
-                  lang === "ar" ? "ar-EG" : "en-US",
-                  { hour: "2-digit", minute: "2-digit" }
-                )
-              : ""}
-          </div>
+        {msg.type === "audio" && (
+          <audio controls src={msg.audioBase64} className="mt-1" />
+        )}
+        <div className="text-[10px] text-gray-400 mt-1 text-left ltr:text-left rtl:text-right">
+          {isBot
+            ? "المساعد الذكي"
+            : isSystem
+            ? "النظام"
+            : msg.senderName}
+          {" · "}
+          {msg.createdAt
+            ? new Date(msg.createdAt).toLocaleTimeString(
+                "ar-EG",
+                { hour: "2-digit", minute: "2-digit" }
+              )
+            : ""}
         </div>
       </div>
-    );
-  }
-
-  // زر الفتح العائم
-  if (minimized) {
-    return (
-      <button
-        onClick={() => setMinimized(false)}
-        className="fixed bottom-[150px] right-6 bg-emerald-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce"
-        title="فتح المحادثة"
-      >
-        <FaComments size={32} />
-      </button>
     );
   }
 
   return (
     <>
       <style>{`
-        .chat-bg-grad {
-          background: linear-gradient(125deg,#e8fff7 0%,#f6f8ff 100%);
-        }
+        .chat-bg-grad { background: linear-gradient(120deg,#fafcff 60%,#f1f9fa 100%); }
         button, .cursor-pointer, [role="button"] { cursor: pointer !important; }
       `}</style>
-      <div className="fixed bottom-24 right-4 z-[1000]">
-        <div
-          className="w-[92vw] max-w-[370px] h-[calc(60vh)] min-h-[250px] flex flex-col rounded-3xl shadow-2xl border border-emerald-400 relative overflow-hidden"
-          style={{
-            maxHeight: "480px",
-            background: "linear-gradient(135deg, #f2fafb 85%, #dbeafe 100%)",
-            boxShadow: "0 10px 32px 0 rgba(16,185,129,0.16)",
-            border: "none",
-          }}
+      {minimized ? (
+        <button
+          onClick={() => setMinimized(false)}
+          className="fixed bottom-[150px] right-6 bg-emerald-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce"
+          title="فتح المحادثة"
         >
-          {/* رأس الشات وزر الغلق والمينمايز */}
-          <div className="px-4 py-3 border-b border-emerald-300 text-emerald-800 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-50 to-white">
-            <span className="text-lg">
-              {lang === "ar"
-                ? "الدردشة الذكية"
-                : lang === "en"
-                ? "Smart Chat"
-                : "الدردشة"}
-            </span>
-            {/* زر مينمايز */}
-            <button
-              onClick={() => setMinimized(true)}
-              className="absolute left-10 top-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600"
-              style={{ zIndex: 11, fontWeight: 700 }}
-              title={lang === "ar" ? "تصغير المحادثة" : "Minimize"}
-            >
-              <FaWindowMinimize size={15} />
-            </button>
-            {/* زر غلق */}
-            <button
-              onClick={() => { onClose && onClose(); setStep("language"); setLang(""); setMinimized(true); }}
-              className="absolute left-2 top-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-200"
-              title={lang === "ar" ? "غلق المحادثة" : "Close"}
-              style={{ zIndex: 10, fontWeight: 700 }}
-            >
-              <FaTimes />
-            </button>
-          </div>
-          {/* مراحل الشات */}
-          <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-            {/* اختيار اللغة */}
-            {step === "language" && (
-              <div className="flex flex-col items-center justify-center h-full gap-3">
-                <span className="font-semibold text-base mb-2">اختر اللغة المفضلة</span>
+          <FaComments size={32} />
+        </button>
+      ) : (
+        <div className="fixed bottom-24 right-4 z-[1000]">
+          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
+            <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
+              <span className="text-lg">الدردشة الذكية</span>
+              <button
+                onClick={() => setMinimized(true)}
+                className="absolute left-2 top-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600"
+                title="تصغير المحادثة"
+                style={{ zIndex: 10, fontWeight: 700 }}
+              >
+                <span style={{ fontWeight: 900, fontSize: 18 }}>–</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
+              {messages.map(renderMsgBubble)}
+              <div ref={chatEndRef} />
+            </div>
+            {!chatClosed && (
+              <form
+                className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
+                onSubmit={handleSend}
+              >
+                <div className="relative">
+                  <button
+                    type="button"
+                    className="text-yellow-400 hover:text-yellow-600"
+                    title="إضافة إيموجي"
+                    onClick={() => setShowEmoji((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    <FaSmile size={22} />
+                  </button>
+                  {showEmoji && (
+                    <div className="fixed bottom-28 right-8 z-[9999]">
+                      <Picker
+                        data={emojiData}
+                        onEmojiSelect={handleSelectEmoji}
+                        theme="light"
+                        locale="ar"
+                      />
+                    </div>
+                  )}
+                </div>
+                <label className="cursor-pointer text-emerald-400 hover:text-emerald-600">
+                  <FaImage size={22} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploading}
+                  />
+                </label>
                 <button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
-                  onClick={() => handleLangSelect("ar")}
-                >العربية</button>
+                  type="button"
+                  onClick={handleRecord}
+                  className={`text-emerald-400 hover:text-emerald-600 ${recording ? "animate-pulse text-red-600" : ""}`}
+                  title={recording ? "جارٍ التسجيل..." : "تسجيل صوتي"}
+                  disabled={uploading}
+                >
+                  <FaMicrophone size={22} />
+                </button>
+                <input
+                  type="text"
+                  className="flex-1 bg-gray-50 rounded-full px-4 py-2 outline-none text-gray-900 shadow border"
+                  placeholder={
+                    waitingForAgent && !agentAccepted
+                      ? "يرجى الانتظار..."
+                      : "اكتب رسالتك أو سؤالك..."
+                  }
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={
+                    uploading ||
+                    recording ||
+                    (waitingForAgent && !agentAccepted)
+                  }
+                  style={{ fontSize: "1rem" }}
+                />
                 <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 font-bold shadow"
-                  onClick={() => handleLangSelect("en")}
-                >English</button>
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow"
+                  title="إرسال"
+                  disabled={uploading || (waitingForAgent && !agentAccepted)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <FaPaperPlane />
+                </button>
+                {(imagePreview || audioBlob) && (
+                  <span className="ml-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center">
+                    {imagePreview && <>صورة جاهزة للإرسال</>}
+                    {audioBlob && <>صوت جاهز للإرسال</>}
+                    <button
+                      type="button"
+                      onClick={() => { setImagePreview(null); setAudioBlob(null); }}
+                      className="ml-1 text-red-600 font-bold"
+                    >×</button>
+                  </span>
+                )}
+              </form>
+            )}
+            {waitingForAgent && !agentAccepted && (
+              <div className="flex justify-center p-3">
+                <div className="bg-orange-100 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse">
+                  يرجى الانتظار سيتم تحويل الدردشة لموظف خدمة العملاء للرد عليك في أقرب وقت...
+                </div>
               </div>
             )}
-            {/* صفحة الأسئلة حسب اللغة */}
-            {step === "faq" && (
-              <div className="flex flex-col items-center gap-3">
-                <span className="font-semibold text-base mb-2">
-                  {lang === "ar" ? "اختر سؤال أو ابدأ المحادثة مباشرة" : "Choose a question or start chat"}
-                </span>
-                {faqList.map(f => (
+            {messages.length === 0 && !waitingForAgent && !agentAccepted && (
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {FAQ.map(f => (
                   <button
                     key={f.q}
-                    onClick={() => handleFaqSelect(f.q, f.a)}
-                    className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow w-full"
+                    onClick={() => handleQuickFAQ(f.q)}
+                    className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow"
                   >
                     {f.q}
                   </button>
                 ))}
-                <button
-                  className="bg-white border border-emerald-400 text-emerald-700 rounded-full px-4 py-2 text-sm font-semibold shadow w-full mt-2"
-                  onClick={handleStartChatDirectly}
-                >
-                  {lang === "ar" ? "بدء المحادثة مباشرة" : "Start chat directly"}
-                </button>
               </div>
             )}
-            {/* شات عادي */}
-            {step === "chat" && (
-              <>
-                {messages.map(renderMsgBubble)}
-                <div ref={chatEndRef} />
-              </>
-            )}
-          </div>
-          {/* صندوق الكتابة */}
-          {step === "chat" && !chatClosed && (
-            <form
-              className="border-t border-emerald-200 px-3 py-3 flex items-center gap-2 bg-white"
-              onSubmit={handleSend}
-            >
-              <div className="relative">
+            {!waitingForAgent && !agentAccepted && noBotHelpCount >= 2 && (
+              <div className="flex justify-center p-3">
                 <button
                   type="button"
-                  className="text-yellow-400 hover:text-yellow-600"
-                  title="إضافة إيموجي"
-                  onClick={() => setShowEmoji((v) => !v)}
-                  tabIndex={-1}
+                  onClick={requestAgent}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm"
+                  title="اتواصل مع الموظف"
                 >
-                  <FaSmile size={22} />
+                  اتواصل مع الموظف
                 </button>
-                {showEmoji && (
-                  <div className="fixed bottom-28 right-8 z-[9999]">
-                    <Picker
-                      data={emojiData}
-                      onEmojiSelect={handleSelectEmoji}
-                      theme="light"
-                      locale={lang === "ar" ? "ar" : "en"}
-                    />
-                  </div>
-                )}
               </div>
-              <label className="cursor-pointer text-emerald-400 hover:text-emerald-600">
-                <FaImage size={22} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileChange}
-                  disabled={uploading}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={handleRecord}
-                className={`text-emerald-400 hover:text-emerald-600 ${recording ? "animate-pulse text-red-600" : ""}`}
-                title={recording ? "جارٍ التسجيل..." : lang === "ar" ? "تسجيل صوتي" : "Voice record"}
-                disabled={uploading}
-              >
-                <FaMicrophone size={22} />
-              </button>
-              <input
-                type="text"
-                className="flex-1 bg-gray-50 rounded-full px-4 py-2 outline-none text-gray-900 shadow border"
-                placeholder={
-                  waitingForAgent && !agentAccepted
-                    ? (lang === "ar" ? "يرجى الانتظار..." : "Please wait...")
-                    : (lang === "ar" ? "اكتب رسالتك أو سؤالك..." : "Type your message or question...")
-                }
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={
-                  uploading ||
-                  recording ||
-                  (waitingForAgent && !agentAccepted)
-                }
-                style={{ fontSize: "1rem" }}
-              />
-              <button
-                type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow"
-                title={lang === "ar" ? "إرسال" : "Send"}
-                disabled={uploading || (waitingForAgent && !agentAccepted)}
-                style={{ cursor: "pointer" }}
-              >
-                <FaPaperPlane />
-              </button>
-              {(imagePreview || audioBlob) && (
-                <span className="ml-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center">
-                  {imagePreview && <>صورة جاهزة للإرسال</>}
-                  {audioBlob && <>صوت جاهز للإرسال</>}
-                  <button
-                    type="button"
-                    onClick={() => { setImagePreview(null); setAudioBlob(null); }}
-                    className="ml-1 text-red-600 font-bold"
-                  >×</button>
-                </span>
-              )}
-            </form>
-          )}
-          {/* تنبيه انتظار الموظف */}
-          {step === "chat" && waitingForAgent && !agentAccepted && (
-            <div className="flex justify-center p-3">
-              <div className="bg-orange-100 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse">
-                {lang === "ar"
-                  ? "يرجى الانتظار سيتم تحويل الدردشة لموظف خدمة العملاء للرد عليك في أقرب وقت..."
-                  : "Please wait, your chat will be transferred to a support agent soon..."}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
