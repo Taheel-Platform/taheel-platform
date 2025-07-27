@@ -21,6 +21,8 @@ import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
+import LanguageSelectModal from "./LanguageSelectModal";
+import countriesList from "./countriesList";
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -35,7 +37,7 @@ export default function ChatWidgetFull({
   userName,
   initialRoomId,
   onClose,
-  lang = "ar",
+  lang: initialLang = "ar",
 }) {
   const db = getDatabase();
   const [roomId, setRoomId] = useState(initialRoomId || "");
@@ -49,7 +51,9 @@ export default function ChatWidgetFull({
   const [showEmoji, setShowEmoji] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [chatClosed, setChatClosed] = useState(false);
-
+  const [showLangModal, setShowLangModal] = useState(true);
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [lang, setLang] = useState(initialLang);
   const [noBotHelpCount, setNoBotHelpCount] = useState(0);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
@@ -81,9 +85,11 @@ export default function ChatWidgetFull({
       clientId: safeUserId,
       clientName: safeUserName,
       createdAt: Date.now(),
+      country: selectedCountry,
+      lang: lang,
       status: "open",
     });
-  }, [db, roomId, safeUserId, safeUserName]);
+  }, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -123,18 +129,31 @@ export default function ChatWidgetFull({
   }, [db, roomId]);
 
   useEffect(() => {
-    if (messages.length === 0 && roomId && !waitingForAgent && !agentAccepted) {
+    // يظهر المودال عند أول فتح فقط
+    if (minimized === false && roomId && showLangModal) {
+      setShowLangModal(true);
+    }
+  }, [minimized, roomId, showLangModal]);
+
+  useEffect(() => {
+    if (
+      messages.length === 0 &&
+      roomId &&
+      !waitingForAgent &&
+      !agentAccepted &&
+      !showLangModal
+    ) {
       sendMessage("bot", {
         text:
           lang === "ar"
-            ? "مرحبًا بك في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة."
+            ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
             : lang === "en"
-            ? "Welcome to Smart Chat! You can ask any question or choose from FAQs."
-            : "Bienvenue! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.",
+            ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
+            : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, roomId, waitingForAgent, agentAccepted]);
+  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry]);
 
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
@@ -325,6 +344,15 @@ export default function ChatWidgetFull({
     );
   }
 
+  // دالة اختيار اللغة والدولة
+  const handleLangCountrySelect = (chosenLang, chosenCountry) => {
+    setLang(chosenLang);
+    setSelectedCountry(chosenCountry);
+    setShowLangModal(false);
+    // يمكنك هنا ارسال رسالة ترحيب مخصصة بناءً على اللغة والدولة
+    // sendMessage("bot", { text: ... });
+  };
+
   return (
     <>
       <style>{`
@@ -347,6 +375,13 @@ export default function ChatWidgetFull({
           flex-direction: ${lang === "ar" ? "row-reverse" : "row"};
         }
       `}</style>
+      {showLangModal && (
+        <LanguageSelectModal
+          userName={safeUserName}
+          countries={countriesList}
+          onSelect={handleLangCountrySelect}
+        />
+      )}
       {minimized ? (
         <button
           onClick={() => setMinimized(false)}
