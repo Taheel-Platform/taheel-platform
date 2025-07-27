@@ -68,6 +68,10 @@ export default function ChatWidgetFull({
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
 
+  // محاولات الأسئلة الخاطئة
+  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const maxWrongAttempts = 3;
+
   const chatEndRef = useRef(null);
   const db = getDatabase();
 
@@ -98,7 +102,45 @@ export default function ChatWidgetFull({
     setStep("faq");
   };
 
-  // بدء محادثة من سؤال FAQ
+  // دالة للتحقق هل السؤال موجود في الأسئلة الجاهزة
+  function getFaqAnswer(userQuestion) {
+    const list = lang === "ar" ? FAQ_AR : FAQ_EN;
+    const found = list.find(f => f.q.trim().toLowerCase() === userQuestion.trim().toLowerCase());
+    return found ? found.a : null;
+  }
+
+  // إرسال السؤال من العميل في مرحلة FAQ
+  const handleAskFaq = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const answer = getFaqAnswer(input);
+    if (answer) {
+      // سؤال موجود: أظهر الإجابة
+      await sendMessage("text", { text: input });
+      await sendMessage("bot", { text: answer });
+      setInput("");
+      setWrongAttempts(0);
+      setStep("chat");
+    } else {
+      // سؤال غير موجود
+      await sendMessage("text", { text: input });
+      await sendMessage("bot", { text: lang === "ar" ? "عذرًا لم أجد إجابة لهذا السؤال! جرب سؤال آخر." : "Sorry, I couldn't find an answer for that!" });
+      setWrongAttempts(prev => prev + 1);
+      setInput("");
+    }
+  };
+
+  // عرض زر التواصل مع الموظف إذا تجاوز العميل عدد المحاولات
+  const showContactAgentButton = wrongAttempts >= maxWrongAttempts;
+
+  // عند الضغط عليه يبدأ مرحلة التواصل مع الموظف
+  const handleContactAgent = () => {
+    setStep("chat");
+    setWaitingForAgent(true);
+    sendMessage("system", { text: lang === "ar" ? "العميل يحتاج التواصل مع موظف." : "Customer needs to contact an agent." });
+  };
+
+  // بدء محادثة من سؤال FAQ جاهز
   const handleFaqSelect = async (q, a) => {
     setStep("chat");
     await sendMessage("text", { text: q });
@@ -393,6 +435,53 @@ export default function ChatWidgetFull({
     </div>
   );
 
+  // واجهة الأسئلة ومحاولة الإجابة + زر التواصل مع الموظف بعد محاولات خاطئة
+  const FaqStep = (
+    <div className="flex flex-col items-center gap-3">
+      <span className="font-semibold text-base mb-2">
+        {lang === "ar" ? "اكتب سؤالك أو اختر من القائمة" : "Type your question or choose from the list"}
+      </span>
+      <form onSubmit={handleAskFaq} className="w-full flex flex-col items-center gap-2">
+        <input
+          type="text"
+          className="border rounded-full px-4 py-2 w-full max-w-xs outline-none"
+          placeholder={lang === "ar" ? "اكتب سؤالك هنا..." : "Type your question here..."}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+        />
+        <button
+          type="submit"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-6 py-2 font-bold shadow"
+        >
+          {lang === "ar" ? "اسأل" : "Ask"}
+        </button>
+      </form>
+      {faqList.map(f => (
+        <button
+          key={f.q}
+          onClick={() => handleFaqSelect(f.q, f.a)}
+          className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow w-full"
+        >
+          {f.q}
+        </button>
+      ))}
+      <button
+        className="bg-white border border-emerald-400 text-emerald-700 rounded-full px-4 py-2 text-sm font-semibold shadow w-full mt-2"
+        onClick={handleStartChatDirectly}
+      >
+        {lang === "ar" ? "بدء المحادثة مباشرة" : "Start chat directly"}
+      </button>
+      {showContactAgentButton && (
+        <button
+          className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-6 py-2 font-bold shadow mt-2"
+          onClick={handleContactAgent}
+        >
+          {lang === "ar" ? "التواصل مع موظف" : "Contact Support Agent"}
+        </button>
+      )}
+    </div>
+  );
+
   // زر الفتح العائم
   if (minimized) {
     return (
@@ -456,29 +545,8 @@ export default function ChatWidgetFull({
           <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
             {/* اختيار اللغة تلقائي أو يدوي أو إدخال حقل */}
             {step === "language" && LanguageStep}
-            {/* صفحة الأسئلة حسب اللغة */}
-            {step === "faq" && (
-              <div className="flex flex-col items-center gap-3">
-                <span className="font-semibold text-base mb-2">
-                  {lang === "ar" ? "اختر سؤال أو ابدأ المحادثة مباشرة" : "Choose a question or start chat"}
-                </span>
-                {faqList.map(f => (
-                  <button
-                    key={f.q}
-                    onClick={() => handleFaqSelect(f.q, f.a)}
-                    className="bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow w-full"
-                  >
-                    {f.q}
-                  </button>
-                ))}
-                <button
-                  className="bg-white border border-emerald-400 text-emerald-700 rounded-full px-4 py-2 text-sm font-semibold shadow w-full mt-2"
-                  onClick={handleStartChatDirectly}
-                >
-                  {lang === "ar" ? "بدء المحادثة مباشرة" : "Start chat directly"}
-                </button>
-              </div>
-            )}
+            {/* صفحة الأسئلة ومحاولات الإجابة وزر التواصل مع الموظف */}
+            {step === "faq" && FaqStep}
             {/* شات عادي */}
             {step === "chat" && (
               <>
