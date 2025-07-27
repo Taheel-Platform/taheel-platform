@@ -15,6 +15,7 @@ import {
   FaSmile,
   FaComments,
   FaTimes,
+  FaWindowMinimize,
 } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
@@ -257,10 +258,10 @@ export default function ChatWidgetFull({
       : "self-start";
     const color =
       isBot
-        ? "bg-yellow-50 text-emerald-900 border border-yellow-300"
+        ? "bg-gradient-to-r from-yellow-50 via-yellow-100 to-emerald-100 text-emerald-900 border border-yellow-300"
         : isSelf
         ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
-        : "bg-white text-gray-900 border border-gray-200";
+        : "bg-gradient-to-r from-white via-emerald-50 to-white text-gray-900 border border-gray-200";
     return (
       <div className={`${base} ${align} ${color} flex gap-2 items-center`} key={msg.id}>
         {/* لوجو بوت لو الرد من تأهيل AI */}
@@ -320,21 +321,44 @@ export default function ChatWidgetFull({
   return (
     <>
       <style>{`
-        .chat-bg-grad { background: linear-gradient(120deg,#fafcff 60%,#f1f9fa 100%); }
+        .chat-bg-grad {
+          background: linear-gradient(125deg,#e8fff7 0%,#f6f8ff 100%);
+        }
         button, .cursor-pointer, [role="button"] { cursor: pointer !important; }
       `}</style>
       <div className="fixed bottom-24 right-4 z-[1000]">
-        <div className="w-[92vw] max-w-[350px] h-[calc(56vh)] min-h-[240px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "460px" }}>
-          {/* رأس الشات وزر الغلق العائم */}
-          <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
+        <div
+          className="w-[92vw] max-w-[370px] h-[calc(60vh)] min-h-[250px] flex flex-col rounded-3xl shadow-2xl border border-emerald-400 relative overflow-hidden"
+          style={{
+            maxHeight: "480px",
+            background: "linear-gradient(135deg, #f2fafb 85%, #dbeafe 100%)",
+            boxShadow: "0 10px 32px 0 rgba(16,185,129,0.16)",
+            border: "none",
+          }}
+        >
+          {/* رأس الشات وزر الغلق والمينمايز */}
+          <div className="px-4 py-3 border-b border-emerald-300 text-emerald-800 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-50 to-white">
             <span className="text-lg">
-              {lang === "ar" ? "الدردشة الذكية" : lang === "en" ? "Smart Chat" : "الدردشة"}
+              {lang === "ar"
+                ? "الدردشة الذكية"
+                : lang === "en"
+                ? "Smart Chat"
+                : "الدردشة"}
             </span>
+            {/* زر مينمايز */}
+            <button
+              onClick={() => setMinimized(true)}
+              className="absolute left-10 top-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600"
+              style={{ zIndex: 11, fontWeight: 700 }}
+              title={lang === "ar" ? "تصغير المحادثة" : "Minimize"}
+            >
+              <FaWindowMinimize size={15} />
+            </button>
             {/* زر غلق */}
             <button
-              onClick={() => { setMinimized(true); onClose && onClose(); }}
+              onClick={() => { onClose && onClose(); setStep("language"); setLang(""); setMinimized(true); }}
               className="absolute left-2 top-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-200"
-              title="غلق المحادثة"
+              title={lang === "ar" ? "غلق المحادثة" : "Close"}
               style={{ zIndex: 10, fontWeight: 700 }}
             >
               <FaTimes />
@@ -390,7 +414,7 @@ export default function ChatWidgetFull({
           {/* صندوق الكتابة */}
           {step === "chat" && !chatClosed && (
             <form
-              className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
+              className="border-t border-emerald-200 px-3 py-3 flex items-center gap-2 bg-white"
               onSubmit={handleSend}
             >
               <div className="relative">
