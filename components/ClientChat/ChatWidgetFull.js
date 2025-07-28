@@ -427,7 +427,7 @@ export default function ChatWidgetFull({
               {showLangModal &&
                 <div className="flex justify-center mb-2">
                   <LanguageSelectModal
-  userName={userNameFromAccount} // هنا الاسم الحقيقي!
+  userName={userName} // المتغير الذي تستقبله في الـ props أعلى الكومبوننت
   countries={countriesObject}
   countriesLang={countriesLang}
   onSelect={handleLangCountrySelect}

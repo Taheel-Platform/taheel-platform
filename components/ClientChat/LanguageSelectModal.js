@@ -1,8 +1,16 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
 
+/**
+ * LanguageSelectModal
+ * 
+ * @param {string} userName - اسم المستخدم الحقيقي
+ * @param {Object} countries - كائن: كود الدولة => اسم الدولة مع اللغة (مثلاً: {SA: "🇸🇦 العربية", US: "🇺🇸 English"})
+ * @param {Object} countriesLang - كائن: كود الدولة => كود اللغة (مثلاً: {SA: "ar", US: "en"})
+ * @param {Function} onSelect - دالة تنفذ بعد الاختيار (تُرسل: اللغة، الدولة)
+ */
 export default function LanguageSelectModal({
-  userName = "زائر", // يجب أن يأتي من بيانات المستخدم الحقيقي!
+  userName = "زائر",
   countries,
   countriesLang,
   onSelect,
@@ -10,6 +18,7 @@ export default function LanguageSelectModal({
   const [selectedCountry, setSelectedCountry] = useState("");
   const logoAlt = "Taheel";
 
+  // اللغة المرتبطة بالدولة المختارة
   const selectedLang = selectedCountry ? countriesLang[selectedCountry] : "ar";
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر اللغة للمتابعة.`,
@@ -31,7 +40,11 @@ export default function LanguageSelectModal({
       `}</style>
       <img src="/taheel-logo.svg" alt={logoAlt} className="w-16 mb-2 drop-shadow-lg" />
       <h2 className="font-bold text-[1.1rem] text-emerald-800 mb-1">
-        {selectedLang === "ar" ? "اختيار اللغة" : selectedLang === "en" ? "Choose Language" : "Choisissez la langue"}
+        {selectedLang === "ar"
+          ? "اختيار اللغة"
+          : selectedLang === "en"
+          ? "Choose Language"
+          : "Choisissez la langue"}
       </h2>
       <p className="mb-3 text-center text-gray-700 font-medium text-[0.95rem] leading-relaxed">
         {welcomeMessages[selectedLang]}
@@ -57,7 +70,11 @@ export default function LanguageSelectModal({
         onClick={() => onSelect(selectedLang, selectedCountry)}
         disabled={!selectedCountry}
       >
-        {selectedLang === "ar" ? "استمرار" : selectedLang === "en" ? "Continue" : "Continuer"}
+        {selectedLang === "ar"
+          ? "استمرار"
+          : selectedLang === "en"
+          ? "Continue"
+          : "Continuer"}
       </button>
     </div>
   );
