@@ -91,6 +91,19 @@ export default function ChatWidgetFull({
     setShowEmoji(false);
     // لا تعيد تعيين roomId حتى لا تضيع المحادثة (إلا إذا كان مطلوبًا)
   };
+const playSend = () => {
+  if (sendAudio) {
+    sendAudio.currentTime = 0;
+    sendAudio.play();
+  }
+};
+
+const playReceive = () => {
+  if (receiveAudio) {
+    receiveAudio.currentTime = 0;
+    receiveAudio.play();
+  }
+};
 
   useEffect(() => {
     if (!roomId) {
