@@ -34,14 +34,17 @@ export default function LanguageSelectModal({
 <style>{`
   .flags-select__option,
   .flags-select__selected {
-    color: #0b2545 !important;      /* لون كُحلي واضح */
-    background: #ffffff !important; /* خلفية بيضاء */
+    color: #0b2545 !important;
+    background: #ffffff !important;
     font-weight: 600 !important;
     font-size: 1rem !important;
+    font-family: 'Tajawal', 'Segoe UI', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
   }
-  
+
   .flags-select__option--is-selected {
-    background-color: #e0f7fa !important; /* خلفية تحديد مميزة */
+    background-color: #e0f7fa !important;
     color: #00695c !important;
   }
 
@@ -49,7 +52,12 @@ export default function LanguageSelectModal({
     background-color: #f0f0f0 !important;
     color: #000 !important;
   }
+
+  .flags-select__menu {
+    direction: rtl !important;
+  }
 `}</style>
+
 
 
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">

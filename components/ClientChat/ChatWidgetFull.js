@@ -344,28 +344,40 @@ export default function ChatWidgetFull({
   };
 
   function renderMsgBubble(msg) {
-    let isSelf = msg.senderId === safeUserId;
-    let isBot = msg.type === "bot";
-    let isSystem = msg.type === "system";
-    let base =
-      "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
-    let align = isSelf
-      ? "ml-auto self-end"
+  let isSelf = msg.senderId === safeUserId;
+  let isBot = msg.type === "bot";
+  let isSystem = msg.type === "system";
+  let base =
+    "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
+  let align = isSelf
+    ? "ml-auto self-end"
+    : isBot
+    ? "self-start"
+    : isSystem
+    ? "mx-auto"
+    : "self-start";
+  let color =
+    isSystem
+      ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
       : isBot
-      ? "self-start"
-      : isSystem
-      ? "mx-auto"
-      : "self-start";
-    let color =
-      isSystem
-        ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
-        : isBot
-        ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
-        : isSelf
-        ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
-        : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
-    return (
-      <div className={`${base} ${align} ${color}`} key={msg.id}>
+      ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
+      : isSelf
+      ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
+      : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
+  return (
+    <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
+      {/* صورة البوت فقط في رسائل البوت */}
+      {isBot && (
+        <img
+          src="/bot-avatar.png"   // ضع هنا مسار صورة البوت (يمكنك رفع الصورة لمجلد public مثلاً)
+          alt="Bot"
+          width={36}
+          height={36}
+          className="rounded-full border border-emerald-400 shadow-sm mt-1"
+          style={{ minWidth: 36, minHeight: 36, objectFit: "cover", background: "#fff" }}
+        />
+      )}
+      <div className="flex-1">
         {msg.type === "text" && <span>{msg.text}</span>}
         {msg.type === "bot" && <span>{msg.text}</span>}
         {msg.type === "image" && (
@@ -407,8 +419,9 @@ export default function ChatWidgetFull({
             : ""}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   const headerButtonsClass =
     lang === "ar"
