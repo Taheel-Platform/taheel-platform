@@ -386,7 +386,7 @@ useEffect(() => {
       countries={countriesObject}
       onSelect={handleLangCountrySelect}
     />
-      )}
+  )}
       {minimized ? (
         <button
           onClick={() => setMinimized(false)}
@@ -397,7 +397,13 @@ useEffect(() => {
         </button>
       ) : (
         <div className="fixed bottom-24 right-4 z-[1000] font-sans">
-          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
+          <div
+  className="w-[94vw] max-w-[430px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-visible"
+  style={{
+    maxHeight: showLangModal ? "600px" : "540px",
+    minHeight: showLangModal ? "430px" : "340px"
+  }}
+>
             <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
               <span className="text-lg">
                 {lang === "ar"
