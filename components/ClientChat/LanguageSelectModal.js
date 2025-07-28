@@ -1,6 +1,30 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
 
+// ---------- إضافة دالة جلب رسالة الترحيب من ChatGPT (لو احتجتها) ----------
+async function getWelcomeMessage(userName, langCode) {
+  const messages = {
+    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
+    en: `Welcome ${userName} 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
+    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`,
+  };
+  if (messages[langCode]) return messages[langCode];
+
+  // هنا لو عايز تستدعي ChatGPT لترجمة الترحيب لأي لغة
+  try {
+    const prompt = `Translate this welcome message to "${langCode}" and adapt it to sound natural in that language: "Welcome ${userName} to Taheel platform! Ask me anything."`;
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json();
+    return data.text || messages["en"];
+  } catch {
+    return messages["en"];
+  }
+}
+
 export default function LanguageSelectModal({
   userName = "زائر",
   countries,
@@ -20,6 +44,9 @@ export default function LanguageSelectModal({
     en: `Welcome ${userName} 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`
   };
+  const [welcome, setWelcome] = useState(welcomeMessages[countryLang] || welcomeMessages["ar"]);
+  const [loading, setLoading] = useState(false);
+
   const logoAlt = countryLang === "ar" ? "تأهيل" : countryLang === "fr" ? "Taheel (FR)" : "Taheel";
 
   // عنوان الحقل
@@ -27,6 +54,20 @@ export default function LanguageSelectModal({
     countryLang === "ar" ? "اختيار اللغة" : 
     countryLang === "fr" ? "Choisir la langue" : 
     "Choose Language";
+
+  // ----------- تحديث رسالة الترحيب عند تغيير الدولة/اللغة -----------
+  React.useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    getWelcomeMessage(userName, countryLang).then((msg) => {
+      if (mounted) {
+        setWelcome(msg);
+        setLoading(false);
+      }
+    });
+    return () => { mounted = false };
+    // eslint-disable-next-line
+  }, [countryLang, userName]);
 
   return (
     <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90 font-sans">
@@ -70,7 +111,11 @@ export default function LanguageSelectModal({
             : "Choose Language"}
         </h2>
         <p className="mb-4 text-center text-gray-700 font-medium leading-relaxed">
-          {welcomeMessages[countryLang] || welcomeMessages["ar"]}
+          {loading ? (
+            <span>...</span>
+          ) : (
+            welcome
+          )}
         </p>
         {/* اختيار الدولة */}
         <div className="w-full mb-4">
@@ -95,6 +140,7 @@ export default function LanguageSelectModal({
           className="bg-gradient-to-br from-blue-600 to-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-700 hover:to-emerald-600 transition mb-2 w-full"
           style={{ letterSpacing: "0.5px" }}
           onClick={() => onSelect(countryLang, selectedCountry)}
+          disabled={loading}
         >
           {countryLang === "ar" ? "استمرار" : countryLang === "fr" ? "Continuer" : "Continue"}
         </button>

@@ -33,6 +33,49 @@ countriesData.forEach((item) => {
   countriesLang[item.value.toUpperCase()] = item.lang || "ar";
 });
 
+// ---- دالة لجلب رسالة الترحيب بأي لغة (تستخدم ChatGPT لو اللغة مش موجودة) ----
+async function getWelcomeMessage(userName, langCode, countryName = "") {
+  const messages = {
+    ar: `مرحبًا ${userName}${countryName ? " من " + countryName : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`,
+    en: `Welcome ${userName}${countryName ? " from " + countryName : ""} to Smart Chat! You can ask any question or choose from FAQs.`,
+    fr: `Bienvenue ${userName}${countryName ? " de " + countryName : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
+  };
+  if (messages[langCode]) return messages[langCode];
+
+  // لو لغة مش موجودة، ارسل للـ ChatGPT لترجمة الرسالة
+  const prompt = `Translate this welcome message to "${langCode}" and adapt it to sound natural in that language: "Welcome ${userName}${countryName ? " from " + countryName : ""} to Smart Chat! You can ask any question or choose from FAQs."`;
+  try {
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json();
+    return data.text || messages["en"];
+  } catch {
+    return messages["en"];
+  }
+}
+
+// ---- إرسال السؤال إلى API Route الذكي ----
+async function sendToBot(prompt, lang = "ar") {
+  try {
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, lang }),
+    });
+    const data = await res.json();
+    return data.text || "";
+  } catch {
+    return lang === "ar"
+      ? "حدث خطأ أثناء التواصل مع المساعد الذكي، حاول لاحقًا."
+      : lang === "en"
+      ? "There was an error contacting the smart assistant. Please try again later."
+      : "Une erreur s'est produite.";
+  }
+}
+
 function blobToBase64(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -216,25 +259,25 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  useEffect(() => {
-    if (
-      !showLangModal &&
-      messages.length === 0 &&
-      roomId &&
-      !waitingForAgent &&
-      !agentAccepted
-    ) {
-      sendMessage("bot", {
-        text:
-          lang === "ar"
-            ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-            : lang === "en"
-            ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
-            : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
+useEffect(() => {
+  if (
+    !showLangModal &&
+    messages.length === 0 &&
+    roomId &&
+    !waitingForAgent &&
+    !agentAccepted
+  ) {
+    sendMessage("bot", {
+      text:
+        lang === "ar"
+          ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+          : lang === "en"
+          ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
+          : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
+    });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
 
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
@@ -250,58 +293,75 @@ export default function ChatWidgetFull({
     playSend(); // شغل صوت الإرسال هنا
   };
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
+const handleSend = async (e) => {
+  e.preventDefault();
+  if (
+    closed ||
+    (uploading && (imagePreview || audioBlob)) ||
+    (waitingForAgent && !agentAccepted)
+  )
+    return;
 
-    if (imagePreview) {
-      await sendMessage("image", { imageBase64: imagePreview });
-      setImagePreview(null);
-      setInput("");
-      return;
-    }
-    if (audioBlob) {
-      const audioBase64 = await blobToBase64(audioBlob);
-      await sendMessage("audio", { audioBase64 });
-      setAudioBlob(null);
-      setInput("");
-      return;
-    }
-    const textMsg = input.trim();
-    if (!textMsg) return;
-
-    // إذا كتب المستخدم "خدمة العملاء" أو "موظف خدمة العملاء" بأي لغة، يظهر زر التواصل مع الموظف مباشرةً
-    const userWantsAgent =
-      (lang === "ar" && /خدمة\s*العملاء|الموظف/i.test(textMsg)) ||
-      (lang === "en" && /customer\s*service|agent/i.test(textMsg)) ||
-      (lang === "fr" && /service\s*client|agent/i.test(textMsg));
-
-    if (!waitingForAgent && !agentAccepted) {
-      await sendMessage("text", { text: textMsg });
-      if (userWantsAgent) {
-        setNoBotHelpCount(2); // للإظهار الفوري للزر
-      }
-      let foundAnswer = findFaqAnswer(textMsg, lang);
-      if (foundAnswer && !userWantsAgent) {
-        await sendMessage("bot", { text: foundAnswer });
-        setNoBotHelpCount(0);
-      } else if (!userWantsAgent) {
-        setNoBotHelpCount((c) => c + 1);
-        await sendMessage("bot", {
-          text:
-            lang === "ar"
-              ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
-              : lang === "en"
-              ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
-              : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
-        });
-      }
-    } else {
-      await sendMessage("text", { text: textMsg });
-    }
+  if (imagePreview) {
+    await sendMessage("image", { imageBase64: imagePreview });
+    setImagePreview(null);
     setInput("");
-  };
+    return;
+  }
+  if (audioBlob) {
+    const audioBase64 = await blobToBase64(audioBlob);
+    await sendMessage("audio", { audioBase64 });
+    setAudioBlob(null);
+    setInput("");
+    return;
+  }
+  const textMsg = input.trim();
+  if (!textMsg) return;
 
+  // إذا كتب المستخدم "خدمة العملاء" أو "موظف خدمة العملاء" بأي لغة، يظهر زر التواصل مع الموظف مباشرةً
+  const userWantsAgent =
+    (lang === "ar" &&
+      /(خدمة\s*العملاء|الموظف|تواصل مع موظف|اريد موظف|تحدث مع موظف)/i.test(
+        textMsg
+      )) ||
+    (lang === "en" &&
+      /(customer\s*service|agent|talk to agent|contact agent)/i.test(
+        textMsg
+      )) ||
+    (lang === "fr" &&
+      /(service\s*client|agent|parler à un agent|contacter un agent)/i.test(
+        textMsg
+      ));
+
+  if (!waitingForAgent && !agentAccepted) {
+    await sendMessage("text", { text: textMsg });
+
+    let foundAnswer = findFaqAnswer(textMsg, lang);
+
+    if (userWantsAgent) {
+      setNoBotHelpCount(2); // للإظهار الفوري للزر
+      await sendMessage("bot", {
+        text:
+          lang === "ar"
+            ? "تم استلام طلبك للتواصل مع موظف خدمة العملاء. اضغط الزر أدناه وسيتم تحويلك فورًا."
+            : lang === "en"
+            ? "Your request to contact customer service has been received. Click the button below to be transferred."
+            : "Votre demande de contacter le service client a été reçue. Cliquez sur le bouton ci-dessous pour être transféré.",
+      });
+    } else if (foundAnswer) {
+      await sendMessage("bot", { text: foundAnswer });
+      setNoBotHelpCount(0);
+    } else {
+      const botReply = await sendToBot(textMsg, lang);
+      await sendMessage("bot", { text: botReply });
+      setNoBotHelpCount((c) => c + 1);
+    }
+  } else {
+    // لو هو بالفعل في انتظار موظف أو تم قبول موظف، فقط أرسل الرسالة كـ text عادي
+    await sendMessage("text", { text: textMsg });
+  }
+  setInput("");
+};
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
@@ -527,16 +587,21 @@ export default function ChatWidgetFull({
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
               {showLangModal && (
                 <div className="flex justify-center mb-2">
-                  <LanguageSelectModal
-                    userName={safeUserName}
-                    countries={countriesObject}
-                    countriesLang={countriesLang}
-                    onSelect={(chosenLang, chosenCountry) => {
-                      setLang(chosenLang);
-                      setSelectedCountry(chosenCountry);
-                      setShowLangModal(false);
-                    }}
-                  />
+<LanguageSelectModal
+  userName={safeUserName}
+  countries={countriesObject}
+  countriesLang={countriesLang}
+  onSelect={async (chosenLang, chosenCountry) => {
+    setLang(chosenLang);
+    setSelectedCountry(chosenCountry);
+    setShowLangModal(false);
+
+    // جلب رسالة الترحيب بلغته (حتى لو لغة غير موجودة)
+    const welcomeMsg = await getWelcomeMessage(safeUserName, chosenLang, countriesObject[chosenCountry]);
+    // إرسال الرسالة كأول رسالة بوت
+    await sendMessage("bot", { text: welcomeMsg });
+  }}
+/>
                 </div>
               )}
               {!showLangModal && messages.map(renderMsgBubble)}
