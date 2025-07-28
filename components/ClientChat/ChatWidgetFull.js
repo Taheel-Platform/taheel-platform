@@ -367,16 +367,11 @@ export default function ChatWidgetFull({
   // مكان أزرار الغلق/تصغير حسب اللغة
   const headerButtonsClass =
     lang === "ar"
-      ? "chat-header-buttons right-2 flex-row-reverse"
-      : "chat-header-buttons left-2 flex-row";
+    ? "chat-header-buttons right-2 flex-row-reverse"
+    : "chat-header-buttons left-2 flex-row";
 
-  if (closed) {
-    return (
-      <></>
-    );
-  }
 
-  return (
+return (
     <>
       <style>{`
         .chat-bg-grad { background: linear-gradient(120deg,#f3f6fa 60%,#eafbf6 100%); }
