@@ -53,7 +53,7 @@ export default function LanguageSelectModal({
 
 
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">
-        <img src="/taheel-logo.svg" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
+        <img src="/taheel-bot.png" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
         <h2 className="font-extrabold text-[1.35rem] text-emerald-800 mb-2">
           {countryLang === "ar"
             ? "اختيار اللغة"
