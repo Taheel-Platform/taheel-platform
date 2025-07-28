@@ -153,3 +153,25 @@ body {
   font-size: 0.92rem !important;
 }
 /* ==== نهاية التحسينات الجديدة ==== */
+.flags-select__option, 
+.flags-select__selected, 
+.flags-select__label, 
+.flags-select__country-label {
+  color: #222 !important;
+  font-weight: bold;
+  background: transparent !important;
+  font-family: Tahoma, Arial, sans-serif !important;
+  font-size: 1rem !important;
+}
+.flags-select__option {
+  background: #fff !important;
+  color: #222 !important;
+}
+.flags-select__option--is-selected {
+  background: #e0f7fa !important;
+  color: #059669 !important;
+}
+.flags-select__list {
+  background: #fff !important;
+  color: #222 !important;
+}

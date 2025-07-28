@@ -412,7 +412,7 @@ export default function ChatWidgetFull({
 
   const headerButtonsClass =
     lang === "ar"
-      ? "chat-header-buttons right-2 flex-row-reverse"
+      ? "chat-header-buttons left-2 flex-row-reverse"
       : "chat-header-buttons left-2 flex-row";
 
   // لما الشات مغلق تماما لا يظهر أي شيء
