@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
-// لا تستورد countriesData هنا! استقبلها من الـ props
 
 export default function LanguageSelectModal({ defaultLang = "ar", userName = "زائر", countries, onSelect }) {
   const [selectedLang, setSelectedLang] = useState(defaultLang);
 
-  // رسالة الترحيب حسب اللغة
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يمكنك اختيار اللغة والدولة للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Choose your language and country to continue. Ask me anything and I'll respond right away.`,
@@ -13,7 +11,17 @@ export default function LanguageSelectModal({ defaultLang = "ar", userName = "ز
   const logoAlt = selectedLang === "ar" ? "تأهيل" : "Taheel";
 
   return (
-    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-gradient-to-tr from-[#e0e7ef] via-[#f3f6fa] to-[#eafbf6]">
+    <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90">
+      <style>{`
+        .flags-select__option, .flags-select__selected {
+          color: #212121 !important;
+          font-weight: bold;
+          background: transparent !important;
+        }
+        .flags-select__option--is-selected {
+          background: #e0f7fa !important;
+        }
+      `}</style>
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border">
         <img src="/taheel-logo.svg" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
         <h2 className="font-extrabold text-[1.35rem] text-emerald-800 mb-2">
