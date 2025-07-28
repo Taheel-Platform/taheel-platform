@@ -56,9 +56,12 @@ export default function ChatWidgetFull({
   const [showEmoji, setShowEmoji] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [chatClosed, setChatClosed] = useState(false);
+
+  // اللغة والدولة
   const [showLangModal, setShowLangModal] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [lang, setLang] = useState(initialLang);
+
   const [noBotHelpCount, setNoBotHelpCount] = useState(0);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
@@ -84,18 +87,20 @@ export default function ChatWidgetFull({
     }
   }, [roomId, initialRoomId]);
 
-useEffect(() => {
-  if (!roomId || !safeUserId || !safeUserName || !selectedCountry) return;
-  set(dbRef(db, `chats/${roomId}`), {
-    clientId: safeUserId,
-    clientName: safeUserName,
-    createdAt: Date.now(),
-    country: selectedCountry,
-    lang: lang,
-    status: "open",
-  });
-}, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
+  // فقط بعد اختيار الدولة واللغة يتم إنشاء الشات على الداتابيز
+  useEffect(() => {
+    if (!roomId || !safeUserId || !safeUserName || !selectedCountry || !lang) return;
+    set(dbRef(db, `chats/${roomId}`), {
+      clientId: safeUserId,
+      clientName: safeUserName,
+      createdAt: Date.now(),
+      country: selectedCountry,
+      lang: lang,
+      status: "open",
+    });
+  }, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
 
+  // استقبال الرسائل من الداتابيز
   useEffect(() => {
     if (!roomId) return;
     const msgsRef = dbRef(db, `chats/${roomId}/messages`);
@@ -121,6 +126,7 @@ useEffect(() => {
     });
   }, [db, roomId]);
 
+  // بيانات حالة الشات
   useEffect(() => {
     if (!roomId) return;
     const chatRef = dbRef(db, `chats/${roomId}`);
@@ -133,20 +139,14 @@ useEffect(() => {
     return () => unsub();
   }, [db, roomId]);
 
-  useEffect(() => {
-    // يظهر المودال عند أول فتح فقط
-    if (minimized === false && roomId && showLangModal) {
-      setShowLangModal(true);
-    }
-  }, [minimized, roomId, showLangModal]);
-
+  // رسالة الترحيب تظهر بعد اختيار اللغة والدولة فقط
   useEffect(() => {
     if (
+      !showLangModal &&
       messages.length === 0 &&
       roomId &&
       !waitingForAgent &&
-      !agentAccepted &&
-      !showLangModal
+      !agentAccepted
     ) {
       sendMessage("bot", {
         text:
@@ -354,9 +354,11 @@ useEffect(() => {
     setLang(chosenLang);
     setSelectedCountry(chosenCountry);
     setShowLangModal(false);
-    // يمكنك هنا ارسال رسالة ترحيب مخصصة بناءً على اللغة والدولة
-    // sendMessage("bot", { text: ... });
+    // بعد اختيار اللغة والدولة يبدأ الشات برسالة ترحيبية (سيتم إرسالها في useEffect)
   };
+
+  // مكان أزرار الغلق/تصغير حسب اللغة
+  const headerButtonsClass = `chat-header-buttons ${lang === "ar" ? "left-2 flex-row-reverse" : "right-2 flex-row"}`;
 
   return (
     <>
@@ -376,17 +378,12 @@ useEffect(() => {
           position: absolute;
           top: 12px;
           z-index: 11;
-          ${lang === "ar" ? "left: 12px;" : "right: 12px;"}
-          flex-direction: ${lang === "ar" ? "row-reverse" : "row"};
         }
+        .left-2 { left: 12px }
+        .right-2 { right: 12px }
+        .flex-row-reverse { flex-direction: row-reverse }
+        .flex-row { flex-direction: row }
       `}</style>
-      {showLangModal && (
-<LanguageSelectModal
-  userName={safeUserName}
-  countries={countriesObject}
-  onSelect={handleLangCountrySelect}
-/>
-      )}
       {minimized ? (
         <button
           onClick={() => setMinimized(false)}
@@ -406,7 +403,7 @@ useEffect(() => {
                   ? "Smart Chat"
                   : "Chat intelligente"}
               </span>
-              <div className="chat-header-buttons">
+              <div className={headerButtonsClass}>
                 <button
                   onClick={() => setMinimized(true)}
                   className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
@@ -426,10 +423,22 @@ useEffect(() => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-              {messages.map(renderMsgBubble)}
+              {/* اختيار اللغة والدولة كأول رسالة */}
+              {showLangModal &&
+                <div className="flex justify-center mb-2">
+                  <LanguageSelectModal
+                    userName={safeUserName}
+                    countries={countriesObject}
+                    onSelect={handleLangCountrySelect}
+                  />
+                </div>
+              }
+              {/* رسائل الشات */}
+              {!showLangModal && messages.map(renderMsgBubble)}
               <div ref={chatEndRef} />
             </div>
-            {!chatClosed && (
+            {/* input الشات فقط بعد اختيار اللغة والدولة */}
+            {!chatClosed && !showLangModal && (
               <form
                 className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
                 onSubmit={handleSend}
@@ -533,7 +542,8 @@ useEffect(() => {
                 )}
               </form>
             )}
-            {waitingForAgent && !agentAccepted && (
+            {/* باقي الأكواد كما هي: انتظار موظف، FAQ، إغلاق الشات ... */}
+            {waitingForAgent && !agentAccepted && !showLangModal && (
               <div className="flex justify-center p-3">
                 <div className="bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-orange-300 shadow">
                   {lang === "ar"
@@ -544,7 +554,7 @@ useEffect(() => {
                 </div>
               </div>
             )}
-            {messages.length === 0 && !waitingForAgent && !agentAccepted && (
+            {!waitingForAgent && !agentAccepted && !showLangModal && messages.length === 1 && (
               <div className="flex flex-wrap gap-2 mt-4 justify-center">
                 {faqData.map((f, i) => (
                   <button
@@ -557,7 +567,7 @@ useEffect(() => {
                 ))}
               </div>
             )}
-            {!waitingForAgent && !agentAccepted && noBotHelpCount >= 2 && (
+            {!waitingForAgent && !agentAccepted && !showLangModal && noBotHelpCount >= 2 && (
               <div className="flex justify-center p-3">
                 <button
                   type="button"
@@ -573,7 +583,7 @@ useEffect(() => {
                 </button>
               </div>
             )}
-            {chatClosed && (
+            {chatClosed && !showLangModal && (
               <div className="flex justify-center p-4">
                 <div className="bg-gradient-to-r from-red-100 to-red-300 text-red-800 px-5 py-3 rounded-xl text-center font-bold border border-red-400 shadow">
                   {lang === "ar"
