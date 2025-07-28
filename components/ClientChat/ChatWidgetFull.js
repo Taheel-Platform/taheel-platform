@@ -73,6 +73,25 @@ export default function ChatWidgetFull({
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
+  // إعادة ضبط كل شيء عند إعادة فتح الشات (بعد الإغلاق)
+  const handleOpenChat = () => {
+    setClosed(false);
+    setMinimized(false);
+    setShowLangModal(true);
+    setSelectedCountry("");
+    setLang(initialLang);
+    setMessages([]);
+    setInput("");
+    setNoBotHelpCount(0);
+    setWaitingForAgent(false);
+    setAgentAccepted(false);
+    setImagePreview(null);
+    setAudioBlob(null);
+    setRecording(false);
+    setShowEmoji(false);
+    // لا تعيد تعيين roomId حتى لا تضيع المحادثة (إلا إذا كان مطلوبًا)
+  };
+
   useEffect(() => {
     if (!roomId) {
       let id = initialRoomId;
@@ -89,7 +108,6 @@ export default function ChatWidgetFull({
     }
   }, [roomId, initialRoomId]);
 
-  // فقط بعد اختيار الدولة واللغة يتم إنشاء الشات على الداتابيز
   useEffect(() => {
     if (!roomId || !safeUserId || !safeUserName || !selectedCountry || !lang) return;
     set(dbRef(db, `chats/${roomId}`), {
@@ -102,7 +120,6 @@ export default function ChatWidgetFull({
     });
   }, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
 
-  // استقبال الرسائل من الداتابيز
   useEffect(() => {
     if (!roomId) return;
     const msgsRef = dbRef(db, `chats/${roomId}/messages`);
@@ -128,7 +145,6 @@ export default function ChatWidgetFull({
     });
   }, [db, roomId]);
 
-  // بيانات حالة الشات
   useEffect(() => {
     if (!roomId) return;
     const chatRef = dbRef(db, `chats/${roomId}`);
@@ -136,12 +152,11 @@ export default function ChatWidgetFull({
       const val = snap.val();
       setWaitingForAgent(!!val?.waitingForAgent);
       setAgentAccepted(!!val?.agentAccepted);
-      if (val?.status === "closed") setClosed(true);
+      // لا تغلق الشات تلقائيا هنا، الإغلاق بالزر فقط!
     });
     return () => unsub();
   }, [db, roomId]);
 
-  // رسالة الترحيب تظهر بعد اختيار اللغة والدولة فقط
   useEffect(() => {
     if (
       !showLangModal &&
@@ -195,13 +210,22 @@ export default function ChatWidgetFull({
     const textMsg = input.trim();
     if (!textMsg) return;
 
+    // إذا كتب المستخدم "خدمة العملاء" أو "موظف خدمة العملاء" بأي لغة، يظهر زر التواصل مع الموظف مباشرةً
+    const userWantsAgent =
+      (lang === "ar" && /خدمة\s*العملاء|الموظف/i.test(textMsg)) ||
+      (lang === "en" && /customer\s*service|agent/i.test(textMsg)) ||
+      (lang === "fr" && /service\s*client|agent/i.test(textMsg));
+
     if (!waitingForAgent && !agentAccepted) {
       await sendMessage("text", { text: textMsg });
+      if (userWantsAgent) {
+        setNoBotHelpCount(2); // للإظهار الفوري للزر
+      }
       let foundAnswer = findFaqAnswer(textMsg, lang);
-      if (foundAnswer) {
+      if (foundAnswer && !userWantsAgent) {
         await sendMessage("bot", { text: foundAnswer });
         setNoBotHelpCount(0);
-      } else {
+      } else if (!userWantsAgent) {
         setNoBotHelpCount((c) => c + 1);
         await sendMessage("bot", {
           text:
@@ -357,21 +381,15 @@ export default function ChatWidgetFull({
     );
   }
 
-  // دالة اختيار اللغة والدولة
-  const handleLangCountrySelect = (chosenLang, chosenCountry) => {
-    setLang(chosenLang);
-    setSelectedCountry(chosenCountry);
-    setShowLangModal(false);
-  };
-
-  // مكان أزرار الغلق/تصغير حسب اللغة
   const headerButtonsClass =
     lang === "ar"
-    ? "chat-header-buttons right-2 flex-row-reverse"
-    : "chat-header-buttons left-2 flex-row";
+      ? "chat-header-buttons right-2 flex-row-reverse"
+      : "chat-header-buttons left-2 flex-row";
 
+  // لما الشات مغلق تماما لا يظهر أي شيء
+  if (closed) return null;
 
-return (
+  return (
     <>
       <style>{`
         .chat-bg-grad { background: linear-gradient(120deg,#f3f6fa 60%,#eafbf6 100%); }
@@ -397,7 +415,7 @@ return (
       `}</style>
       {minimized ? (
         <button
-          onClick={() => setMinimized(false)}
+          onClick={handleOpenChat}
           className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-emerald-400 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
           title="فتح المحادثة"
         >
@@ -434,23 +452,24 @@ return (
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-              {/* اختيار اللغة والدولة كأول رسالة */}
               {showLangModal && (
                 <div className="flex justify-center mb-2">
                   <LanguageSelectModal
                     userName={safeUserName}
                     countries={countriesObject}
                     countriesLang={countriesLang}
-                    onSelect={handleLangCountrySelect}
+                    onSelect={(chosenLang, chosenCountry) => {
+                      setLang(chosenLang);
+                      setSelectedCountry(chosenCountry);
+                      setShowLangModal(false);
+                    }}
                   />
                 </div>
               )}
-              {/* رسائل الشات */}
               {!showLangModal && messages.map(renderMsgBubble)}
               <div ref={chatEndRef} />
             </div>
-            {/* input الشات فقط بعد اختيار اللغة والدولة */}
-            {!closed && !showLangModal && (
+            {!showLangModal && (
               <form
                 className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
                 onSubmit={handleSend}
@@ -559,7 +578,6 @@ return (
                 )}
               </form>
             )}
-            {/* باقي الأكواد كما هي: انتظار موظف، FAQ، إغلاق الشات ... */}
             {waitingForAgent && !agentAccepted && !showLangModal && (
               <div className="flex justify-center p-3">
                 <div className="bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-orange-300 shadow">
@@ -598,17 +616,6 @@ return (
                     ? "Contact Customer Service"
                     : "Contacter le service client"}
                 </button>
-              </div>
-            )}
-            {closed && !showLangModal && (
-              <div className="flex justify-center p-4">
-                <div className="bg-gradient-to-r from-red-100 to-red-300 text-red-800 px-5 py-3 rounded-xl text-center font-bold border border-red-400 shadow">
-                  {lang === "ar"
-                    ? "تم إغلاق المحادثة. شكرًا لتواصلك معنا!"
-                    : lang === "en"
-                    ? "Chat closed. Thank you for contacting us!"
-                    : "Chat fermé. Merci de nous avoir contactés !"}
-                </div>
               </div>
             )}
           </div>
