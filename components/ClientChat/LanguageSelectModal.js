@@ -31,29 +31,32 @@ export default function LanguageSelectModal({
   return (
     <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90 font-sans">
       <style>{`
-        .flags-select__option, .flags-select__selected {
-          color: #222 !important;
-          font-weight: bold;
-          background: transparent !important;
-          font-family: Tahoma, Arial, sans-serif !important;
-          font-size: 1rem !important;
-        }
-        .flags-select__option--is-selected {
-          background: #e0f7fa !important;
-        }
-        .flags-select__option {
-          border-bottom: 1px solid #e0e0e0 !important;
-        }
-        .flags-select__list {
-          border: 1px solid #90cdf4 !important;
-          border-radius: 10px !important;
-          background: #fff;
-        }
-        .flags-select__selected {
-          border: 1.5px solid #059669 !important;
-          border-radius: 10px !important;
-        }
-      `}</style>
+  .flags-select__option, .flags-select__selected {
+    color: #222 !important;
+    font-weight: bold;
+    background: transparent !important;
+    font-family: Tahoma, Arial, sans-serif !important;
+    font-size: 1rem !important;
+  }
+  .flags-select__option--is-selected {
+    background: #e0f7fa !important;
+    color: #059669 !important;
+  }
+  .flags-select__option {
+    border-bottom: 1px solid #e0e0e0 !important;
+    background: #fff !important;
+    color: #222 !important;  /* === أضف هذا السطر فقط لفرض اللون === */
+  }
+  .flags-select__list {
+    border: 1px solid #90cdf4 !important;
+    border-radius: 10px !important;
+    background: #fff;
+  }
+  .flags-select__selected {
+    border: 1.5px solid #059669 !important;
+    border-radius: 10px !important;
+  }
+`}</style>
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">
         <img src="/taheel-logo.svg" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
         <h2 className="font-extrabold text-[1.35rem] text-emerald-800 mb-2">
