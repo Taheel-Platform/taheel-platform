@@ -84,17 +84,17 @@ export default function ChatWidgetFull({
     }
   }, [roomId, initialRoomId]);
 
-  useEffect(() => {
-    if (!roomId || !safeUserId || !safeUserName) return;
-    set(dbRef(db, `chats/${roomId}`), {
-      clientId: safeUserId,
-      clientName: safeUserName,
-      createdAt: Date.now(),
-      country: selectedCountry,
-      lang: lang,
-      status: "open",
-    });
-  }, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
+useEffect(() => {
+  if (!roomId || !safeUserId || !safeUserName || !selectedCountry) return;
+  set(dbRef(db, `chats/${roomId}`), {
+    clientId: safeUserId,
+    clientName: safeUserName,
+    createdAt: Date.now(),
+    country: selectedCountry,
+    lang: lang,
+    status: "open",
+  });
+}, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
 
   useEffect(() => {
     if (!roomId) return;
