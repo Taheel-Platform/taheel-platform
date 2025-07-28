@@ -31,6 +31,27 @@ export default function LanguageSelectModal({
   return (
     <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90 font-sans">
       
+<style>{`
+  .flags-select__option,
+  .flags-select__selected {
+    color: #0b2545 !important;      /* لون كُحلي واضح */
+    background: #ffffff !important; /* خلفية بيضاء */
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+  }
+  
+  .flags-select__option--is-selected {
+    background-color: #e0f7fa !important; /* خلفية تحديد مميزة */
+    color: #00695c !important;
+  }
+
+  .flags-select__option:hover {
+    background-color: #f0f0f0 !important;
+    color: #000 !important;
+  }
+`}</style>
+
+
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">
         <img src="/taheel-logo.svg" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
         <h2 className="font-extrabold text-[1.35rem] text-emerald-800 mb-2">
