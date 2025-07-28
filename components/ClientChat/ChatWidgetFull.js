@@ -8,6 +8,8 @@ import {
   onValue,
   update,
 } from "firebase/database";
+// --------- إضافة استيراد فايرستور فقط لهذا المطلب ----------
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 import {
   FaPaperPlane,
   FaMicrophone,
@@ -59,6 +61,9 @@ export default function ChatWidgetFull({
   const [minimized, setMinimized] = useState(false);
   const [closed, setClosed] = useState(false);
 
+  // -------------- إضافة ستايت بيانات العميل من فايرستور -------------
+  const [userData, setUserData] = useState(null);
+
   // اللغة والدولة
   const [showLangModal, setShowLangModal] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState("");
@@ -71,7 +76,33 @@ export default function ChatWidgetFull({
   const chatEndRef = useRef(null);
 
   const safeUserId = userId || "guest";
-  const safeUserName = userName || "زائر";
+
+  // --------- جلب بيانات المستخدم من فايرستور عند دخول الشات ---------
+  useEffect(() => {
+    if (!safeUserId) return;
+    const fetchUserData = async () => {
+      try {
+        const firestore = getFirestore();
+        const userDoc = doc(firestore, "users", safeUserId);
+        const snap = await getDoc(userDoc);
+        if (snap.exists()) {
+          setUserData(snap.data());
+        }
+      } catch (e) {
+        setUserData(null); // في حالة الخطأ، تجاهل
+      }
+    };
+    fetchUserData();
+  }, [safeUserId]);
+
+  // --------- تحديد اسم العميل من البيانات أو من البروبس كالسابق ---------
+  const safeUserName =
+    (userData &&
+      (lang === "ar"
+        ? userData.nameAr || userData.firstName || userData.lastName
+        : userData.nameEn || userData.firstName || userData.lastName)) ||
+    userName ||
+    "زائر";
 
   // --- الأصوات ---
   const sendAudio = typeof Audio !== "undefined" ? new Audio("/sounds/send.mp3") : null;
@@ -203,7 +234,7 @@ export default function ChatWidgetFull({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry]);
+  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
 
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
@@ -344,84 +375,84 @@ export default function ChatWidgetFull({
   };
 
   function renderMsgBubble(msg) {
-  let isSelf = msg.senderId === safeUserId;
-  let isBot = msg.type === "bot";
-  let isSystem = msg.type === "system";
-  let base =
-    "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
-  let align = isSelf
-    ? "ml-auto self-end"
-    : isBot
-    ? "self-start"
-    : isSystem
-    ? "mx-auto"
-    : "self-start";
-  let color =
-    isSystem
-      ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
+    let isSelf = msg.senderId === safeUserId;
+    let isBot = msg.type === "bot";
+    let isSystem = msg.type === "system";
+    let base =
+      "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
+    let align = isSelf
+      ? "ml-auto self-end"
       : isBot
-      ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
-      : isSelf
-      ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
-      : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
-  return (
-    <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
-      {/* صورة البوت فقط في رسائل البوت */}
-      {isBot && (
-        <img
-          src="/taheel-bot.png"   // ضع هنا مسار صورة البوت (يمكنك رفع الصورة لمجلد public مثلاً)
-          alt="Bot"
-          width={36}
-          height={36}
-          className="rounded-full border border-emerald-400 shadow-sm mt-1"
-          style={{ minWidth: 36, minHeight: 36, objectFit: "cover", background: "#fff" }}
-        />
-      )}
-      <div className="flex-1">
-        {msg.type === "text" && <span>{msg.text}</span>}
-        {msg.type === "bot" && <span>{msg.text}</span>}
-        {msg.type === "image" && (
+      ? "self-start"
+      : isSystem
+      ? "mx-auto"
+      : "self-start";
+    let color =
+      isSystem
+        ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
+        : isBot
+        ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
+        : isSelf
+        ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
+        : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
+    return (
+      <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
+        {/* صورة البوت فقط في رسائل البوت */}
+        {isBot && (
           <img
-            src={msg.imageBase64}
-            alt="img"
-            width={160}
-            height={160}
-            className="max-w-[160px] max-h-[160px] rounded-lg border mt-1"
+            src="/taheel-bot.png"
+            alt="Bot"
+            width={36}
+            height={36}
+            className="rounded-full border border-emerald-400 shadow-sm mt-1"
+            style={{ minWidth: 36, minHeight: 36, objectFit: "cover", background: "#fff" }}
           />
         )}
-        {msg.type === "audio" && (
-          <audio controls src={msg.audioBase64} className="mt-1" />
-        )}
-        <div className="text-[10px] text-gray-400 mt-1 text-left ltr:text-left rtl:text-right">
-          {isBot
-            ? lang === "ar"
-              ? "المساعد الذكي"
-              : lang === "en"
-              ? "Smart Assistant"
-              : "Assistant"
-            : isSystem
-            ? lang === "ar"
-              ? "النظام"
-              : lang === "en"
-              ? "System"
-              : "Système"
-            : msg.senderName}
-          {" · "}
-          {msg.createdAt
-            ? new Date(msg.createdAt).toLocaleTimeString(
-                lang === "ar"
-                  ? "ar-EG"
-                  : lang === "en"
-                  ? "en-US"
-                  : "fr-FR",
-                { hour: "2-digit", minute: "2-digit" }
-              )
-            : ""}
+        <div className="flex-1">
+          {msg.type === "text" && <span>{msg.text}</span>}
+          {msg.type === "bot" && <span>{msg.text}</span>}
+          {msg.type === "image" && (
+            <img
+              src={msg.imageBase64}
+              alt="img"
+              width={160}
+              height={160}
+              className="max-w-[160px] max-h-[160px] rounded-lg border mt-1"
+            />
+          )}
+          {msg.type === "audio" && (
+            <audio controls src={msg.audioBase64} className="mt-1" />
+          )}
+          <div className="text-[10px] text-gray-400 mt-1 text-left ltr:text-left rtl:text-right">
+            {isBot
+              ? lang === "ar"
+                ? "المساعد الذكي"
+                : lang === "en"
+                ? "Smart Assistant"
+                : "Assistant"
+              : isSystem
+              ? lang === "ar"
+                ? "النظام"
+                : lang === "en"
+                ? "System"
+                : "Système"
+              : msg.senderName}
+            {" · "}
+            {msg.createdAt
+              ? new Date(msg.createdAt).toLocaleTimeString(
+                  lang === "ar"
+                    ? "ar-EG"
+                    : lang === "en"
+                    ? "en-US"
+                    : "fr-FR",
+                  { hour: "2-digit", minute: "2-digit" }
+                )
+              : ""}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   const headerButtonsClass =
     lang === "ar"
