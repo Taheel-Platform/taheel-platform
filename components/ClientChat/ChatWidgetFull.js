@@ -15,7 +15,7 @@ import {
   FaSmile,
   FaComments,
   FaTimes,
-  FaWindowMinimize
+  FaWindowMinimize,
 } from "react-icons/fa";
 import Picker from "@emoji-mart/react";
 import emojiData from "@emoji-mart/data";
@@ -25,8 +25,10 @@ import LanguageSelectModal from "./LanguageSelectModal";
 import countriesData from "../../lib/countries-ar-en.js";
 
 const countriesObject = {};
-countriesData.forEach(item => {
+const countriesLang = {};
+countriesData.forEach((item) => {
   countriesObject[item.value.toUpperCase()] = item.label;
+  countriesLang[item.value.toUpperCase()] = item.lang || "ar";
 });
 
 function blobToBase64(blob) {
@@ -55,7 +57,7 @@ export default function ChatWidgetFull({
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [chatClosed, setChatClosed] = useState(false);
+  const [closed, setClosed] = useState(false);
 
   // اللغة والدولة
   const [showLangModal, setShowLangModal] = useState(true);
@@ -134,7 +136,7 @@ export default function ChatWidgetFull({
       const val = snap.val();
       setWaitingForAgent(!!val?.waitingForAgent);
       setAgentAccepted(!!val?.agentAccepted);
-      setChatClosed(val?.status === "closed");
+      if (val?.status === "closed") setClosed(true);
     });
     return () => unsub();
   }, [db, roomId]);
@@ -175,7 +177,7 @@ export default function ChatWidgetFull({
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (chatClosed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
+    if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
 
     if (imagePreview) {
       await sendMessage("image", { imageBase64: imagePreview });
@@ -200,7 +202,7 @@ export default function ChatWidgetFull({
         await sendMessage("bot", { text: foundAnswer });
         setNoBotHelpCount(0);
       } else {
-        setNoBotHelpCount(c => c + 1);
+        setNoBotHelpCount((c) => c + 1);
         await sendMessage("bot", {
           text:
             lang === "ar"
@@ -224,7 +226,7 @@ export default function ChatWidgetFull({
       await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
     } else {
-      setNoBotHelpCount(c => c + 1);
+      setNoBotHelpCount((c) => c + 1);
       await sendMessage("bot", {
         text:
           lang === "ar"
@@ -249,12 +251,8 @@ export default function ChatWidgetFull({
     setNoBotHelpCount(0);
   };
 
-  const closeChat = async () => {
-    if (!roomId) return;
-    await update(dbRef(db, `chats/${roomId}`), {
-      status: "closed",
-    });
-    setChatClosed(true);
+  const closeChat = () => {
+    setClosed(true);
     if (onClose) onClose();
   };
 
@@ -318,7 +316,13 @@ export default function ChatWidgetFull({
         {msg.type === "text" && <span>{msg.text}</span>}
         {msg.type === "bot" && <span>{msg.text}</span>}
         {msg.type === "image" && (
-          <img src={msg.imageBase64} alt="img" width={160} height={160} className="max-w-[160px] max-h-[160px] rounded-lg border mt-1" />
+          <img
+            src={msg.imageBase64}
+            alt="img"
+            width={160}
+            height={160}
+            className="max-w-[160px] max-h-[160px] rounded-lg border mt-1"
+          />
         )}
         {msg.type === "audio" && (
           <audio controls src={msg.audioBase64} className="mt-1" />
@@ -340,7 +344,11 @@ export default function ChatWidgetFull({
           {" · "}
           {msg.createdAt
             ? new Date(msg.createdAt).toLocaleTimeString(
-                lang === "ar" ? "ar-EG" : lang === "en" ? "en-US" : "fr-FR",
+                lang === "ar"
+                  ? "ar-EG"
+                  : lang === "en"
+                  ? "en-US"
+                  : "fr-FR",
                 { hour: "2-digit", minute: "2-digit" }
               )
             : ""}
@@ -354,11 +362,19 @@ export default function ChatWidgetFull({
     setLang(chosenLang);
     setSelectedCountry(chosenCountry);
     setShowLangModal(false);
-    // بعد اختيار اللغة والدولة يبدأ الشات برسالة ترحيبية (سيتم إرسالها في useEffect)
   };
 
   // مكان أزرار الغلق/تصغير حسب اللغة
-  const headerButtonsClass = `chat-header-buttons ${lang === "ar" ? "left-2 flex-row-reverse" : "right-2 flex-row"}`;
+  const headerButtonsClass =
+    lang === "ar"
+      ? "chat-header-buttons right-2 flex-row-reverse"
+      : "chat-header-buttons left-2 flex-row";
+
+  if (closed) {
+    return (
+      <></>
+    );
+  }
 
   return (
     <>
@@ -424,21 +440,22 @@ export default function ChatWidgetFull({
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
               {/* اختيار اللغة والدولة كأول رسالة */}
-              {showLangModal &&
+              {showLangModal && (
                 <div className="flex justify-center mb-2">
                   <LanguageSelectModal
                     userName={safeUserName}
                     countries={countriesObject}
+                    countriesLang={countriesLang}
                     onSelect={handleLangCountrySelect}
                   />
                 </div>
-              }
+              )}
               {/* رسائل الشات */}
               {!showLangModal && messages.map(renderMsgBubble)}
               <div ref={chatEndRef} />
             </div>
             {/* input الشات فقط بعد اختيار اللغة والدولة */}
-            {!chatClosed && !showLangModal && (
+            {!closed && !showLangModal && (
               <form
                 className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
                 onSubmit={handleSend}
@@ -535,9 +552,14 @@ export default function ChatWidgetFull({
                     {audioBlob && <>صوت جاهز للإرسال</>}
                     <button
                       type="button"
-                      onClick={() => { setImagePreview(null); setAudioBlob(null); }}
+                      onClick={() => {
+                        setImagePreview(null);
+                        setAudioBlob(null);
+                      }}
                       className="ml-1 text-red-600 font-bold"
-                    >×</button>
+                    >
+                      ×
+                    </button>
                   </span>
                 )}
               </form>
@@ -583,7 +605,7 @@ export default function ChatWidgetFull({
                 </button>
               </div>
             )}
-            {chatClosed && !showLangModal && (
+            {closed && !showLangModal && (
               <div className="flex justify-center p-4">
                 <div className="bg-gradient-to-r from-red-100 to-red-300 text-red-800 px-5 py-3 rounded-xl text-center font-bold border border-red-400 shadow">
                   {lang === "ar"
