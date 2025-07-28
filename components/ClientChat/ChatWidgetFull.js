@@ -73,6 +73,25 @@ export default function ChatWidgetFull({
   const safeUserId = userId || "guest";
   const safeUserName = userName || "زائر";
 
+  // --- الأصوات ---
+  const sendAudio = typeof Audio !== "undefined" ? new Audio("/sounds/send.mp3") : null;
+  const receiveAudio = typeof Audio !== "undefined" ? new Audio("/sounds/receive.mp3") : null;
+
+  const playSend = () => {
+    if (sendAudio) {
+      sendAudio.currentTime = 0;
+      sendAudio.play();
+    }
+  };
+
+  const playReceive = () => {
+    if (receiveAudio) {
+      receiveAudio.currentTime = 0;
+      receiveAudio.play();
+    }
+  };
+  // --- نهاية الأصوات ---
+
   // إعادة ضبط كل شيء عند إعادة فتح الشات (بعد الإغلاق)
   const handleOpenChat = () => {
     setClosed(false);
@@ -91,19 +110,6 @@ export default function ChatWidgetFull({
     setShowEmoji(false);
     // لا تعيد تعيين roomId حتى لا تضيع المحادثة (إلا إذا كان مطلوبًا)
   };
-const playSend = () => {
-  if (sendAudio) {
-    sendAudio.currentTime = 0;
-    sendAudio.play();
-  }
-};
-
-const playReceive = () => {
-  if (receiveAudio) {
-    receiveAudio.currentTime = 0;
-    receiveAudio.play();
-  }
-};
 
   useEffect(() => {
     if (!roomId) {
@@ -148,6 +154,15 @@ const playReceive = () => {
         });
       });
       msgs.sort((a, b) => a.createdAt - b.createdAt);
+
+      // تشغيل صوت الاستقبال لو فيه رسالة جديدة من غير المستخدم الحالي
+      if (msgs.length > messages.length) {
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg && lastMsg.senderId !== safeUserId) {
+          playReceive();
+        }
+      }
+
       setMessages(msgs);
 
       setTimeout(() => {
@@ -156,7 +171,7 @@ const playReceive = () => {
         });
       }, 100);
     });
-  }, [db, roomId]);
+  }, [db, roomId, messages.length]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -201,6 +216,7 @@ const playReceive = () => {
     };
     await push(dbRef(db, `chats/${roomId}/messages`), msg);
     if (type === "image" || type === "audio") setUploading(false);
+    playSend(); // شغل صوت الإرسال هنا
   };
 
   const handleSend = async (e) => {
