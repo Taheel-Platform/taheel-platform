@@ -2,27 +2,26 @@ import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
 
 export default function LanguageSelectModal({
-  defaultLang = "ar",
-  userName = "زائر",
+  userName = "زائر", // يجب أن يأتي من بيانات المستخدم الحقيقي!
   countries,
+  countriesLang,
   onSelect,
 }) {
-  const [selectedLang, setSelectedLang] = useState(defaultLang);
   const [selectedCountry, setSelectedCountry] = useState("");
+  const logoAlt = "Taheel";
 
-  const logoAlt = selectedLang === "ar" ? "تأهيل" : "Taheel";
-
+  const selectedLang = selectedCountry ? countriesLang[selectedCountry] : "ar";
   const welcomeMessages = {
-    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر اللغة والدولة للمتابعة.`,
-    en: `Welcome ${userName} 👋 to Taheel platform! Choose your language and country to continue.`,
-    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez la langue et le pays pour continuer.`,
+    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر اللغة للمتابعة.`,
+    en: `Welcome ${userName} 👋 to Taheel platform! Choose your language to continue.`,
+    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez la langue pour continuer.`,
   };
 
   return (
     <div className="bg-white border border-emerald-400 rounded-2xl shadow-md px-4 py-4 mb-3 max-w-[350px] w-full self-center flex flex-col items-center">
       <style>{`
         .flags-select__option, .flags-select__selected {
-          color: #212121 !important;
+          color: #1A202C !important;
           font-weight: bold;
           background: transparent !important;
         }
@@ -32,28 +31,17 @@ export default function LanguageSelectModal({
       `}</style>
       <img src="/taheel-logo.svg" alt={logoAlt} className="w-16 mb-2 drop-shadow-lg" />
       <h2 className="font-bold text-[1.1rem] text-emerald-800 mb-1">
-        {selectedLang === "ar" ? "اختيار اللغة والدولة" : selectedLang === "en" ? "Choose Language & Country" : "Choisissez la langue et le pays"}
+        {selectedLang === "ar" ? "اختيار اللغة" : selectedLang === "en" ? "Choose Language" : "Choisissez la langue"}
       </h2>
       <p className="mb-3 text-center text-gray-700 font-medium text-[0.95rem] leading-relaxed">
         {welcomeMessages[selectedLang]}
       </p>
       <div className="w-full mb-2">
-        {/* لغة */}
-        <select
-          className="w-full rounded border px-3 py-2 mb-2 text-gray-700"
-          value={selectedLang}
-          onChange={e => setSelectedLang(e.target.value)}
-        >
-          <option value="ar">العربية</option>
-          <option value="en">English</option>
-          <option value="fr">Français</option>
-        </select>
-        {/* دولة */}
         <FlagsSelect
           countries={Object.keys(countries)}
           customLabels={countries}
           selected={selectedCountry}
-          onSelect={setSelectedCountry}
+          onSelect={country => setSelectedCountry(country)}
           showSelectedLabel={true}
           showOptionLabel={true}
           alignOptions="left"
@@ -66,7 +54,7 @@ export default function LanguageSelectModal({
       <button
         className="bg-gradient-to-br from-blue-600 to-emerald-500 text-white px-4 py-2 rounded-full font-bold shadow hover:from-blue-700 hover:to-emerald-600 transition w-full"
         style={{ letterSpacing: "0.5px" }}
-        onClick={() => selectedCountry && onSelect(selectedLang, selectedCountry)}
+        onClick={() => onSelect(selectedLang, selectedCountry)}
         disabled={!selectedCountry}
       >
         {selectedLang === "ar" ? "استمرار" : selectedLang === "en" ? "Continue" : "Continuer"}

@@ -427,10 +427,11 @@ export default function ChatWidgetFull({
               {showLangModal &&
                 <div className="flex justify-center mb-2">
                   <LanguageSelectModal
-                    userName={safeUserName}
-                    countries={countriesObject}
-                    onSelect={handleLangCountrySelect}
-                  />
+  userName={userNameFromAccount} // هنا الاسم الحقيقي!
+  countries={countriesObject}
+  countriesLang={countriesLang}
+  onSelect={handleLangCountrySelect}
+/>
                 </div>
               }
               {/* رسائل الشات */}
