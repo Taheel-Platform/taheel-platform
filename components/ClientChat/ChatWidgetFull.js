@@ -369,7 +369,7 @@ export default function ChatWidgetFull({
       {/* صورة البوت فقط في رسائل البوت */}
       {isBot && (
         <img
-          src="/bot-avatar.png"   // ضع هنا مسار صورة البوت (يمكنك رفع الصورة لمجلد public مثلاً)
+          src="/taheel-bot.png"   // ضع هنا مسار صورة البوت (يمكنك رفع الصورة لمجلد public مثلاً)
           alt="Bot"
           width={36}
           height={36}
