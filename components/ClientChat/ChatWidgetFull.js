@@ -24,6 +24,11 @@ import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
 import countriesData from "../lib/countries-ar-en.js";
 
+const countriesObject = {};
+countriesData.forEach(item => {
+  countriesObject[item.value.toUpperCase()] = item.label;
+});
+
 function blobToBase64(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -378,7 +383,7 @@ export default function ChatWidgetFull({
       {showLangModal && (
 <LanguageSelectModal
   userName={safeUserName}
-  countries={countriesData}
+  countries={countriesObject}
   onSelect={handleLangCountrySelect}
 />
       )}
