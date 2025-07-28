@@ -22,7 +22,7 @@ import emojiData from "@emoji-mart/data";
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
-import countriesData from "../lib/countries-ar-en.js";
+import countriesData from "../../lib/countries-ar-en.js";
 
 const countriesObject = {};
 countriesData.forEach(item => {
