@@ -26,7 +26,7 @@ export default function LanguageSelectModal({
     <div className="bg-white border border-emerald-400 rounded-2xl shadow-md px-4 py-4 mb-3 max-w-[350px] w-full self-center flex flex-col items-center">
       <style>{`
         .flags-select__option, .flags-select__selected {
-          color: #002147 !important; /* كحلي غامق وواضح */
+          color: #002149 !important; /* كحلي غامق وواضح */
           font-weight: bold;
           background: transparent !important;
         }
