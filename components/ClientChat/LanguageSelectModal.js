@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
 
-/**
- * LanguageSelectModal
- * @param {string} userName - اسم المستخدم الحقيقي
- * @param {Object} countries - كائن: كود الدولة => اسم الدولة مع اللغة
- * @param {Object} countriesLang - كائن: كود الدولة => كود اللغة (ar, en, fr)
- * @param {Function} onSelect - دالة تنفذ بعد الاختيار (تُرسل: اللغة، الدولة)
- */
 export default function LanguageSelectModal({
   userName = "زائر",
   countries,
@@ -17,7 +10,6 @@ export default function LanguageSelectModal({
   const [selectedCountry, setSelectedCountry] = useState("");
   const logoAlt = "Taheel";
 
-  // حدد اللغة المختارة بناءً على الدولة
   const selectedLang = selectedCountry ? countriesLang[selectedCountry] : "ar";
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر اللغة للمتابعة.`,

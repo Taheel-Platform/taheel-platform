@@ -22,12 +22,15 @@ import emojiData from "@emoji-mart/data";
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
-import countriesData from "../../lib/countries-ar-en.js";
+import { countriesObject, countriesLang } from "../../lib/countries-utils";
 
-const countriesObject = {};
-countriesData.forEach(item => {
-  countriesObject[item.value.toUpperCase()] = item.label;
-});
+function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -424,15 +427,15 @@ export default function ChatWidgetFull({
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
               {/* اختيار اللغة والدولة كأول رسالة */}
-              {showLangModal &&
-                <div className="flex justify-center mb-2">
-                  <LanguageSelectModal
-  userName={userName} // المتغير الذي تستقبله في الـ props أعلى الكومبوننت
-  countries={countriesObject}
-  countriesLang={countriesLang}
-  onSelect={handleLangCountrySelect}
-/>
-                </div>
+      {showLangModal &&
+        <div className="flex justify-center mb-2">
+          <LanguageSelectModal
+            userName={userName}
+            countries={countriesObject}
+            countriesLang={countriesLang}
+            onSelect={handleLangCountrySelect}
+          />
+        </div>
               }
               {/* رسائل الشات */}
               {!showLangModal && messages.map(renderMsgBubble)}
