@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import FlagsSelect from "react-flags-select";
 
-// ---------- إضافة دالة جلب رسالة الترحيب من ChatGPT (لو احتجتها) ----------
-async function getWelcomeMessage(userName, langCode) {
+// ---------- دالة جلب رسالة الترحيب ----------
+async function getWelcomeMessage(langCode) {
   const messages = {
     ar: `مرحبًا بك 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
     en: `Welcome 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
@@ -10,7 +10,6 @@ async function getWelcomeMessage(userName, langCode) {
   };
   if (messages[langCode]) return messages[langCode];
 
-  // هنا لو عايز تستدعي ChatGPT لترجمة الترحيب لأي لغة
   try {
     const prompt = `Translate this welcome message to "${langCode}" and adapt it to sound natural in that language: "Welcome to Taheel platform! Ask me anything."`;
     const res = await fetch("/api/openai-gpt", {
@@ -26,18 +25,22 @@ async function getWelcomeMessage(userName, langCode) {
 }
 
 export default function LanguageSelectModal({
-  countries = { EG: "مصر" },
-  countriesLang = { EG: "ar" },
+  countries,
+  countriesLang,
   onSelect = () => {},
 }) {
+  // أمان إضافي: حماية في حال undefined/null أو فارغ
+  const safeCountries = countries && typeof countries === "object" && Object.keys(countries).length ? countries : { EG: "مصر" };
+  const safeCountriesLang = countriesLang && typeof countriesLang === "object" ? countriesLang : { EG: "ar" };
+
   // الدولة الافتراضية أول دولة في القائمة
-  const firstCountry = Object.keys(countries)[0] || "EG";
+  const firstCountry = Object.keys(safeCountries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
 
   // اللغة الافتراضية بناء على الدولة المختارة
-  const countryLang = countriesLang[selectedCountry] || "ar";
+  const countryLang = safeCountriesLang[selectedCountry] || "ar";
 
-  // رسالة الترحيب حسب اللغة المتوقعة للدولة
+  // رسالة الترحيب
   const welcomeMessages = {
     ar: `مرحبًا بك 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
     en: `Welcome 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
@@ -58,7 +61,7 @@ export default function LanguageSelectModal({
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    getWelcomeMessage("", countryLang).then((msg) => {
+    getWelcomeMessage(countryLang).then((msg) => {
       if (mounted) {
         setWelcome(msg);
         setLoading(false);
@@ -70,33 +73,29 @@ export default function LanguageSelectModal({
 
   return (
     <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90 font-sans">
-      
-<style>{`
-  .flags-select__option,
-  .flags-select__selected {
-    color: #0b2545 !important;
-    background: #ffffff !important;
-    font-weight: 600 !important;
-    font-size: 1rem !important;
-    font-family: 'Tajawal', 'Segoe UI', sans-serif !important;
-    direction: rtl !important;
-    text-align: right !important;
-  }
-
-  .flags-select__option--is-selected {
-    background-color: #e0f7fa !important;
-    color: #00695c !important;
-  }
-
-  .flags-select__option:hover {
-    background-color: #f0f0f0 !important;
-    color: #000 !important;
-  }
-
-  .flags-select__menu {
-    direction: rtl !important;
-  }
-`}</style>
+      <style>{`
+        .flags-select__option,
+        .flags-select__selected {
+          color: #0b2545 !important;
+          background: #ffffff !important;
+          font-weight: 600 !important;
+          font-size: 1rem !important;
+          font-family: 'Tajawal', 'Segoe UI', sans-serif !important;
+          direction: rtl !important;
+          text-align: right !important;
+        }
+        .flags-select__option--is-selected {
+          background-color: #e0f7fa !important;
+          color: #00695c !important;
+        }
+        .flags-select__option:hover {
+          background-color: #f0f0f0 !important;
+          color: #000 !important;
+        }
+        .flags-select__menu {
+          direction: rtl !important;
+        }
+      `}</style>
 
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">
         <img src="/taheel-bot.png" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
@@ -108,11 +107,7 @@ export default function LanguageSelectModal({
             : "Choose Language"}
         </h2>
         <p className="mb-4 text-center text-gray-700 font-medium leading-relaxed">
-          {loading ? (
-            <span>...</span>
-          ) : (
-            welcome
-          )}
+          {loading ? <span>...</span> : welcome}
         </p>
         {/* اختيار الدولة */}
         <div className="w-full mb-4">
@@ -120,8 +115,8 @@ export default function LanguageSelectModal({
             {countryLabel}
           </label>
           <FlagsSelect
-            countries={Object.keys(countries)}
-            customLabels={countries}
+            countries={Object.keys(safeCountries)}
+            customLabels={safeCountries}
             selected={selectedCountry}
             onSelect={code => setSelectedCountry(code)}
             showSelectedLabel={true}
