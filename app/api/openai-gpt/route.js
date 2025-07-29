@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { NextResponse } from "next/server";
+import { findFaqAnswer } from "@/components/faqSearch"; // تأكد من اسم ومسار الملف
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,9 +17,16 @@ if (!getApps().length) initializeApp(firebaseConfig);
 
 export async function POST(req) {
   const { prompt, lang } = await req.json();
+
+  // 1. ابحث في الأسئلة الشائعة أولاً (بحث مرن جزئي)
+  const faqAnswer = findFaqAnswer(prompt, lang || "ar");
+  if (faqAnswer) {
+    return NextResponse.json({ text: faqAnswer });
+  }
+
   let dataString = '';
 
-  // مثال: جلب الخدمات لو السؤال فيه خدمة أو سعر أو تتبع
+  // 2. لو السؤال متعلق بالخدمات أو الأسعار أو التتبع ابحث في فايرستور
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
     const db = getFirestore();
     const servicesSnapshot = await getDocs(collection(db, "services"));
@@ -26,13 +34,43 @@ export async function POST(req) {
     servicesSnapshot.forEach(doc => {
       services.push(doc.data());
     });
-    dataString = services.map(s => `${s.name}: ${s.price || s.cost} (${s.description || ""})`).join('\n');
+    if (services.length === 0) {
+      // لو لم يجد أي بيانات في قاعدة البيانات
+      return NextResponse.json({
+        text:
+          lang === "ar"
+            ? "لم يتم العثور على بياناتك في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟"
+            : "No data was found for you in the database. Would you like to contact a customer service agent?",
+        customerService: true,
+      });
+    }
+    dataString = services
+      .map(s => `${s.name}: ${s.price || s.cost} (${s.description || ""})`)
+      .join('\n');
+    if (dataString) {
+      const systemPrompt = `Use ONLY the following services data to answer the user's question:\n${dataString}\n\nUser question: ${prompt}`;
+      const apiKey = process.env.OPENAI_API_KEY;
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: systemPrompt }],
+          max_tokens: 700,
+          temperature: 0.4,
+        }),
+      });
+      const data = await response.json();
+      return NextResponse.json({
+        text: data.choices?.[0]?.message?.content?.trim() || "",
+      });
+    }
   }
 
-  let systemPrompt = dataString
-    ? `Use ONLY the following services data to answer the user's question:\n${dataString}\n\nUser question: ${prompt}`
-    : prompt;
-
+  // 3. لو لا يوجد إجابة من الأسئلة الشائعة أو الخدمات، أرسل للذكاء الصناعي مباشرة
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -42,7 +80,7 @@ export async function POST(req) {
     },
     body: JSON.stringify({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: systemPrompt }],
+      messages: [{ role: "user", content: prompt }],
       max_tokens: 700,
       temperature: 0.4,
     }),
