@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { NextResponse } from "next/server";
-import { findFaqAnswer } from "@/components/faqSearch"; // تأكد من اسم ومسار الملف
+import { findFaqAnswer } from "../../../components/ClientChat/faqSearch";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
