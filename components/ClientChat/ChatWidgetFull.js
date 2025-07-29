@@ -8,7 +8,6 @@ import {
   onValue,
   update,
 } from "firebase/database";
-// --------- إضافة استيراد فايرستور فقط لهذا المطلب ----------
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import {
   FaPaperPlane,
@@ -61,10 +60,8 @@ export default function ChatWidgetFull({
   const [minimized, setMinimized] = useState(false);
   const [closed, setClosed] = useState(false);
 
-  // -------------- إضافة ستايت بيانات العميل من فايرستور -------------
   const [userData, setUserData] = useState(null);
 
-  // اللغة والدولة
   const [showLangModal, setShowLangModal] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [lang, setLang] = useState(initialLang);
@@ -77,7 +74,6 @@ export default function ChatWidgetFull({
 
   const safeUserId = userId || "guest";
 
-  // --------- جلب بيانات المستخدم من فايرستور عند دخول الشات ---------
   useEffect(() => {
     if (!safeUserId) return;
     const fetchUserData = async () => {
@@ -89,13 +85,12 @@ export default function ChatWidgetFull({
           setUserData(snap.data());
         }
       } catch (e) {
-        setUserData(null); // في حالة الخطأ، تجاهل
+        setUserData(null);
       }
     };
     fetchUserData();
   }, [safeUserId]);
 
-  // --------- تحديد اسم العميل من البيانات أو من البروبس كالسابق ---------
   const safeUserName =
     (userData &&
       (lang === "ar"
@@ -104,7 +99,6 @@ export default function ChatWidgetFull({
     userName ||
     "زائر";
 
-  // --- الأصوات ---
   const sendAudio = typeof Audio !== "undefined" ? new Audio("/sounds/send.mp3") : null;
   const receiveAudio = typeof Audio !== "undefined" ? new Audio("/sounds/receive.mp3") : null;
 
@@ -121,9 +115,7 @@ export default function ChatWidgetFull({
       receiveAudio.play();
     }
   };
-  // --- نهاية الأصوات ---
 
-  // إعادة ضبط كل شيء عند إعادة فتح الشات (بعد الإغلاق)
   const handleOpenChat = () => {
     setClosed(false);
     setMinimized(false);
@@ -139,7 +131,6 @@ export default function ChatWidgetFull({
     setAudioBlob(null);
     setRecording(false);
     setShowEmoji(false);
-    // لا تعيد تعيين roomId حتى لا تضيع المحادثة (إلا إذا كان مطلوبًا)
   };
 
   useEffect(() => {
@@ -186,7 +177,6 @@ export default function ChatWidgetFull({
       });
       msgs.sort((a, b) => a.createdAt - b.createdAt);
 
-      // تشغيل صوت الاستقبال لو فيه رسالة جديدة من غير المستخدم الحالي
       if (msgs.length > messages.length) {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg && lastMsg.senderId !== safeUserId) {
@@ -211,54 +201,57 @@ export default function ChatWidgetFull({
       const val = snap.val();
       setWaitingForAgent(!!val?.waitingForAgent);
       setAgentAccepted(!!val?.agentAccepted);
-      // لا تغلق الشات تلقائيا هنا، الإغلاق بالزر فقط!
     });
     return () => unsub();
   }, [db, roomId]);
 
-// أضف هذا الاستيراد أعلى الملف إذا لم يكن موجود
-// import { sendChatMessage } from "./chatApi"; // دالة إرسال للـ API
+  // إضافة تغيير الاتجاه حسب اللغة المختارة
+  const dir = lang === "ar" ? "rtl" : "ltr";
 
-useEffect(() => {
-  if (
-    !showLangModal &&
-    messages.length === 0 &&
-    roomId &&
-    !waitingForAgent &&
-    !agentAccepted &&
-    lang &&
-    selectedCountry
-  ) {
-    // أرسل الترحيب للـ API
-    const fetchWelcome = async () => {
-      const welcomePrompt = `أرسل للعميل رسالة ترحيبية مناسبة لمنصة تأهيل باللغة ${lang} و الدولة ${selectedCountry}.`;
-      try {
-        const res = await fetch("/api/openai-gpt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: welcomePrompt, lang }),
-        });
-        const data = await res.json();
-        await sendMessage("bot", { text: data.text });
-      } catch (err) {
-        // fallback في حال فشل الذكاء الصناعي
-        await sendMessage("bot", {
-          text:
-            lang === "ar"
-              ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-              : lang === "en"
-              ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
-              : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
-        });
-      }
-    };
-    fetchWelcome();
-  }
+  // رسالة الترحيب من OpenAI بعد اختيار اللغة والدولة
+  useEffect(() => {
+    if (
+      !showLangModal &&
+      messages.length === 0 &&
+      roomId &&
+      !waitingForAgent &&
+      !agentAccepted &&
+      lang &&
+      selectedCountry
+    ) {
+      const fetchWelcome = async () => {
+        const welcomePrompt =
+          lang === "ar"
+            ? `اكتب رسالة ترحيب للعميل في منصة تأهيل باللغة العربية ودولته ${selectedCountry}.`
+            : lang === "en"
+            ? `Write a welcome message for the client in Taheel Platform in English. Country: ${selectedCountry}.`
+            : `Écris un message de bienvenue au client sur la plateforme Taheel en français. Pays: ${selectedCountry}.`;
 
-  // eslint-disable-next-line
-}, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
-    
+        try {
+          const res = await fetch("/api/openai-gpt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: welcomePrompt, lang }),
+          });
+          const data = await res.json();
+          await sendMessage("bot", { text: data.text });
+        } catch (err) {
+          await sendMessage("bot", {
+            text:
+              lang === "ar"
+                ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+                : lang === "en"
+                ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
+                : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
+          });
+        }
+      };
+      fetchWelcome();
+    }
+    // eslint-disable-next-line
+  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
 
+  // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
@@ -270,9 +263,10 @@ useEffect(() => {
     };
     await push(dbRef(db, `chats/${roomId}/messages`), msg);
     if (type === "image" || type === "audio") setUploading(false);
-    playSend(); // شغل صوت الإرسال هنا
+    playSend();
   };
 
+  // تعديل منطق إرسال الرسائل بحيث لو لم يجد رد في FAQ يرسل للـ OpenAI
   const handleSend = async (e) => {
     e.preventDefault();
     if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
@@ -293,7 +287,6 @@ useEffect(() => {
     const textMsg = input.trim();
     if (!textMsg) return;
 
-    // إذا كتب المستخدم "خدمة العملاء" أو "موظف خدمة العملاء" بأي لغة، يظهر زر التواصل مع الموظف مباشرةً
     const userWantsAgent =
       (lang === "ar" && /خدمة\s*العملاء|الموظف/i.test(textMsg)) ||
       (lang === "en" && /customer\s*service|agent/i.test(textMsg)) ||
@@ -302,22 +295,42 @@ useEffect(() => {
     if (!waitingForAgent && !agentAccepted) {
       await sendMessage("text", { text: textMsg });
       if (userWantsAgent) {
-        setNoBotHelpCount(2); // للإظهار الفوري للزر
+        setNoBotHelpCount(2);
       }
       let foundAnswer = findFaqAnswer(textMsg, lang);
+
+      // لو وجد إجابة في FAQ
       if (foundAnswer && !userWantsAgent) {
         await sendMessage("bot", { text: foundAnswer });
         setNoBotHelpCount(0);
       } else if (!userWantsAgent) {
-        setNoBotHelpCount((c) => c + 1);
-        await sendMessage("bot", {
-          text:
+        // لم يجد إجابة في FAQ، أرسل السؤال للـ OpenAI
+        try {
+          const prompt =
             lang === "ar"
-              ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
+              ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
               : lang === "en"
-              ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
-              : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
-        });
+              ? `Answer this question professionally in English: ${textMsg}`
+              : `Réponds à cette question professionnellement en français: ${textMsg}`;
+          const res = await fetch("/api/openai-gpt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, lang }),
+          });
+          const data = await res.json();
+          await sendMessage("bot", { text: data.text });
+          setNoBotHelpCount(0);
+        } catch (err) {
+          setNoBotHelpCount((c) => c + 1);
+          await sendMessage("bot", {
+            text:
+              lang === "ar"
+                ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
+                : lang === "en"
+                ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
+                : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
+          });
+        }
       }
     } else {
       await sendMessage("text", { text: textMsg });
@@ -333,15 +346,33 @@ useEffect(() => {
       await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
     } else {
-      setNoBotHelpCount((c) => c + 1);
-      await sendMessage("bot", {
-        text:
+      // لم يجد إجابة في FAQ، أرسل للـ OpenAI
+      try {
+        const prompt =
           lang === "ar"
-            ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
+            ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${q}`
             : lang === "en"
-            ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
-            : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
-      });
+            ? `Answer this question professionally in English: ${q}`
+            : `Réponds à cette question professionnellement en français: ${q}`;
+        const res = await fetch("/api/openai-gpt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, lang }),
+        });
+        const data = await res.json();
+        await sendMessage("bot", { text: data.text });
+        setNoBotHelpCount(0);
+      } catch (err) {
+        setNoBotHelpCount((c) => c + 1);
+        await sendMessage("bot", {
+          text:
+            lang === "ar"
+              ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
+              : lang === "en"
+              ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
+              : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
+        });
+      }
     }
   };
 
@@ -420,7 +451,6 @@ useEffect(() => {
         : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
     return (
       <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
-        {/* صورة البوت فقط في رسائل البوت */}
         {isBot && (
           <img
             src="/taheel-bot.png"
@@ -482,7 +512,6 @@ useEffect(() => {
       ? "chat-header-buttons left-2 flex-row-reverse"
       : "chat-header-buttons left-2 flex-row";
 
-  // لما الشات مغلق تماما لا يظهر أي شيء
   if (closed) return null;
 
   return (
@@ -518,7 +547,7 @@ useEffect(() => {
           <FaComments size={32} />
         </button>
       ) : (
-        <div className="fixed bottom-24 right-4 z-[1000] font-sans">
+        <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
           <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
             <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
               <span className="text-lg">
