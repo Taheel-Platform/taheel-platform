@@ -220,6 +220,7 @@ export default function ChatWidgetFull({
       selectedCountry
     ) {
       const fetchWelcome = async () => {
+        // عرف welcomePrompt هنا:
         const welcomePrompt =
           lang === "ar"
             ? `اكتب رسالة ترحيب للعميل في منصة تأهيل باللغة العربية ودولته ${selectedCountry}.`
@@ -284,58 +285,33 @@ export default function ChatWidgetFull({
       setInput("");
       return;
     }
-    const textMsg = input.trim();
-    if (!textMsg) return;
+// داخل handleSend
+const textMsg = input.trim();
+if (!textMsg) return;
 
-    const userWantsAgent =
-      (lang === "ar" && /خدمة\s*العملاء|الموظف/i.test(textMsg)) ||
-      (lang === "en" && /customer\s*service|agent/i.test(textMsg)) ||
-      (lang === "fr" && /service\s*client|agent/i.test(textMsg));
+await sendMessage("text", { text: textMsg });
 
-    if (!waitingForAgent && !agentAccepted) {
-      await sendMessage("text", { text: textMsg });
-      if (userWantsAgent) {
-        setNoBotHelpCount(2);
-      }
-      let foundAnswer = findFaqAnswer(textMsg, lang);
+let foundAnswer = findFaqAnswer(textMsg, lang);
 
-      // لو وجد إجابة في FAQ
-      if (foundAnswer && !userWantsAgent) {
-        await sendMessage("bot", { text: foundAnswer });
-        setNoBotHelpCount(0);
-      } else if (!userWantsAgent) {
-        // لم يجد إجابة في FAQ، أرسل السؤال للـ OpenAI
-        try {
-          const prompt =
-            lang === "ar"
-              ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
-              : lang === "en"
-              ? `Answer this question professionally in English: ${textMsg}`
-              : `Réponds à cette question professionnellement en français: ${textMsg}`;
-          const res = await fetch("/api/openai-gpt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, lang }),
-          });
-          const data = await res.json();
-          await sendMessage("bot", { text: data.text });
-          setNoBotHelpCount(0);
-        } catch (err) {
-          setNoBotHelpCount((c) => c + 1);
-          await sendMessage("bot", {
-            text:
-              lang === "ar"
-                ? "عذراً لم أجد إجابة لسؤالك. اضغط زر التواصل مع الموظف ليتم خدمتك مباشرة."
-                : lang === "en"
-                ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
-                : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
-          });
-        }
-      }
-    } else {
-      await sendMessage("text", { text: textMsg });
-    }
-    setInput("");
+if (foundAnswer) {
+  await sendMessage("bot", { text: foundAnswer });
+} else {
+  // هنا استخدم prompt حسب اللغة
+  const openAIPrompt =
+    lang === "ar"
+      ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
+      : lang === "en"
+      ? `Answer this question professionally in English: ${textMsg}`
+      : `Réponds à cette question professionnellement en français: ${textMsg}`;
+  const res = await fetch("/api/openai-gpt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: openAIPrompt, lang }),
+  });
+  const data = await res.json();
+  await sendMessage("bot", { text: data.text });
+}
+setInput("");
   };
 
   const handleQuickFAQ = async (q) => {

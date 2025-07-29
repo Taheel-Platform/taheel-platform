@@ -35,12 +35,13 @@ export async function POST(req) {
       services.push(doc.data());
     });
     if (services.length === 0) {
-      // لو لم يجد أي بيانات في قاعدة البيانات
       return NextResponse.json({
         text:
           lang === "ar"
             ? "لم يتم العثور على بياناتك في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟"
-            : "No data was found for you in the database. Would you like to contact a customer service agent?",
+            : lang === "en"
+            ? "No data was found for you in the database. Would you like to contact a customer service agent?"
+            : "Aucune donnée n'a été trouvée dans la base de données. Voulez-vous contacter un agent du service client?",
         customerService: true,
       });
     }
@@ -48,7 +49,15 @@ export async function POST(req) {
       .map(s => `${s.name}: ${s.price || s.cost} (${s.description || ""})`)
       .join('\n');
     if (dataString) {
-      const systemPrompt = `Use ONLY the following services data to answer the user's question:\n${dataString}\n\nUser question: ${prompt}`;
+      // توجيه اللغة للـ OpenAI في الرد
+      let systemPrompt = "";
+      if (lang === "ar") {
+        systemPrompt = `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
+      } else if (lang === "en") {
+        systemPrompt = `Use ONLY the following services data to answer the user's question in English:\n${dataString}\n\nUser question: ${prompt}`;
+      } else {
+        systemPrompt = `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
+      }
       const apiKey = process.env.OPENAI_API_KEY;
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -70,7 +79,15 @@ export async function POST(req) {
     }
   }
 
-  // 3. لو لا يوجد إجابة من الأسئلة الشائعة أو الخدمات، أرسل للذكاء الصناعي مباشرة
+  // 3. الرد العام من OpenAI حسب اللغة المختارة
+  let userPrompt = "";
+  if (lang === "ar") {
+    userPrompt = `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${prompt}`;
+  } else if (lang === "en") {
+    userPrompt = `Answer this question professionally in English: ${prompt}`;
+  } else {
+    userPrompt = `Réponds à cette question professionnellement en français: ${prompt}`;
+  }
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -80,7 +97,7 @@ export async function POST(req) {
     },
     body: JSON.stringify({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content: userPrompt }],
       max_tokens: 700,
       temperature: 0.4,
     }),
