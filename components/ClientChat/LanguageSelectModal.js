@@ -1,18 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FlagsSelect from "react-flags-select";
 
 // ---------- إضافة دالة جلب رسالة الترحيب من ChatGPT (لو احتجتها) ----------
 async function getWelcomeMessage(userName, langCode) {
   const messages = {
-    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
-    en: `Welcome ${userName} 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
-    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`,
+    ar: `مرحبًا بك 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
+    en: `Welcome 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
+    fr: `Bienvenue 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`,
   };
   if (messages[langCode]) return messages[langCode];
 
   // هنا لو عايز تستدعي ChatGPT لترجمة الترحيب لأي لغة
   try {
-    const prompt = `Translate this welcome message to "${langCode}" and adapt it to sound natural in that language: "Welcome ${userName} to Taheel platform! Ask me anything."`;
+    const prompt = `Translate this welcome message to "${langCode}" and adapt it to sound natural in that language: "Welcome to Taheel platform! Ask me anything."`;
     const res = await fetch("/api/openai-gpt", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,10 +26,9 @@ async function getWelcomeMessage(userName, langCode) {
 }
 
 export default function LanguageSelectModal({
-  userName = "زائر",
-  countries,
-  countriesLang = {},
-  onSelect
+  countries = { EG: "مصر" },
+  countriesLang = { EG: "ar" },
+  onSelect = () => {},
 }) {
   // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
@@ -40,9 +39,9 @@ export default function LanguageSelectModal({
 
   // رسالة الترحيب حسب اللغة المتوقعة للدولة
   const welcomeMessages = {
-    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
-    en: `Welcome ${userName} 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
-    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`
+    ar: `مرحبًا بك 👋 في منصة تأهيل! اختر دولتك للمتابعة. اسألني أي شيء وسأجيبك مباشرة.`,
+    en: `Welcome 👋 to Taheel platform! Select your country to continue. Ask me anything and I'll respond right away.`,
+    fr: `Bienvenue 👋 sur la plateforme Taheel ! Choisissez votre pays pour continuer. Posez-moi vos questions et je vous répondrai tout de suite.`
   };
   const [welcome, setWelcome] = useState(welcomeMessages[countryLang] || welcomeMessages["ar"]);
   const [loading, setLoading] = useState(false);
@@ -56,10 +55,10 @@ export default function LanguageSelectModal({
     "Choose Language";
 
   // ----------- تحديث رسالة الترحيب عند تغيير الدولة/اللغة -----------
-  React.useEffect(() => {
+  useEffect(() => {
     let mounted = true;
     setLoading(true);
-    getWelcomeMessage(userName, countryLang).then((msg) => {
+    getWelcomeMessage("", countryLang).then((msg) => {
       if (mounted) {
         setWelcome(msg);
         setLoading(false);
@@ -67,7 +66,7 @@ export default function LanguageSelectModal({
     });
     return () => { mounted = false };
     // eslint-disable-next-line
-  }, [countryLang, userName]);
+  }, [countryLang]);
 
   return (
     <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-white bg-opacity-90 font-sans">
@@ -98,8 +97,6 @@ export default function LanguageSelectModal({
     direction: rtl !important;
   }
 `}</style>
-
-
 
       <div className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 border font-sans">
         <img src="/taheel-bot.png" alt={logoAlt} className="w-20 mb-3 drop-shadow-lg" />
