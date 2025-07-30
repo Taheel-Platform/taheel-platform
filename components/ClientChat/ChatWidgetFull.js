@@ -75,11 +75,33 @@ export default function ChatWidgetFull({
 
   const safeUserId = userId || "guest";
 
-  // مسح الرسائل عند فتح الشات من جديد
+  // دالة لمسح الرسائل من Firebase والغرفة
   const clearChatMessages = async () => {
     if (!roomId) return;
     await remove(dbRef(db, `chats/${roomId}/messages`));
     setMessages([]);
+  };
+
+  // دالة Reset تعيد الشات للوضع الافتراضي وتظهر المودال وتفرغ كل شيء
+  const resetChat = async () => {
+    await clearChatMessages();
+    setShowLangModal(true);
+    setLang(initialLang);
+    setSelectedCountry("");
+    setMessages([]);
+    setInput("");
+    setNoBotHelpCount(0);
+    setWaitingForAgent(false);
+    setAgentAccepted(false);
+    setImagePreview(null);
+    setAudioBlob(null);
+    setRecording(false);
+    setShowEmoji(false);
+    setClosed(false);
+    setMinimized(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("chatRoomId");
+    }
   };
 
   useEffect(() => {
@@ -124,23 +146,9 @@ export default function ChatWidgetFull({
     }
   };
 
+  // إعادة الشات نظيف عند إعادة الفتح أو بعد الإغلاق
   const handleOpenChat = async () => {
-    setClosed(false);
-    setMinimized(false);
-    setShowLangModal(true);
-    setSelectedCountry("");
-    setLang(initialLang);
-    setMessages([]);
-    setInput("");
-    setNoBotHelpCount(0);
-    setWaitingForAgent(false);
-    setAgentAccepted(false);
-    setImagePreview(null);
-    setAudioBlob(null);
-    setRecording(false);
-    setShowEmoji(false);
-
-    await clearChatMessages();
+    await resetChat();
   };
 
   useEffect(() => {
@@ -401,9 +409,11 @@ export default function ChatWidgetFull({
     setNoBotHelpCount(0);
   };
 
-  const closeChat = () => {
+  // زر الإغلاق (FaTimes) يعيد الشات نظيف ويظهر المودال
+  const closeChat = async () => {
     setClosed(true);
     if (onClose) onClose();
+    await resetChat();
   };
 
   const handleFileChange = (e) => {
