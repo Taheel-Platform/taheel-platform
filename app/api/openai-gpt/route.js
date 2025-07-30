@@ -36,7 +36,7 @@ export async function POST(req) {
     } else {
       // لأي لغة أخرى، اطلب الرد بنفس language code
       welcomePrompt =
-        `Write a professional and friendly welcome message for a new user named ${userName ? userName : "the client"} on Taheel platform. Respond in language code: ${lang}.`;
+        `Write a professional and friendly welcome message for a new user named ${userName ? userName : "the client"} on Taheel platform. Respond ONLY in language code: ${lang}.`;
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -77,13 +77,20 @@ export async function POST(req) {
 
     // لو لم توجد بيانات في قاعدة البيانات
     if (services.length === 0) {
+      // الرد حسب اللغة المختارة أو fallback للإنجليزي
+      let noDataMsg;
+      if (lang === "ar") {
+        noDataMsg = "لم يتم العثور على بياناتك في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟";
+      } else if (lang === "en") {
+        noDataMsg = "No data was found for you in the database. Would you like to contact a customer service agent?";
+      } else if (lang === "fr") {
+        noDataMsg = "Aucune donnée n'a été trouvée dans la base de données. Voulez-vous contacter un agent du service client?";
+      } else {
+        noDataMsg = `No data was found for you in the database. Would you like to contact a customer service agent?`;
+      }
+
       return NextResponse.json({
-        text:
-          lang === "ar"
-            ? "لم يتم العثور على بياناتك في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟"
-            : lang === "en"
-            ? "No data was found for you in the database. Would you like to contact a customer service agent?"
-            : "Aucune donnée n'a été trouvée dans la base de données. Voulez-vous contacter un agent du service client?",
+        text: noDataMsg,
         customerService: true,
       });
     }
@@ -101,9 +108,13 @@ export async function POST(req) {
     } else if (lang === "en") {
       systemPrompt =
         `Use ONLY the following services data to answer the user's question in English, addressing the client named ${userName ? userName : "the client"}:\n${dataString}\n\nUser question: ${prompt}`;
-    } else {
+    } else if (lang === "fr") {
       systemPrompt =
         `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français, en s'adressant au client nommé ${userName ? userName : "le client"}:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
+    } else {
+      // لأي لغة أخرى
+      systemPrompt =
+        `Use ONLY the following services data to answer the user's question, addressing the client named ${userName ? userName : "the client"}:\n${dataString}\n\nUser question: ${prompt}. Respond ONLY in language code: ${lang}.`;
     }
 
     // إرسال الطلب للـ OpenAI
@@ -141,7 +152,7 @@ export async function POST(req) {
   } else {
     // لأي لغة أخرى
     userPrompt =
-      `Write a professional and friendly reply for the client${userName ? ` named ${userName}` : ""}: ${prompt}. Respond in language code: ${lang}.`;
+      `Write a professional and friendly reply for the client${userName ? ` named ${userName}` : ""}: ${prompt}. Respond ONLY in language code: ${lang}.`;
   }
 
   // إرسال الطلب للـ OpenAI
