@@ -1,9 +1,19 @@
 import React, { useState } from "react";
 import LanguageSelectModal from "./LanguageSelectModal";
-// لو عندك كومبوننت للشات: استوردها
 import ChatComponent from "./ChatComponent";
 
-// رسالة الترحيب الرسمية حسب اللغة
+// ملف الدول (code, name, lang, flag)
+import countriesLangArr from "src/lib/countriesLang.js";
+
+// تجهيز كائنات للمودال: labels & langMap
+const countriesLabels = {};
+const countriesLangMap = {};
+countriesLangArr.forEach(c => {
+  countriesLabels[c.code] = `${c.flag} ${c.name}`;
+  countriesLangMap[c.code] = c.lang;
+});
+
+// رسائل الترحيب الرسمية حسب اللغة
 const taheelWelcomePrompts = {
   ar: (userName) =>
     `مرحبًا بك ${userName} في منصة تأهيل. نحن نسعى دائمًا لتقديم أفضل خدماتنا لكم وضمان راحتكم ورضاكم. نحن هنا لمساعدتكم في تحقيق أهدافكم وتطوير مهاراتكم بشكل فعّال. لا تترددوا في التواصل معنا لأي استفسارات أو مساعدة إضافية. نتمنى لكم تجربة ممتعة ومفيدة معنا.`,
@@ -13,46 +23,43 @@ const taheelWelcomePrompts = {
     `Bienvenue ${userName} sur la plateforme Taheel. Nous nous efforçons toujours de vous offrir les meilleurs services et de garantir votre confort et votre satisfaction. Nous sommes ici pour vous aider à atteindre vos objectifs et à développer vos compétences efficacement. N'hésitez pas à nous contacter pour toute question ou assistance supplémentaire. Nous vous souhaitons une expérience agréable et enrichissante parmi nous.`
 };
 
-export default function ChatParent({ userName = "زائر", countries, countriesLang }) {
+export default function ChatParent({ userName = "زائر" }) {
   const [lang, setLang] = useState(null);
   const [country, setCountry] = useState(null);
   const [messages, setMessages] = useState([]);
   const [showModal, setShowModal] = useState(true);
 
-  // دالة عند اختيار اللغة والدولة من المودال
+  // عند اختيار اللغة والدولة من المودال
   const handleLanguageSelect = (selectedLang, selectedCountry) => {
     setLang(selectedLang);
     setCountry(selectedCountry);
-    setShowModal(false); // اغلق المودال
+    setShowModal(false);
 
-    // جهز رسالة الترحيب الرسمية
+    // رسالة الترحيب حسب اللغة المختارة
     const welcomeMsg = taheelWelcomePrompts[selectedLang]
       ? taheelWelcomePrompts[selectedLang](userName)
       : taheelWelcomePrompts["ar"](userName);
 
-    // أضفها للمحادثة
     setMessages([
       { role: "assistant", content: welcomeMsg }
     ]);
   };
 
-  // دالة لإرسال رسالة للـ API
+  // إرسال رسالة للـ backend/OpenAI
   const sendMessageToAPI = async (message) => {
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     try {
-      // استدعاء الـ backend أو OpenAI
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: message,
-          lang: lang,
-          country: country,
+          lang: lang,   // اللغة المختارة من المودال
+          country: country, // كود الدولة المختارة
           userName: userName
         }),
       });
       const data = await res.json();
-      // أضف رد الـ AI للمحادثة
       setMessages((prev) => [...prev, { role: "assistant", content: data.text }]);
     } catch (err) {
       setMessages((prev) => [...prev, { role: "assistant", content: "حدث خطأ أثناء الاتصال بالخدمة." }]);
@@ -64,8 +71,8 @@ export default function ChatParent({ userName = "زائر", countries, countries
       {showModal && (
         <LanguageSelectModal
           userName={userName}
-          countries={countries}
-          countriesLang={countriesLang}
+          countries={countriesLabels}      // تظهر الأسماء مع الأعلام في القوائم
+          countriesLang={countriesLangMap} // تربط كل دولة بلغتها
           onSelect={handleLanguageSelect}
         />
       )}
