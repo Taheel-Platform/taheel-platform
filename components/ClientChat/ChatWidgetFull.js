@@ -7,6 +7,7 @@ import {
   push,
   onValue,
   update,
+  remove,
 } from "firebase/database";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import {
@@ -24,15 +25,6 @@ import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
 import countriesData from "../../lib/countries-ar-en.js";
-import { remove } from "firebase/database";
-import { getDocs, collection } from "firebase/firestore";
-
-
-const clearChatMessages = async () => {
-  if (!roomId) return;
-  await remove(dbRef(db, `chats/${roomId}/messages`));
-  setMessages([]);
-};
 
 const countriesObject = {};
 const countriesLang = {};
@@ -82,6 +74,13 @@ export default function ChatWidgetFull({
   const chatEndRef = useRef(null);
 
   const safeUserId = userId || "guest";
+
+  // مسح الرسائل عند فتح الشات من جديد
+  const clearChatMessages = async () => {
+    if (!roomId) return;
+    await remove(dbRef(db, `chats/${roomId}/messages`));
+    setMessages([]);
+  };
 
   useEffect(() => {
     if (!safeUserId) return;
@@ -140,6 +139,7 @@ export default function ChatWidgetFull({
     setAudioBlob(null);
     setRecording(false);
     setShowEmoji(false);
+
     await clearChatMessages();
   };
 
@@ -215,78 +215,78 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // إضافة تغيير الاتجاه حسب اللغة المختارة
+  // تغيير اتجاه الدردشة حسب اللغة
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  // دالة جلب رسالة الترحيب من OpenAI حسب اللغة المختارة
-const handleLanguageSelect = async (selectedLang, selectedCountry) => {
-  setLang(selectedLang);
-  setSelectedCountry(selectedCountry);
-  setShowLangModal(false);
+  // جلب رسالة الترحيب حسب اختيار اللغة
+  const handleLanguageSelect = async (selectedLang, selectedCountry) => {
+    setLang(selectedLang);
+    setSelectedCountry(selectedCountry);
+    setShowLangModal(false);
 
-  let welcomePrompt = "";
-  if (selectedLang === "ar") {
-    welcomePrompt = `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد "${safeUserName}" في منصة تأهيل.`;
-  } else if (selectedLang === "en") {
-    welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in English.`;
-  } else if (selectedLang === "fr") {
-    welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé "${safeUserName}" sur la plateforme Taheel. Réponds UNIQUEMENT en français.`;
-  } else {
-    welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in language code: ${selectedLang}.`;
-  }
+    let welcomePrompt = "";
+    if (selectedLang === "ar") {
+      welcomePrompt = `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد "${safeUserName}" في منصة تأهيل.`;
+    } else if (selectedLang === "en") {
+      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in English.`;
+    } else if (selectedLang === "fr") {
+      welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé "${safeUserName}" sur la plateforme Taheel. Réponds UNIQUEMENT en français.`;
+    } else {
+      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in language code: ${selectedLang}.`;
+    }
 
-  try {
-    const res = await fetch("/api/openai-gpt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: welcomePrompt,
-        lang: selectedLang,
-        country: selectedCountry,
-        userName: safeUserName,
-        isWelcome: true
-      }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/openai-gpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: welcomePrompt,
+          lang: selectedLang,
+          country: selectedCountry,
+          userName: safeUserName,
+          isWelcome: true
+        }),
+      });
+      const data = await res.json();
 
-    // أضف رسالة الترحيب مباشرة إلى رسائل Firebase
-    await push(dbRef(db, `chats/${roomId}/messages`), {
-      id: "welcome",
-      type: "bot",
-      senderId: "bot",
-      senderName: 
-        selectedLang === "ar" ? "المساعد الذكي"
-        : selectedLang === "en" ? "Smart Assistant"
-        : selectedLang === "fr" ? "Assistant"
-        : "Assistant",
-      createdAt: Date.now(),
-      text: data.text
-    });
+      // أضف رسالة الترحيب بعد اختيار اللغة فقط
+      await push(dbRef(db, `chats/${roomId}/messages`), {
+        id: "welcome",
+        type: "bot",
+        senderId: "bot",
+        senderName: 
+          selectedLang === "ar" ? "المساعد الذكي"
+          : selectedLang === "en" ? "Smart Assistant"
+          : selectedLang === "fr" ? "Assistant"
+          : "Assistant",
+        createdAt: Date.now(),
+        text: data.text
+      });
 
-  } catch (err) {
-    await push(dbRef(db, `chats/${roomId}/messages`), {
-      id: "welcome",
-      type: "bot",
-      senderId: "bot",
-      senderName: 
-        selectedLang === "ar" ? "المساعد الذكي"
-        : selectedLang === "en" ? "Smart Assistant"
-        : selectedLang === "fr" ? "Assistant"
-        : "Assistant",
-      createdAt: Date.now(),
-      text:
-        selectedLang === "ar"
-          ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-          : selectedLang === "en"
-          ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
-          : selectedLang === "fr"
-          ? `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`
-          : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
-    });
-  }
-};
+    } catch (err) {
+      await push(dbRef(db, `chats/${roomId}/messages`), {
+        id: "welcome",
+        type: "bot",
+        senderId: "bot",
+        senderName: 
+          selectedLang === "ar" ? "المساعد الذكي"
+          : selectedLang === "en" ? "Smart Assistant"
+          : selectedLang === "fr" ? "Assistant"
+          : "Assistant",
+        createdAt: Date.now(),
+        text:
+          selectedLang === "ar"
+            ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+            : selectedLang === "en"
+            ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
+            : selectedLang === "fr"
+            ? `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`
+            : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
+      });
+    }
+  };
 
-  // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
+  // إرسال رسالة المستخدم
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
@@ -301,7 +301,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     playSend();
   };
 
-  // تعديل منطق إرسال الرسائل بحيث لو لم يجد رد في FAQ يرسل للـ OpenAI
+  // إرسال سؤال المستخدم للـ OpenAI أو الرد من FAQ
   const handleSend = async (e) => {
     e.preventDefault();
     if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
@@ -447,7 +447,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     let base =
       "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
     let align = isSelf
-      ? "ml-auto self-end"
+      ? lang === "ar" ? "mr-auto self-end" : "ml-auto self-end"
       : isBot
       ? "self-start"
       : isSystem
@@ -457,9 +457,9 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
       isSystem
         ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
         : isBot
-        ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
+        ? "bg-gradient-to-br from-emerald-100 to-cyan-100 text-emerald-900 border border-emerald-400"
         : isSelf
-        ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
+        ? "bg-gradient-to-br from-emerald-500 to-cyan-500 text-white"
         : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
     return (
       <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
@@ -521,7 +521,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
 
   const headerButtonsClass =
     lang === "ar"
-      ? "chat-header-buttons left-2 flex-row-reverse"
+      ? "chat-header-buttons right-2 flex-row-reverse"
       : "chat-header-buttons left-2 flex-row";
 
   if (closed) return null;
@@ -529,13 +529,13 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
   return (
     <>
       <style>{`
-        .chat-bg-grad { background: linear-gradient(120deg,#f3f6fa 60%,#eafbf6 100%); }
+        .chat-bg-grad { background: linear-gradient(120deg, #183d3d 60%, #1a2236 100%); }
         button, .cursor-pointer, [role="button"] { cursor: pointer !important; }
         .chat-action-btn {
           transition: background .2s, color .2s, box-shadow .2s;
         }
         .chat-action-btn:hover {
-          box-shadow: 0 0 8px #00c6a2;
+          box-shadow: 0 0 8px #14b8a6;
           background: #e0f7fa;
         }
         .chat-header-buttons {
@@ -545,23 +545,23 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
           top: 12px;
           z-index: 11;
         }
-        .left-2 { left: 12px }
         .right-2 { right: 12px }
+        .left-2 { left: 12px }
         .flex-row-reverse { flex-direction: row-reverse }
         .flex-row { flex-direction: row }
       `}</style>
       {minimized ? (
         <button
           onClick={handleOpenChat}
-          className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-emerald-400 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
-          title="فتح المحادثة"
+          className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-cyan-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
+          title={lang === "ar" ? "فتح المحادثة" : lang === "en" ? "Open Chat" : "Ouvrir le chat"}
         >
           <FaComments size={32} />
         </button>
       ) : (
         <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
-          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
-            <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
+          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-[#222a36] rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
+            <div className="px-4 py-3 border-b border-emerald-800 text-emerald-200 font-bold flex items-center gap-1 relative bg-gradient-to-l from-cyan-900 to-emerald-900">
               <span className="text-lg">
                 {lang === "ar"
                   ? "الدردشة الذكية"
@@ -604,8 +604,10 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
             </div>
             {!showLangModal && (
               <form
-                className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
+                className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-[#222a36]"
                 onSubmit={handleSend}
+                dir={dir}
+                style={{ direction: dir }}
               >
                 <div className="relative">
                   <button
@@ -622,7 +624,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
                       <Picker
                         data={emojiData}
                         onEmojiSelect={handleSelectEmoji}
-                        theme="light"
+                        theme="dark"
                         locale={lang}
                       />
                     </div>
@@ -661,7 +663,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
                 </button>
                 <input
                   type="text"
-                  className="flex-1 bg-gray-50 rounded-full px-4 py-2 outline-none text-gray-900 shadow border"
+                  className="flex-1 bg-[#1a2236] rounded-full px-4 py-2 outline-none text-white shadow border border-emerald-700"
                   placeholder={
                     waitingForAgent && !agentAccepted
                       ? lang === "ar"
@@ -686,7 +688,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
                 />
                 <button
                   type="submit"
-                  className="bg-gradient-to-br from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow chat-action-btn"
+                  className="bg-gradient-to-br from-emerald-600 to-cyan-500 hover:from-emerald-700 hover:to-cyan-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow chat-action-btn"
                   title={lang === "ar" ? "إرسال" : lang === "en" ? "Send" : "Envoyer"}
                   disabled={uploading || (waitingForAgent && !agentAccepted)}
                   style={{ cursor: "pointer" }}
@@ -694,7 +696,7 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
                   <FaPaperPlane />
                 </button>
                 {(imagePreview || audioBlob) && (
-                  <span className="ml-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center">
+                  <span className="ml-2 text-xs text-emerald-700 bg-cyan-50 px-2 py-1 rounded flex items-center">
                     {imagePreview && <>صورة جاهزة للإرسال</>}
                     {audioBlob && <>صوت جاهز للإرسال</>}
                     <button
@@ -728,7 +730,8 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
                   <button
                     key={i}
                     onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
-                    className="bg-gradient-to-br from-emerald-200 to-emerald-100 hover:from-emerald-300 hover:to-emerald-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+                    className="bg-gradient-to-br from-emerald-200 to-cyan-100 hover:from-emerald-300 hover:to-cyan-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+                    style={lang === "ar" ? { direction: "rtl", textAlign: "right" } : { direction: "ltr", textAlign: "left" }}
                   >
                     {f.q[lang] || f.q.en}
                   </button>
