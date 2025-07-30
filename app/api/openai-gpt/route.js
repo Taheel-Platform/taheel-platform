@@ -19,7 +19,46 @@ if (!getApps().length) initializeApp(firebaseConfig);
 
 export async function POST(req) {
   // استقبال البيانات من العميل
-  const { prompt, lang = "ar", country, userName } = await req.json();
+  const { prompt, lang = "ar", country, userName, isWelcome } = await req.json();
+
+  // ===== رسالة ترحيب تلقائية من OpenAI =====
+  if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
+    let welcomePrompt = "";
+    if (lang === "ar") {
+      welcomePrompt =
+        `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${userName ? userName : "العميل"} في منصة تأهيل.`;
+    } else if (lang === "en") {
+      welcomePrompt =
+        `Write a professional and friendly welcome message for a new user named ${userName ? userName : "the client"} on Taheel platform.`;
+    } else if (lang === "fr") {
+      welcomePrompt =
+        `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${userName ? userName : "le client"} sur la plateforme Taheel.`;
+    } else {
+      // لأي لغة أخرى، اطلب الرد بنفس language code
+      welcomePrompt =
+        `Write a professional and friendly welcome message for a new user named ${userName ? userName : "the client"} on Taheel platform. Respond in language code: ${lang}.`;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: welcomePrompt }],
+        max_tokens: 300,
+        temperature: 0.4,
+      }),
+    });
+    const data = await response.json();
+    return NextResponse.json({
+      text: data.choices?.[0]?.message?.content?.trim() || "",
+    });
+  }
+  // ===== نهاية الترحيب =====
 
   // 1. البحث في الأسئلة الشائعة أولاً (حسب لغة العميل)
   const faqAnswer = findFaqAnswer(prompt, lang);
@@ -96,9 +135,13 @@ export async function POST(req) {
   } else if (lang === "en") {
     userPrompt =
       `Write a professional and friendly reply in English to the client${userName ? ` named ${userName}` : ""}: ${prompt}`;
-  } else {
+  } else if (lang === "fr") {
     userPrompt =
       `Rédige une réponse professionnelle et conviviale en français pour le client${userName ? ` nommé ${userName}` : ""}: ${prompt}`;
+  } else {
+    // لأي لغة أخرى
+    userPrompt =
+      `Write a professional and friendly reply for the client${userName ? ` named ${userName}` : ""}: ${prompt}. Respond in language code: ${lang}.`;
   }
 
   // إرسال الطلب للـ OpenAI
