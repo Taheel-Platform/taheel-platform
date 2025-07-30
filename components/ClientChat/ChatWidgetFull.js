@@ -583,33 +583,45 @@ export default function ChatWidgetFull({
       ) : (
         <div className={`fixed bottom-24 ${lang === "ar" ? "right-4" : "left-4"} z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
           <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-[#222a36] rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
-            <div className="px-4 py-3 border-b border-emerald-800 text-emerald-200 font-bold flex items-center gap-1 relative bg-gradient-to-l from-cyan-900 to-emerald-900">
-              <span className="text-lg">
-                {lang === "ar"
-                  ? "الدردشة الذكية"
-                  : lang === "en"
-                  ? "Smart Chat"
-                  : "Chat intelligente"}
-              </span>
-              <div className={headerButtonsClass}>
-                <button
-                  onClick={() => setMinimized(true)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
-                  title={lang === "ar" ? "تصغير المحادثة" : lang === "en" ? "Minimize" : "Minimiser"}
-                  style={{ fontWeight: 700 }}
-                >
-                  <FaWindowMinimize style={{ fontWeight: 900, fontSize: 18 }} />
-                </button>
-<button
-  onClick={closeChat}
-  className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
-  title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
-  style={{ fontWeight: 700 }}
->
-  <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
-</button>
-              </div>
-            </div>
+<div className="px-4 py-3 border-b border-emerald-800 text-emerald-200 font-bold flex items-center gap-1 relative bg-gradient-to-l from-cyan-900 to-emerald-900">
+  <span className="text-lg">
+    {lang === "ar"
+      ? "الدردشة الذكية"
+      : lang === "en"
+      ? "Smart Chat"
+      : "Chat intelligente"}
+  </span>
+  <div
+    className="chat-header-buttons"
+    style={{
+      position: "absolute",
+      top: 12,
+      right: lang === "ar" ? 12 : "auto",
+      left: lang === "ar" ? "auto" : 12,
+      display: "flex",
+      flexDirection: lang === "ar" ? "row-reverse" : "row",
+      gap: 8,
+      zIndex: 11,
+    }}
+  >
+    <button
+      onClick={() => setMinimized(true)}
+      className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
+      title={lang === "ar" ? "تصغير المحادثة" : lang === "en" ? "Minimize" : "Minimiser"}
+      style={{ fontWeight: 700 }}
+    >
+      <FaWindowMinimize style={{ fontWeight: 900, fontSize: 18 }} />
+    </button>
+    <button
+      onClick={closeChat}
+      className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
+      title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
+      style={{ fontWeight: 700 }}
+    >
+      <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
+    </button>
+  </div>
+</div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
               {showLangModal && (
                 <div className="flex justify-center mb-2">
