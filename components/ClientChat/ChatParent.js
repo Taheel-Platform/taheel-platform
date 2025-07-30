@@ -30,20 +30,20 @@ export default function ChatParent({ userName = "زائر" }) {
   const [showModal, setShowModal] = useState(true);
 
   // عند اختيار اللغة والدولة من المودال
-  const handleLanguageSelect = (selectedLang, selectedCountry) => {
-    setLang(selectedLang);
-    setCountry(selectedCountry);
-    setShowModal(false);
+const handleLanguageSelect = (selectedLang, selectedCountry) => {
+  setLang(selectedLang);
+  setCountry(selectedCountry);
+  setShowModal(false);
 
-    // رسالة الترحيب حسب اللغة المختارة
-    const welcomeMsg = taheelWelcomePrompts[selectedLang]
-      ? taheelWelcomePrompts[selectedLang](userName)
-      : taheelWelcomePrompts["ar"](userName);
+  // الرسالة الترحيبية بلغة الدولة فقط
+  const welcomeMsg = taheelWelcomePrompts[selectedLang]
+    ? taheelWelcomePrompts[selectedLang](userName)
+    : taheelWelcomePrompts["ar"](userName);
 
-    setMessages([
-      { role: "assistant", content: welcomeMsg }
-    ]);
-  };
+  setMessages([
+    { role: "assistant", content: welcomeMsg }
+  ]);
+};
 
   // إرسال رسالة للـ backend/OpenAI
   const sendMessageToAPI = async (message) => {
