@@ -3,6 +3,7 @@ import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { findFaqAnswer } from "../../../components/ClientChat/faqSearch";
 
+// إعداد فايربيز
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,20 +14,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// التأكد من تهيئة فايربيز مرة واحدة فقط
 if (!getApps().length) initializeApp(firebaseConfig);
 
 export async function POST(req) {
-  const { prompt, lang } = await req.json();
+  // استقبال البيانات من العميل
+  const { prompt, lang = "ar", country, userName } = await req.json();
 
-  // 1. ابحث في الأسئلة الشائعة أولاً (بحث مرن جزئي)
-  const faqAnswer = findFaqAnswer(prompt, lang || "ar");
+  // 1. البحث في الأسئلة الشائعة أولاً (حسب لغة العميل)
+  const faqAnswer = findFaqAnswer(prompt, lang);
   if (faqAnswer) {
     return NextResponse.json({ text: faqAnswer });
   }
 
-  let dataString = '';
-
-  // 2. لو السؤال متعلق بالخدمات أو الأسعار أو التتبع ابحث في فايرستور
+  // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
     const db = getFirestore();
     const servicesSnapshot = await getDocs(collection(db, "services"));
@@ -34,6 +35,8 @@ export async function POST(req) {
     servicesSnapshot.forEach(doc => {
       services.push(doc.data());
     });
+
+    // لو لم توجد بيانات في قاعدة البيانات
     if (services.length === 0) {
       return NextResponse.json({
         text:
@@ -45,49 +48,60 @@ export async function POST(req) {
         customerService: true,
       });
     }
-    dataString = services
+
+    // تجهيز بيانات الخدمات
+    const dataString = services
       .map(s => `${s.name}: ${s.price || s.cost} (${s.description || ""})`)
       .join('\n');
-    if (dataString) {
-      // توجيه اللغة للـ OpenAI في الرد
-      let systemPrompt = "";
-      if (lang === "ar") {
-        systemPrompt = `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
-      } else if (lang === "en") {
-        systemPrompt = `Use ONLY the following services data to answer the user's question in English:\n${dataString}\n\nUser question: ${prompt}`;
-      } else {
-        systemPrompt = `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
-      }
-      const apiKey = process.env.OPENAI_API_KEY;
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: systemPrompt }],
-          max_tokens: 700,
-          temperature: 0.4,
-        }),
-      });
-      const data = await response.json();
-      return NextResponse.json({
-        text: data.choices?.[0]?.message?.content?.trim() || "",
-      });
+
+    // بناء prompt موجه للـ OpenAI حسب لغة العميل
+    let systemPrompt = "";
+    if (lang === "ar") {
+      systemPrompt =
+        `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية، ووجه الإجابة للعميل باسم ${userName ? userName : "العميل"}:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
+    } else if (lang === "en") {
+      systemPrompt =
+        `Use ONLY the following services data to answer the user's question in English, addressing the client named ${userName ? userName : "the client"}:\n${dataString}\n\nUser question: ${prompt}`;
+    } else {
+      systemPrompt =
+        `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français, en s'adressant au client nommé ${userName ? userName : "le client"}:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
     }
+
+    // إرسال الطلب للـ OpenAI
+    const apiKey = process.env.OPENAI_API_KEY;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: systemPrompt }],
+        max_tokens: 700,
+        temperature: 0.4,
+      }),
+    });
+    const data = await response.json();
+    return NextResponse.json({
+      text: data.choices?.[0]?.message?.content?.trim() || "",
+    });
   }
 
-  // 3. الرد العام من OpenAI حسب اللغة المختارة
+  // 3. الرد العام من OpenAI حسب اللغة المختارة واسم العميل
   let userPrompt = "";
   if (lang === "ar") {
-    userPrompt = `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${prompt}`;
+    userPrompt =
+      `اكتب رد احترافي ودود للعميل باسم ${userName ? userName : "العميل"} باللغة العربية: ${prompt}`;
   } else if (lang === "en") {
-    userPrompt = `Answer this question professionally in English: ${prompt}`;
+    userPrompt =
+      `Write a professional and friendly reply in English to the client${userName ? ` named ${userName}` : ""}: ${prompt}`;
   } else {
-    userPrompt = `Réponds à cette question professionnellement en français: ${prompt}`;
+    userPrompt =
+      `Rédige une réponse professionnelle et conviviale en français pour le client${userName ? ` nommé ${userName}` : ""}: ${prompt}`;
   }
+
+  // إرسال الطلب للـ OpenAI
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
