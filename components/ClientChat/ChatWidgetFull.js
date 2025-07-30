@@ -238,42 +238,41 @@ const handleLanguageSelect = async (selectedLang, selectedCountry) => {
       }),
     });
     const data = await res.json();
-    setMessages([
-      {
-        id: "welcome",
-        type: "bot",
-        senderId: "bot",
-        senderName: 
-          selectedLang === "ar" ? "المساعد الذكي"
-          : selectedLang === "en" ? "Smart Assistant"
-          : selectedLang === "fr" ? "Assistant"
-          : "Assistant", // لأي لغة أخرى
-        createdAt: Date.now(),
-        text: data.text
-      }
-    ]);
+
+    // أضف رسالة الترحيب مباشرة إلى رسائل Firebase
+    await push(dbRef(db, `chats/${roomId}/messages`), {
+      id: "welcome",
+      type: "bot",
+      senderId: "bot",
+      senderName: 
+        selectedLang === "ar" ? "المساعد الذكي"
+        : selectedLang === "en" ? "Smart Assistant"
+        : selectedLang === "fr" ? "Assistant"
+        : "Assistant",
+      createdAt: Date.now(),
+      text: data.text
+    });
+
   } catch (err) {
-    setMessages([
-      {
-        id: "welcome",
-        type: "bot",
-        senderId: "bot",
-        senderName: 
-          selectedLang === "ar" ? "المساعد الذكي"
-          : selectedLang === "en" ? "Smart Assistant"
-          : selectedLang === "fr" ? "Assistant"
-          : "Assistant",
-        createdAt: Date.now(),
-        text:
-          selectedLang === "ar"
-            ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-            : selectedLang === "en"
-            ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
-            : selectedLang === "fr"
-            ? `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`
-            : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
-      }
-    ]);
+    await push(dbRef(db, `chats/${roomId}/messages`), {
+      id: "welcome",
+      type: "bot",
+      senderId: "bot",
+      senderName: 
+        selectedLang === "ar" ? "المساعد الذكي"
+        : selectedLang === "en" ? "Smart Assistant"
+        : selectedLang === "fr" ? "Assistant"
+        : "Assistant",
+      createdAt: Date.now(),
+      text:
+        selectedLang === "ar"
+          ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+          : selectedLang === "en"
+          ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
+          : selectedLang === "fr"
+          ? `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`
+          : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
+    });
   }
 };
 
