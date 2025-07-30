@@ -209,64 +209,73 @@ export default function ChatWidgetFull({
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   // دالة جلب رسالة الترحيب من OpenAI حسب اللغة المختارة
-  const handleLanguageSelect = async (selectedLang, selectedCountry) => {
-    setLang(selectedLang);
-    setSelectedCountry(selectedCountry);
-    setShowLangModal(false);
+const handleLanguageSelect = async (selectedLang, selectedCountry) => {
+  setLang(selectedLang);
+  setSelectedCountry(selectedCountry);
+  setShowLangModal(false);
 
-    let welcomePrompt = "";
-    if (selectedLang === "ar") {
-      welcomePrompt = `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد "${safeUserName}" في منصة تأهيل.`;
-    } else if (selectedLang === "en") {
-      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in English.`;
-    } else if (selectedLang === "fr") {
-      welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé "${safeUserName}" sur la plateforme Taheel. Réponds UNIQUEMENT en français.`;
-    } else {
-      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in language code: ${selectedLang}.`;
-    }
+  let welcomePrompt = "";
+  if (selectedLang === "ar") {
+    welcomePrompt = `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد "${safeUserName}" في منصة تأهيل.`;
+  } else if (selectedLang === "en") {
+    welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in English.`;
+  } else if (selectedLang === "fr") {
+    welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé "${safeUserName}" sur la plateforme Taheel. Réponds UNIQUEMENT en français.`;
+  } else {
+    welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in language code: ${selectedLang}.`;
+  }
 
-    try {
-      const res = await fetch("/api/openai-gpt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: welcomePrompt,
-          lang: selectedLang,
-          country: selectedCountry,
-          userName: safeUserName,
-          isWelcome: true
-        }),
-      });
-      const data = await res.json();
-      // أضف رسالة الترحيب للرسائل مباشرة
-      setMessages([
-        {
-          id: "welcome",
-          type: "bot",
-          senderId: "bot",
-          senderName: lang === "ar" ? "المساعد الذكي" : lang === "en" ? "Smart Assistant" : "Assistant",
-          createdAt: Date.now(),
-          text: data.text
-        }
-      ]);
-    } catch (err) {
-      setMessages([
-        {
-          id: "welcome",
-          type: "bot",
-          senderId: "bot",
-          senderName: lang === "ar" ? "المساعد الذكي" : lang === "en" ? "Smart Assistant" : "Assistant",
-          createdAt: Date.now(),
-          text:
-            selectedLang === "ar"
-              ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-              : selectedLang === "en"
-              ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
-              : `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
-        }
-      ]);
-    }
-  };
+  try {
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: welcomePrompt,
+        lang: selectedLang,
+        country: selectedCountry,
+        userName: safeUserName,
+        isWelcome: true
+      }),
+    });
+    const data = await res.json();
+    setMessages([
+      {
+        id: "welcome",
+        type: "bot",
+        senderId: "bot",
+        senderName: 
+          selectedLang === "ar" ? "المساعد الذكي"
+          : selectedLang === "en" ? "Smart Assistant"
+          : selectedLang === "fr" ? "Assistant"
+          : "Assistant", // لأي لغة أخرى
+        createdAt: Date.now(),
+        text: data.text
+      }
+    ]);
+  } catch (err) {
+    setMessages([
+      {
+        id: "welcome",
+        type: "bot",
+        senderId: "bot",
+        senderName: 
+          selectedLang === "ar" ? "المساعد الذكي"
+          : selectedLang === "en" ? "Smart Assistant"
+          : selectedLang === "fr" ? "Assistant"
+          : "Assistant",
+        createdAt: Date.now(),
+        text:
+          selectedLang === "ar"
+            ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+            : selectedLang === "en"
+            ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
+            : selectedLang === "fr"
+            ? `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`
+            : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
+      }
+    ]);
+  }
+};
 
   // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
   const sendMessage = async (type = "text", content = {}) => {
