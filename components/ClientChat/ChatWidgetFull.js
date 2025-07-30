@@ -230,10 +230,15 @@ export default function ChatWidgetFull({
 
         try {
           const res = await fetch("/api/openai-gpt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: welcomePrompt, lang }),
-          });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    prompt: welcomePrompt,
+    lang,
+    country: selectedCountry,
+    userName: safeUserName
+  }),
+});
           const data = await res.json();
           await sendMessage("bot", { text: data.text });
         } catch (err) {
@@ -304,10 +309,15 @@ if (foundAnswer) {
       ? `Answer this question professionally in English: ${textMsg}`
       : `Réponds à cette question professionnellement en français: ${textMsg}`;
   const res = await fetch("/api/openai-gpt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: openAIPrompt, lang }),
-  });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    prompt: openAIPrompt,
+    lang,
+    country: selectedCountry,
+    userName: safeUserName
+  }),
+});
   const data = await res.json();
   await sendMessage("bot", { text: data.text });
 }
