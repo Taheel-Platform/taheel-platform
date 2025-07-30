@@ -83,26 +83,30 @@ export default function ChatWidgetFull({
   };
 
   // دالة Reset تعيد الشات للوضع الافتراضي وتظهر المودال وتفرغ كل شيء
-  const resetChat = async () => {
-    await clearChatMessages();
-    setShowLangModal(true);
-    setLang(initialLang);
-    setSelectedCountry("");
-    setMessages([]);
-    setInput("");
-    setNoBotHelpCount(0);
-    setWaitingForAgent(false);
-    setAgentAccepted(false);
-    setImagePreview(null);
-    setAudioBlob(null);
-    setRecording(false);
-    setShowEmoji(false);
-    setClosed(false);
-    setMinimized(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("chatRoomId");
-    }
-  };
+const resetChat = async () => {
+  await clearChatMessages();
+  // هنا أضف توليد roomId جديد
+  let newRoomId = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+  setRoomId(newRoomId);
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("chatRoomId", newRoomId);
+  }
+  // أكمل بقية التهيئة
+  setShowLangModal(true);
+  setLang(initialLang);
+  setSelectedCountry("");
+  setMessages([]);
+  setInput("");
+  setNoBotHelpCount(0);
+  setWaitingForAgent(false);
+  setAgentAccepted(false);
+  setImagePreview(null);
+  setAudioBlob(null);
+  setRecording(false);
+  setShowEmoji(false);
+  setClosed(false);
+  setMinimized(false);
+};
 
   useEffect(() => {
     if (!safeUserId) return;
