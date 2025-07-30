@@ -208,54 +208,65 @@ export default function ChatWidgetFull({
   // إضافة تغيير الاتجاه حسب اللغة المختارة
   const dir = lang === "ar" ? "rtl" : "ltr";
 
-  // رسالة الترحيب من OpenAI بعد اختيار اللغة والدولة
-  useEffect(() => {
-    if (
-      !showLangModal &&
-      messages.length === 0 &&
-      roomId &&
-      !waitingForAgent &&
-      !agentAccepted &&
-      lang &&
-      selectedCountry
-    ) {
-      const fetchWelcome = async () => {
-        // عرف welcomePrompt هنا:
-        const welcomePrompt =
-          lang === "ar"
-            ? `اكتب رسالة ترحيب للعميل في منصة تأهيل باللغة العربية ودولته ${selectedCountry}.`
-            : lang === "en"
-            ? `Write a welcome message for the client in Taheel Platform in English. Country: ${selectedCountry}.`
-            : `Écris un message de bienvenue au client sur la plateforme Taheel en français. Pays: ${selectedCountry}.`;
+  // دالة جلب رسالة الترحيب من OpenAI حسب اللغة المختارة
+  const handleLanguageSelect = async (selectedLang, selectedCountry) => {
+    setLang(selectedLang);
+    setSelectedCountry(selectedCountry);
+    setShowLangModal(false);
 
-        try {
-          const res = await fetch("/api/openai-gpt", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    prompt: welcomePrompt,
-    lang,
-    country: selectedCountry,
-    userName: safeUserName
-  }),
-});
-          const data = await res.json();
-          await sendMessage("bot", { text: data.text });
-        } catch (err) {
-          await sendMessage("bot", {
-            text:
-              lang === "ar"
-                ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-                : lang === "en"
-                ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
-                : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
-          });
-        }
-      };
-      fetchWelcome();
+    let welcomePrompt = "";
+    if (selectedLang === "ar") {
+      welcomePrompt = `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد "${safeUserName}" في منصة تأهيل.`;
+    } else if (selectedLang === "en") {
+      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in English.`;
+    } else if (selectedLang === "fr") {
+      welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé "${safeUserName}" sur la plateforme Taheel. Réponds UNIQUEMENT en français.`;
+    } else {
+      welcomePrompt = `Write a professional and friendly welcome message for a new user named "${safeUserName}" on Taheel platform. Respond ONLY in language code: ${selectedLang}.`;
     }
-    // eslint-disable-next-line
-  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
+
+    try {
+      const res = await fetch("/api/openai-gpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: welcomePrompt,
+          lang: selectedLang,
+          country: selectedCountry,
+          userName: safeUserName,
+          isWelcome: true
+        }),
+      });
+      const data = await res.json();
+      // أضف رسالة الترحيب للرسائل مباشرة
+      setMessages([
+        {
+          id: "welcome",
+          type: "bot",
+          senderId: "bot",
+          senderName: lang === "ar" ? "المساعد الذكي" : lang === "en" ? "Smart Assistant" : "Assistant",
+          createdAt: Date.now(),
+          text: data.text
+        }
+      ]);
+    } catch (err) {
+      setMessages([
+        {
+          id: "welcome",
+          type: "bot",
+          senderId: "bot",
+          senderName: lang === "ar" ? "المساعد الذكي" : lang === "en" ? "Smart Assistant" : "Assistant",
+          createdAt: Date.now(),
+          text:
+            selectedLang === "ar"
+              ? `مرحبًا ${safeUserName} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+              : selectedLang === "en"
+              ? `Welcome ${safeUserName} to Smart Chat! You can ask any question or choose from FAQs.`
+              : `Bienvenue ${safeUserName}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
+        }
+      ]);
+    }
+  };
 
   // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
   const sendMessage = async (type = "text", content = {}) => {
@@ -290,38 +301,36 @@ export default function ChatWidgetFull({
       setInput("");
       return;
     }
-// داخل handleSend
-const textMsg = input.trim();
-if (!textMsg) return;
+    const textMsg = input.trim();
+    if (!textMsg) return;
 
-await sendMessage("text", { text: textMsg });
+    await sendMessage("text", { text: textMsg });
 
-let foundAnswer = findFaqAnswer(textMsg, lang);
+    let foundAnswer = findFaqAnswer(textMsg, lang);
 
-if (foundAnswer) {
-  await sendMessage("bot", { text: foundAnswer });
-} else {
-  // هنا استخدم prompt حسب اللغة
-  const openAIPrompt =
-    lang === "ar"
-      ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
-      : lang === "en"
-      ? `Answer this question professionally in English: ${textMsg}`
-      : `Réponds à cette question professionnellement en français: ${textMsg}`;
-  const res = await fetch("/api/openai-gpt", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    prompt: openAIPrompt,
-    lang,
-    country: selectedCountry,
-    userName: safeUserName
-  }),
-});
-  const data = await res.json();
-  await sendMessage("bot", { text: data.text });
-}
-setInput("");
+    if (foundAnswer) {
+      await sendMessage("bot", { text: foundAnswer });
+    } else {
+      const openAIPrompt =
+        lang === "ar"
+          ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
+          : lang === "en"
+          ? `Answer this question professionally in English: ${textMsg}`
+          : `Réponds à cette question professionnellement en français: ${textMsg}`;
+      const res = await fetch("/api/openai-gpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: openAIPrompt,
+          lang,
+          country: selectedCountry,
+          userName: safeUserName
+        }),
+      });
+      const data = await res.json();
+      await sendMessage("bot", { text: data.text });
+    }
+    setInput("");
   };
 
   const handleQuickFAQ = async (q) => {
@@ -332,7 +341,6 @@ setInput("");
       await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
     } else {
-      // لم يجد إجابة في FAQ، أرسل للـ OpenAI
       try {
         const prompt =
           lang === "ar"
@@ -569,11 +577,7 @@ setInput("");
                     userName={safeUserName}
                     countries={countriesObject}
                     countriesLang={countriesLang}
-                    onSelect={(chosenLang, chosenCountry) => {
-                      setLang(chosenLang);
-                      setSelectedCountry(chosenCountry);
-                      setShowLangModal(false);
-                    }}
+                    onSelect={handleLanguageSelect}
                   />
                 </div>
               )}
