@@ -83,30 +83,28 @@ export default function ChatWidgetFull({
   };
 
   // دالة Reset تعيد الشات للوضع الافتراضي وتظهر المودال وتفرغ كل شيء
-const resetChat = async () => {
-  await clearChatMessages();
-  // هنا أضف توليد roomId جديد
-  let newRoomId = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
-  setRoomId(newRoomId);
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem("chatRoomId", newRoomId);
-  }
-  // أكمل بقية التهيئة
-  setShowLangModal(true);
-  setLang(initialLang);
-  setSelectedCountry("");
-  setMessages([]);
-  setInput("");
-  setNoBotHelpCount(0);
-  setWaitingForAgent(false);
-  setAgentAccepted(false);
-  setImagePreview(null);
-  setAudioBlob(null);
-  setRecording(false);
-  setShowEmoji(false);
-  setClosed(false);
-  setMinimized(false);
-};
+  const resetChat = async () => {
+    await clearChatMessages();
+    let newRoomId = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+    setRoomId(newRoomId);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("chatRoomId", newRoomId);
+    }
+    setShowLangModal(true);
+    setLang(initialLang);
+    setSelectedCountry("");
+    setMessages([]);
+    setInput("");
+    setNoBotHelpCount(0);
+    setWaitingForAgent(false);
+    setAgentAccepted(false);
+    setImagePreview(null);
+    setAudioBlob(null);
+    setRecording(false);
+    setShowEmoji(false);
+    setClosed(true); // فعلاً أغلق الشات
+    setMinimized(false);
+  };
 
   useEffect(() => {
     if (!safeUserId) return;
@@ -150,9 +148,10 @@ const resetChat = async () => {
     }
   };
 
-  // إعادة الشات نظيف عند إعادة الفتح أو بعد الإغلاق
+  // إعادة فتح الشات بعد التصغير
   const handleOpenChat = async () => {
-    await resetChat();
+    setClosed(false);
+    setMinimized(false);
   };
 
   useEffect(() => {
@@ -229,12 +228,19 @@ const resetChat = async () => {
 
   // تغيير اتجاه الدردشة حسب اللغة
   const dir = lang === "ar" ? "rtl" : "ltr";
+  // منطق توزيع أزرار الهيدر حسب اللغة
+  const headerButtonsClass =
+    lang === "ar"
+      ? "chat-header-buttons right-2 flex-row-reverse"
+      : "chat-header-buttons left-2 flex-row";
 
   // جلب رسالة الترحيب حسب اختيار اللغة
   const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     setLang(selectedLang);
     setSelectedCountry(selectedCountry);
     setShowLangModal(false);
+  
+
 
     let welcomePrompt = "";
     if (selectedLang === "ar") {
@@ -296,6 +302,8 @@ const resetChat = async () => {
             : `Welcome ${safeUserName}! You can ask any question or choose from FAQs.`,
       });
     }
+    // عند اختيار اللغة أفتح الشات لو كان مغلق (مفيد لو كان مغلق من زر الإغلاق)
+    setClosed(false);
   };
 
   // إرسال رسالة المستخدم
@@ -313,10 +321,13 @@ const resetChat = async () => {
     playSend();
   };
 
+
   // إرسال سؤال المستخدم للـ OpenAI أو الرد من FAQ
   const handleSend = async (e) => {
     e.preventDefault();
     if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
+  
+
 
     if (imagePreview) {
       await sendMessage("image", { imageBase64: imagePreview });
@@ -413,9 +424,11 @@ const resetChat = async () => {
     setNoBotHelpCount(0);
   };
 
-  // زر الإغلاق (FaTimes) يعيد الشات نظيف ويظهر المودال
+  // زر الإغلاق (FaTimes) يغلق الشات فعلاً
   const closeChat = async () => {
-    setClosed(true);
+    setClosed(true);        // يخفي الشات
+    setShowLangModal(false); // يخفي المودال لو كان ظاهر
+    setMinimized(false);
     if (onClose) onClose();
     await resetChat();
   };
@@ -428,7 +441,7 @@ const resetChat = async () => {
     reader.readAsDataURL(file);
     e.target.value = "";
   };
-
+  
   const handleRecord = async () => {
     if (!recording) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -533,11 +546,6 @@ const resetChat = async () => {
     );
   }
 
-  const headerButtonsClass =
-    lang === "ar"
-      ? "chat-header-buttons right-2 flex-row-reverse"
-      : "chat-header-buttons left-2 flex-row";
-
   if (closed) return null;
 
   return (
@@ -567,13 +575,13 @@ const resetChat = async () => {
       {minimized ? (
         <button
           onClick={handleOpenChat}
-          className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-cyan-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
+          className={`fixed bottom-[150px] ${lang === "ar" ? "right-6" : "left-6"} bg-gradient-to-br from-emerald-600 to-cyan-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn`}
           title={lang === "ar" ? "فتح المحادثة" : lang === "en" ? "Open Chat" : "Ouvrir le chat"}
         >
           <FaComments size={32} />
         </button>
       ) : (
-        <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
+        <div className={`fixed bottom-24 ${lang === "ar" ? "right-4" : "left-4"} z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
           <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-[#222a36] rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
             <div className="px-4 py-3 border-b border-emerald-800 text-emerald-200 font-bold flex items-center gap-1 relative bg-gradient-to-l from-cyan-900 to-emerald-900">
               <span className="text-lg">
@@ -592,14 +600,14 @@ const resetChat = async () => {
                 >
                   <FaWindowMinimize style={{ fontWeight: 900, fontSize: 18 }} />
                 </button>
-                <button
-                  onClick={closeChat}
-                  className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
-                  title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
-                  style={{ fontWeight: 700 }}
-                >
-                  <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
-                </button>
+<button
+  onClick={closeChat}
+  className="bg-gradient-to-br from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center shadow border border-red-600 chat-action-btn"
+  title={lang === "ar" ? "إغلاق المحادثة" : lang === "en" ? "Close chat" : "Fermer"}
+  style={{ fontWeight: 700 }}
+>
+  <FaTimes style={{ fontWeight: 900, fontSize: 18 }} />
+</button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
