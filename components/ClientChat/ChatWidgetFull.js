@@ -24,6 +24,15 @@ import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
 import countriesData from "../../lib/countries-ar-en.js";
+import { remove } from "firebase/database";
+import { getDocs, collection } from "firebase/firestore";
+
+
+const clearChatMessages = async () => {
+  if (!roomId) return;
+  await remove(dbRef(db, `chats/${roomId}/messages`));
+  setMessages([]);
+};
 
 const countriesObject = {};
 const countriesLang = {};
@@ -116,7 +125,7 @@ export default function ChatWidgetFull({
     }
   };
 
-  const handleOpenChat = () => {
+  const handleOpenChat = async () => {
     setClosed(false);
     setMinimized(false);
     setShowLangModal(true);
@@ -131,6 +140,7 @@ export default function ChatWidgetFull({
     setAudioBlob(null);
     setRecording(false);
     setShowEmoji(false);
+    await clearChatMessages();
   };
 
   useEffect(() => {
