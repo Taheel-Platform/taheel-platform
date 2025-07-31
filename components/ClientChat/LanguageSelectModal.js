@@ -60,15 +60,19 @@ export default function LanguageSelectModal({
       {/* أضف هذا الجزء داخل الكومبوننت */}
       <style>
 {`
-  .flags-select__menu {
-    background: linear-gradient(120deg,#18233a 70%,#22304a 100%) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 8px 32px 0 #18233a99 !important;
-    z-index: 9999 !important;
-    direction: ${dir} !important;
-  }
-  .flags-select__option,
-  .flags-select__selected {
+  [class^="ReactFlagsSelect-module_search_"] {
+  background: #22304a !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-size: 1rem !important;
+  margin-bottom: 6px !important;
+  border: 1px solid #293556 !important;
+  direction: ${dir} !important;
+  text-align: ${dir === "rtl" ? "right" : "left"} !important;
+}
+  [class^="ReactFlagsSelect-module_option_"],
+  [class^="ReactFlagsSelect-module_selected_"],
+  [class^="ReactFlagsSelect-module_label_"] {
     color: #fff !important;
     background: #22304a !important;
     font-weight: 600 !important;
@@ -79,24 +83,9 @@ export default function LanguageSelectModal({
     border-radius: 10px !important;
     transition: background .2s;
   }
-  .flags-select__option--is-selected {
-    background-color: #10b981 !important;
-    color: #fff !important;
-  }
-  .flags-select__option:hover {
+  [class^="ReactFlagsSelect-module_option_"]:hover {
     background-color: #293556 !important;
     color: #b8f7ed !important;
-  }
-  .flags-select__search {
-    background: #22304a !important;
-    color: #fff !important;
-    border-radius: 8px !important;
-    font-size: 1rem !important;
-    font-family: ${fontFamily} !important;
-    margin-bottom: 6px !important;
-    border: 1px solid #293556 !important;
-    direction: ${dir} !important;
-    text-align: ${dir === "rtl" ? "right" : "left"} !important;
   }
 `}
 </style>
