@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { getFirestore, doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { findFaqAnswer } from "../../../components/ClientChat/faqSearch";
 
@@ -17,76 +17,77 @@ if (!getApps().length) initializeApp(firebaseConfig);
 
 // خريطة البلد للغة
 const countryLangMap = {
-  "SA": "ar", // السعودية
-  "AE": "ar", // الإمارات
-  "EG": "ar", // مصر
-  "JO": "ar",
-  "KW": "ar",
-  "QA": "ar",
-  "OM": "ar",
-  "BH": "ar",
-  "DZ": "ar",
-  "MA": "ar",
-  "TN": "ar",
-  "LB": "ar",
-  "SY": "ar",
-  "IQ": "ar",
-  "PS": "ar",
-  "SD": "ar",
-  "YE": "ar",
-  "LY": "ar",
-  "MR": "ar",
-  "DJ": "ar",
-  "SO": "ar",
-  "FR": "fr",
-  "BE": "fr",
-  "CH": "fr",
-  "US": "en",
-  "GB": "en",
-  "CA": "en",
-  "DE": "de",
-  "ES": "es",
-  "IT": "it",
+  "SA": "ar", "AE": "ar", "EG": "ar", "JO": "ar", "KW": "ar", "QA": "ar", "OM": "ar", "BH": "ar",
+  "DZ": "ar", "MA": "ar", "TN": "ar", "LB": "ar", "SY": "ar", "IQ": "ar", "PS": "ar", "SD": "ar",
+  "YE": "ar", "LY": "ar", "MR": "ar", "DJ": "ar", "SO": "ar", "FR": "fr", "BE": "fr", "CH": "fr",
+  "US": "en", "GB": "en", "CA": "en", "DE": "de", "ES": "es", "IT": "it"
   // أضف باقي الدول حسب الحاجة
 };
 
 export async function POST(req) {
   // استقبال بيانات العميل من المودال/الشات
-  let { prompt, lang, country, userName, isWelcome } = await req.json();
+  let { prompt, lang, country, userName, isWelcome, userId } = await req.json();
 
-  // تحديد اللغة من البلد لو لم يتم إرسالها
-  if (!lang && country) {
-    const countryCode = country.length === 2 ? country.toUpperCase() : null;
-    lang = countryLangMap[countryCode] || "ar";
+  // جلب بيانات العميل من Firestore لو فيه userId
+  let realName = userName;
+  let realLang = lang;
+  if (userId) {
+    try {
+      const db = getFirestore();
+      const userDoc = doc(db, "users", userId);
+      const snap = await getDoc(userDoc);
+      if (snap.exists()) {
+        const data = snap.data();
+        // اسم العميل حسب اللغة المختارة حاليا
+        realName = lang === "ar"
+          ? data.nameAr || data.firstName || data.lastName || realName
+          : lang === "en"
+          ? data.nameEn || data.firstName || data.lastName || realName
+          : data.nameEn || data.nameAr || data.firstName || data.lastName || realName;
+        // لو فيه لغة مفضلة للعميل
+        if (data.lang) realLang = data.lang;
+      }
+    } catch (err) {
+      // تجاهل الخطأ واستعمل القيم المرسلة من المودال
+    }
   }
+
+  // لو لم يتم تحديد لغة، خذها من الدولة المختارة
+  if (!realLang && country) {
+    const countryCode = country.length === 2 ? country.toUpperCase() : null;
+    realLang = countryLangMap[countryCode] || "ar";
+  }
+  // fallback نهائي للغة والاسم
+  if (!realLang) realLang = "ar";
+  if (!realName) realName = "زائر";
 
   // ===== رسالة ترحيب تلقائية من OpenAI =====
   if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
     let welcomePrompt = "";
-    switch (lang) {
+    switch (realLang) {
       case "ar":
-        welcomePrompt = `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${userName || "العميل"} في منصة تأهيل، واذكر الدولة ${country || ""} في الترحيب.`;
+        welcomePrompt = `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName} في منصة تأهيل، واذكر الدولة ${country || ""} في الترحيب.`;
         break;
       case "en":
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform. Mention the country ${country || ""} in the welcome.`;
+        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${realName} on Taheel platform. Mention the country ${country || ""} in the welcome.`;
         break;
       case "fr":
-        welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${userName || "le client"} sur la plateforme Taheel. Mentionne le pays ${country || ""} dans le message.`;
+        welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${realName} sur la plateforme Taheel. Mentionne le pays ${country || ""} dans le message.`;
         break;
       default:
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform. Country: ${country || ""}. Respond ONLY in language code: ${lang}.`;
+        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${realName} on Taheel platform. Country: ${country || ""}. Respond ONLY in language code: ${realLang}.`;
         break;
     }
 
     // رسالة النظام لتأكيد اللغة المختارة
     const systemMessage =
-      lang === "ar"
+      realLang === "ar"
         ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
-        : lang === "en"
+        : realLang === "en"
         ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-        : lang === "fr"
+        : realLang === "fr"
         ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-        : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+        : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
 
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -112,24 +113,11 @@ export async function POST(req) {
   }
   // ===== نهاية الترحيب =====
 
-  // 1. البحث في الأسئلة الشائعة أولاً (حسب لغة العميل المختارة من المودال)
-  const faqAnswer = findFaqAnswer(prompt, lang);
+  // 1. البحث في الأسئلة الشائعة أولاً (حسب لغة العميل النهائية)
+  const faqAnswer = findFaqAnswer(prompt, realLang);
   if (faqAnswer) {
     return NextResponse.json({ text: faqAnswer });
   }
-
-  if (!data?.choices?.[0]?.message?.content) {
-  return NextResponse.json({
-    text:
-      lang === "ar"
-        ? "نعتذر، حدث خطأ أثناء توليد الإجابة. يرجى المحاولة مرة أخرى أو التواصل مع خدمة العملاء."
-        : lang === "fr"
-        ? "Désolé, une erreur s'est produite lors de la génération de la réponse. Veuillez réessayer ou contacter le service client."
-        : "Sorry, something went wrong while generating the reply. Please try again or contact support.",
-    customerService: true,
-  });
-}
-
 
   // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
@@ -140,9 +128,9 @@ export async function POST(req) {
     } catch (e) {
       // خطأ في جلب البيانات
       return NextResponse.json({
-        text: lang === "ar"
+        text: realLang === "ar"
           ? "حدث خطأ أثناء جلب بيانات الخدمات."
-          : lang === "en"
+          : realLang === "en"
           ? "An error occurred while fetching services data."
           : "Une erreur est survenue lors de la récupération des données de service.",
         customerService: true,
@@ -161,7 +149,7 @@ export async function POST(req) {
     // لو لم توجد بيانات
     if (!Array.isArray(services) || services.length === 0) {
       let noDataMsg;
-      switch (lang) {
+      switch (realLang) {
         case "ar":
           noDataMsg = "لم يتم العثور على بيانات الخدمات في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟";
           break;
@@ -191,34 +179,34 @@ export async function POST(req) {
       })
       .join('\n');
 
-    // بناء prompt للـ OpenAI حسب اللغة المختارة من العميل
+    // بناء prompt للـ OpenAI حسب اللغة النهائية للعميل
     let systemPrompt = "";
-    switch (lang) {
+    switch (realLang) {
       case "ar":
-        systemPrompt = `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية، ووجه الإجابة للعميل باسم ${userName || "العميل"}:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
+        systemPrompt = `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية، ووجه الإجابة للعميل باسم ${realName}:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
         break;
       case "en":
-        systemPrompt = `Use ONLY the following services data to answer the user's question in English, addressing the client named ${userName || "the client"}:\n${dataString}\n\nUser question: ${prompt}`;
+        systemPrompt = `Use ONLY the following services data to answer the user's question in English, addressing the client named ${realName}:\n${dataString}\n\nUser question: ${prompt}`;
         break;
       case "fr":
-        systemPrompt = `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français, en s'adressant au client nommé ${userName || "le client"}:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
+        systemPrompt = `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français, en s'adressant au client nommé ${realName}:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
         break;
       default:
-        systemPrompt = `Use ONLY the following services data to answer the user's question, addressing the client named ${userName || "the client"}:\n${dataString}\n\nUser question: ${prompt}. Respond ONLY in language code: ${lang}.`;
+        systemPrompt = `Use ONLY the following services data to answer the user's question, addressing the client named ${realName}:\n${dataString}\n\nUser question: ${prompt}. Respond ONLY in language code: ${realLang}.`;
         break;
     }
 
-    // رسالة النظام لتأكيد اللغة المختارة
+    // رسالة النظام لتأكيد اللغة النهائية
     const systemMessage =
-      lang === "ar"
+      realLang === "ar"
         ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
-        : lang === "en"
+        : realLang === "en"
         ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-        : lang === "fr"
+        : realLang === "fr"
         ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-        : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+        : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
 
-    // إرسال الطلب للـ OpenAI بنفس اللغة المختارة
+    // إرسال الطلب للـ OpenAI بنفس اللغة النهائية للعميل
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -242,32 +230,32 @@ export async function POST(req) {
     });
   }
 
-  // 3. الرد العام من OpenAI بنفس اللغة المختارة من العميل
+  // 3. الرد العام من OpenAI بنفس اللغة النهائية للعميل
   let userPrompt = "";
-  switch (lang) {
+  switch (realLang) {
     case "ar":
-      userPrompt = `اكتب رد احترافي ودود للعميل باسم ${userName || "العميل"} باللغة العربية فقط: ${prompt}`;
+      userPrompt = `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}`;
       break;
     case "en":
-      userPrompt = `Write a professional and friendly reply in English only to the client${userName ? ` named ${userName}` : ""}: ${prompt}`;
+      userPrompt = `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}`;
       break;
     case "fr":
-      userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${userName ? ` nommé ${userName}` : ""}: ${prompt}`;
+      userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}`;
       break;
     default:
-      userPrompt = `Write a professional and friendly reply for the client${userName ? ` named ${userName}` : ""}: ${prompt}. Respond ONLY in language code: ${lang}.`;
+      userPrompt = `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.`;
       break;
   }
 
-  // رسالة النظام لتأكيد اللغة المختارة
+  // رسالة النظام لتأكيد اللغة النهائية للعميل
   const systemMessage =
-    lang === "ar"
+    realLang === "ar"
       ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
-      : lang === "en"
+      : realLang === "en"
       ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-      : lang === "fr"
+      : realLang === "fr"
       ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-      : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+      : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
 
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
