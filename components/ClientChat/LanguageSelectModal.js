@@ -55,7 +55,9 @@ export default function LanguageSelectModal({
       style={{
         fontFamily,
         background: modalBg,
-        transition: "background 0.3s"
+        transition: "background 0.3s",
+        overflow: "visible",       
+        zIndex: 9999              
       }}
     >
       {/* أضف هذا الجزء داخل الكومبوننت */}
