@@ -7,22 +7,24 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
+  // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
+  // اللغة بناء على اختيار الدولة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar"
     ? "'Tajawal', 'Segoe UI', sans-serif"
     : "'Segoe UI', 'Tajawal', sans-serif";
 
+  // رسائل وترجمة
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Please select your country to continue. You will receive an instant welcome message in your language.`,
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
-
   const countryLabel =
     countryLang === "ar" ? "اختر دولتك" :
     countryLang === "fr" ? "Choisissez votre pays" : "Choose your Country";
@@ -37,6 +39,7 @@ export default function LanguageSelectModal({
   const white = "#fff";
   const grayText = "#b6c8e1";
 
+  // زر الاستمرار
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -56,15 +59,16 @@ export default function LanguageSelectModal({
     >
       <style>
       {`
+        /* ضمان ظهور قائمة FlagsSelect فوق الكارد ونافذة الشات */
         .flags-select__menu {
           position: fixed !important;
           left: 50% !important;
-          top: 32% !important;
+          top: 36% !important;
           transform: translateX(-50%) !important;
           z-index: 9999 !important;
           min-width: 270px !important;
           max-width: 380px !important;
-          background: linear-gradient(120deg,#293556,#22304a) !important;
+          background: linear-gradient(120deg,${navy3},${navy2}) !important;
           border-radius: 14px !important;
           box-shadow: 0 6px 32px 0 #0008 !important;
         }
@@ -101,10 +105,15 @@ export default function LanguageSelectModal({
           maxWidth: "430px"
         }}
       >
-        <img src="/taheel-bot.png"
+        <img
+          src="/taheel-bot.png"
           alt={logoAlt}
-          className="w-20 mb-3 drop-shadow-lg animate-bounce"
-          style={{ filter: "drop-shadow(0 4px 14px #0b2545a0)" }}
+          className="w-20 h-20 mb-3 drop-shadow-lg rounded-full"
+          style={{
+            borderRadius: "50%",
+            objectFit: "cover",
+            boxShadow: "0 4px 14px #0b2545a0"
+          }}
         />
         <h2
           className="font-extrabold text-[1.35rem] mb-2 tracking-wide"
