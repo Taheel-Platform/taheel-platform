@@ -33,7 +33,7 @@ export default function LanguageSelectModal({
 
   // ألوان عصرية وغامقة متناسقة
   const modalBg = "linear-gradient(120deg, #212a3a 70%, #18233a 100%)";
-  const menuBg = "linear-gradient(120deg, #18233a 60%, #212a3a 100%)";
+  const menuBg = "linear-gradient(120deg, #18233a 70%, #212a3a 100%)";
   const optionBg = "#22304a";
   const accent = "#10b981";
   const white = "#fff";
@@ -57,8 +57,38 @@ export default function LanguageSelectModal({
         transition: "background 0.3s"
       }}
     >
-{/* ستايل مخصص للقائمة المنسدلة داخل نفس الكومبوننت */}
-
+      {/* أضف هذا الجزء داخل الكومبوننت */}
+      <style>
+      {`
+        .flags-select__menu {
+          background: ${menuBg} !important;
+          border-radius: 16px !important;
+          box-shadow: 0 8px 32px 0 #18233a99 !important;
+          z-index: 9999 !important;
+          direction: ${dir} !important;
+        }
+        .flags-select__option,
+        .flags-select__selected {
+          color: ${white} !important;
+          background: ${optionBg} !important;
+          font-weight: 600 !important;
+          font-size: 1rem !important;
+          font-family: ${fontFamily} !important;
+          direction: ${dir} !important;
+          text-align: ${dir === "rtl" ? "right" : "left"} !important;
+          border-radius: 10px !important;
+          transition: background .2s;
+        }
+        .flags-select__option--is-selected {
+          background-color: ${accent} !important;
+          color: ${white} !important;
+        }
+        .flags-select__option:hover {
+          background-color: ${optionHover} !important;
+          color: #b8f7ed !important;
+        }
+      `}
+      </style>
       <div
         className="rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
         style={{
@@ -100,7 +130,6 @@ export default function LanguageSelectModal({
         >
           {welcomeMessages[countryLang] || welcomeMessages["ar"]}
         </p>
-        {/* اختيار الدولة */}
         <div className="w-full mb-4">
           <label
             className="block mb-1 text-emerald-400 font-semibold text-sm"
