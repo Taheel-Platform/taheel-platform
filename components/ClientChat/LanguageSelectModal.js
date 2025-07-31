@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
-import countriesLang from "@/lib/countriesLang";
+import countriesLangArray from "@/lib/countriesLang"; // المصفوفة
+
+// تحويل المصفوفة إلى كائن مناسب للمكتبة
+const countriesLang = Object.fromEntries(
+  countriesLangArray.map(item => [item.code, item])
+);
 
 export default function LanguageSelectModal({ userName = "زائر", onSelect }) {
-  const firstCountry = Object.keys(countriesLang)[0] || "EG";
+  const firstCountry = countriesLangArray[0]?.code || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,7 +35,7 @@ export default function LanguageSelectModal({ userName = "زائر", onSelect })
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
-    // تمرير كل القيم المطلوبة
+    // إرسال كل القيم المطلوبة
     onSelect(countryLang, selectedCountry, countriesLang[selectedCountry]?.name, userName);
   };
 
@@ -43,8 +48,8 @@ export default function LanguageSelectModal({ userName = "زائر", onSelect })
         fontFamily,
         background: "linear-gradient(120deg, #212a3a 70%, #18233a 100%)",
         transition: "background 0.3s",
-        overflow: "visible",       
-        zIndex: 9999              
+        overflow: "visible",
+        zIndex: 9999
       }}
     >
       <style>
@@ -152,7 +157,7 @@ export default function LanguageSelectModal({ userName = "زائر", onSelect })
           <FlagsSelect
             countries={Object.keys(countriesLang)}
             customLabels={Object.fromEntries(
-              Object.entries(countriesLang).map(([code, obj]) => [code, obj.name])
+              Object.entries(countriesLang).map(([code, obj]) => [code, `${obj.flag} ${obj.name}`])
             )}
             selected={selectedCountry}
             onSelect={code => setSelectedCountry(code)}
