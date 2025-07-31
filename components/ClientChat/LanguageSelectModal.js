@@ -60,32 +60,61 @@ export default function LanguageSelectModal({
       {/* أضف هذا الجزء داخل الكومبوننت */}
       <style>
 {`
-  [class^="ReactFlagsSelect-module_search_"] {
-  background: #22304a !important;
-  color: #fff !important;
-  border-radius: 8px !important;
-  font-size: 1rem !important;
-  margin-bottom: 6px !important;
-  border: 1px solid #293556 !important;
-  direction: ${dir} !important;
-  text-align: ${dir === "rtl" ? "right" : "left"} !important;
-}
+  /* خلفية القائمة نفسها */
+  [class^="ReactFlagsSelect-module_menu_"] {
+    background: linear-gradient(120deg,#18233a 70%,#22304a 100%) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 32px 0 #18233a99 !important;
+    z-index: 9999 !important;
+    direction: rtl !important;
+  }
+  /* خيارات القائمة */
   [class^="ReactFlagsSelect-module_option_"],
-  [class^="ReactFlagsSelect-module_selected_"],
-  [class^="ReactFlagsSelect-module_label_"] {
+  [class^="ReactFlagsSelect-module_selected_"] {
     color: #fff !important;
     background: #22304a !important;
     font-weight: 600 !important;
     font-size: 1rem !important;
-    font-family: ${fontFamily} !important;
-    direction: ${dir} !important;
-    text-align: ${dir === "rtl" ? "right" : "left"} !important;
+    font-family: 'Tajawal', 'Segoe UI', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
     border-radius: 10px !important;
     transition: background .2s;
   }
-  [class^="ReactFlagsSelect-module_option_"]:hover {
+  /* الكتابة نفسها داخل الخيار */
+  [class^="ReactFlagsSelect-module_label_"] {
+    background: #22304a !important;
+    color: #fff !important;
+    padding: 2px 8px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    font-family: 'Tajawal', 'Segoe UI', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    display: inline-block !important;
+  }
+  /* خيار محدد */
+  [class^="ReactFlagsSelect-module_option_--is-selected"] {
+    background-color: #10b981 !important;
+    color: #fff !important;
+  }
+  /* hover */
+  [class^="ReactFlagsSelect-module_option_"]:hover,
+  [class^="ReactFlagsSelect-module_label_"]:hover {
     background-color: #293556 !important;
     color: #b8f7ed !important;
+  }
+  /* مربع البحث داخل القائمة */
+  [class^="ReactFlagsSelect-module_search_"] {
+    background: #22304a !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    font-size: 1rem !important;
+    margin-bottom: 6px !important;
+    border: 1px solid #293556 !important;
+    direction: rtl !important;
+    text-align: right !important;
   }
 `}
 </style>
