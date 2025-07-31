@@ -47,6 +47,7 @@ export default function ChatWidgetFull({
   onClose,
   lang: initialLang = "ar",
 }) {
+  // ---- State ----
   const db = getDatabase();
   const [roomId, setRoomId] = useState(initialRoomId || "");
   const [messages, setMessages] = useState([]);
@@ -73,6 +74,8 @@ export default function ChatWidgetFull({
   const chatEndRef = useRef(null);
 
   const safeUserId = userId || "guest";
+  const fontFamily = lang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
+  const dir = lang === "ar" ? "rtl" : "ltr";
 
   useEffect(() => {
     if (!safeUserId) return;
@@ -205,9 +208,6 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // إضافة تغيير الاتجاه حسب اللغة المختارة
-  const dir = lang === "ar" ? "rtl" : "ltr";
-
   // رسالة الترحيب من OpenAI بعد اختيار اللغة والدولة
   useEffect(() => {
     if (
@@ -285,35 +285,36 @@ export default function ChatWidgetFull({
       setInput("");
       return;
     }
-// داخل handleSend
-const textMsg = input.trim();
-if (!textMsg) return;
+    // داخل handleSend
+    const textMsg = input.trim();
+    if (!textMsg) return;
 
-await sendMessage("text", { text: textMsg });
+    await sendMessage("text", { text: textMsg });
 
-let foundAnswer = findFaqAnswer(textMsg, lang);
+    let foundAnswer = findFaqAnswer(textMsg, lang);
 
-if (foundAnswer) {
-  await sendMessage("bot", { text: foundAnswer });
-} else {
-  // هنا استخدم prompt حسب اللغة
-  const openAIPrompt =
-    lang === "ar"
-      ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${textMsg}`
-      : lang === "en"
-      ? `Answer this question professionally in English: ${textMsg}`
-      : `Réponds à cette question professionnellement en français: ${textMsg}`;
-  const res = await fetch("/api/openai-gpt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: openAIPrompt, lang }),
-  });
-  const data = await res.json();
-  await sendMessage("bot", { text: data.text });
-}
-setInput("");
+    if (foundAnswer) {
+      await sendMessage("bot", { text: foundAnswer });
+    } else {
+      // هنا استخدم prompt حسب اللغة المختارة
+      const openAIPrompt =
+        lang === "ar"
+          ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${textMsg}`
+          : lang === "en"
+          ? `Answer this question professionally in English only: ${textMsg}`
+          : `Réponds à cette question professionnellement uniquement en français: ${textMsg}`;
+      const res = await fetch("/api/openai-gpt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: openAIPrompt, lang }),
+      });
+      const data = await res.json();
+      await sendMessage("bot", { text: data.text });
+    }
+    setInput("");
   };
 
+  // الأسئلة السريعة (FAQ)
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
@@ -322,14 +323,13 @@ setInput("");
       await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
     } else {
-      // لم يجد إجابة في FAQ، أرسل للـ OpenAI
       try {
         const prompt =
           lang === "ar"
-            ? `أجب على هذا السؤال بشكل احترافي باللغة العربية: ${q}`
+            ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${q}`
             : lang === "en"
-            ? `Answer this question professionally in English: ${q}`
-            : `Réponds à cette question professionnellement en français: ${q}`;
+            ? `Answer this question professionally in English only: ${q}`
+            : `Réponds à cette question professionnellement uniquement en français: ${q}`;
         const res = await fetch("/api/openai-gpt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -404,6 +404,7 @@ setInput("");
     setShowEmoji(false);
   };
 
+  // ---- Bubble Render ----
   function renderMsgBubble(msg) {
     let isSelf = msg.senderId === safeUserId;
     let isBot = msg.type === "bot";
@@ -419,14 +420,15 @@ setInput("");
       : "self-start";
     let color =
       isSystem
-        ? "bg-gradient-to-r from-yellow-50 to-yellow-100 text-emerald-900 border border-yellow-300"
+        ? "bg-gradient-to-r from-blue-50 to-blue-100 text-emerald-900 border border-blue-300"
         : isBot
-        ? "bg-gradient-to-br from-yellow-100 to-yellow-300 text-yellow-900 border border-yellow-400"
+        ? "bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-900 border border-emerald-400"
         : isSelf
-        ? "bg-gradient-to-br from-emerald-500 to-emerald-400 text-white"
+        ? "bg-gradient-to-br from-blue-500 to-emerald-400 text-white"
         : "bg-gradient-to-br from-white to-gray-100 text-gray-900 border border-gray-200";
+
     return (
-      <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id}>
+      <div className={`${base} ${align} ${color} flex items-start gap-2`} key={msg.id} style={{ fontFamily }}>
         {isBot && (
           <img
             src="/taheel-bot.png"
@@ -483,6 +485,7 @@ setInput("");
     );
   }
 
+  // ---- Header Buttons ----
   const headerButtonsClass =
     lang === "ar"
       ? "chat-header-buttons left-2 flex-row-reverse"
@@ -490,16 +493,19 @@ setInput("");
 
   if (closed) return null;
 
+  // ---- Widget Render ----
   return (
     <>
       <style>{`
-        .chat-bg-grad { background: linear-gradient(120deg,#f3f6fa 60%,#eafbf6 100%); }
+        .chat-bg-grad {
+          background: linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%);
+        }
         button, .cursor-pointer, [role="button"] { cursor: pointer !important; }
         .chat-action-btn {
           transition: background .2s, color .2s, box-shadow .2s;
         }
         .chat-action-btn:hover {
-          box-shadow: 0 0 8px #00c6a2;
+          box-shadow: 0 0 8px #10b98199;
           background: #e0f7fa;
         }
         .chat-header-buttons {
@@ -517,15 +523,16 @@ setInput("");
       {minimized ? (
         <button
           onClick={handleOpenChat}
-          className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-emerald-400 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
+          className="fixed bottom-[150px] right-6 bg-gradient-to-br from-emerald-600 to-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-xl z-[1000] animate-bounce chat-action-btn"
           title="فتح المحادثة"
+          style={{ fontFamily }}
         >
           <FaComments size={32} />
         </button>
       ) : (
-        <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir }}>
-          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-2xl shadow-2xl border border-emerald-900 relative overflow-hidden" style={{ maxHeight: "540px" }}>
-            <div className="px-4 py-3 border-b border-emerald-800 text-emerald-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white">
+        <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir, fontFamily }}>
+          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-600 relative overflow-hidden" style={{ maxHeight: "540px", boxShadow: "0 8px 32px 0 #10b98122" }}>
+            <div className="px-4 py-3 border-b border-emerald-600 text-blue-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white" style={{ fontSize: "1.12rem" }}>
               <span className="text-lg">
                 {lang === "ar"
                   ? "الدردشة الذكية"
@@ -536,7 +543,7 @@ setInput("");
               <div className={headerButtonsClass}>
                 <button
                   onClick={() => setMinimized(true)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-yellow-600 chat-action-btn"
+                  className="bg-blue-400 hover:bg-blue-500 text-gray-900 rounded-full w-7 h-7 flex items-center justify-center shadow border border-blue-600 chat-action-btn"
                   title={lang === "ar" ? "تصغير المحادثة" : lang === "en" ? "Minimize" : "Minimiser"}
                   style={{ fontWeight: 700 }}
                 >
@@ -567,13 +574,14 @@ setInput("");
                   />
                 </div>
               )}
-              {!showLangModal && messages.map(renderMsgBubble)}
+              {!showLangModal && (Array.isArray(messages) ? messages.map(renderMsgBubble) : null)}
               <div ref={chatEndRef} />
             </div>
             {!showLangModal && (
               <form
-                className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-white"
+                className="border-t border-emerald-600 px-3 py-3 flex items-center gap-2 bg-white"
                 onSubmit={handleSend}
+                style={{ fontFamily }}
               >
                 <div className="relative">
                   <button
@@ -650,19 +658,19 @@ setInput("");
                     recording ||
                     (waitingForAgent && !agentAccepted)
                   }
-                  style={{ fontSize: "1rem" }}
+                  style={{ fontSize: "1rem", fontFamily }}
                 />
                 <button
                   type="submit"
-                  className="bg-gradient-to-br from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 text-white rounded-full w-10 h-10 flex items-center justify-center shadow chat-action-btn"
+                  className="bg-gradient-to-br from-emerald-600 to-blue-500 hover:from-emerald-700 hover:to-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow chat-action-btn"
                   title={lang === "ar" ? "إرسال" : lang === "en" ? "Send" : "Envoyer"}
                   disabled={uploading || (waitingForAgent && !agentAccepted)}
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", fontFamily }}
                 >
                   <FaPaperPlane />
                 </button>
                 {(imagePreview || audioBlob) && (
-                  <span className="ml-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center">
+                  <span className="ml-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center" style={{ fontFamily }}>
                     {imagePreview && <>صورة جاهزة للإرسال</>}
                     {audioBlob && <>صوت جاهز للإرسال</>}
                     <button
@@ -681,7 +689,7 @@ setInput("");
             )}
             {waitingForAgent && !agentAccepted && !showLangModal && (
               <div className="flex justify-center p-3">
-                <div className="bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-orange-300 shadow">
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-blue-200 shadow" style={{ fontFamily }}>
                   {lang === "ar"
                     ? "يرجى الانتظار سيتم تحويل الدردشة لموظف خدمة العملاء للرد عليك في أقرب وقت..."
                     : lang === "en"
@@ -696,7 +704,8 @@ setInput("");
                   <button
                     key={i}
                     onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
-                    className="bg-gradient-to-br from-emerald-200 to-emerald-100 hover:from-emerald-300 hover:to-emerald-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+                    className="bg-gradient-to-br from-emerald-200 to-blue-100 hover:from-emerald-300 hover:to-blue-200 text-blue-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+                    style={{ fontFamily }}
                   >
                     {f.q[lang] || f.q.en}
                   </button>
@@ -708,8 +717,9 @@ setInput("");
                 <button
                   type="button"
                   onClick={requestAgent}
-                  className="bg-gradient-to-br from-yellow-400 to-yellow-200 hover:from-yellow-500 hover:to-yellow-300 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
+                  className="bg-gradient-to-br from-yellow-400 to-blue-100 hover:from-yellow-500 hover:to-blue-200 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
                   title={lang === "ar" ? "اتواصل مع الموظف" : lang === "en" ? "Contact Agent" : "Contacter un agent"}
+                  style={{ fontFamily }}
                 >
                   {lang === "ar"
                     ? "اتواصل مع موظف خدمة العملاء"
