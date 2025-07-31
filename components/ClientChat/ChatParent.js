@@ -3,19 +3,20 @@ import ChatWidgetFull from "./ChatWidgetFull";
 import LanguageSelectModal from "./LanguageSelectModal";
 
 export default function ChatParent() {
+  // إدارة حالة اللغة والدولة ومدى ظهور المودال
   const [showLangModal, setShowLangModal] = useState(true);
   const [lang, setLang] = useState("");
   const [country, setCountry] = useState("");
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // دائماً Array
 
-  // استقبال اختيار اللغة والدولة
+  // دالة استقبال اللغة والدولة من المودال
   const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     setLang(selectedLang);
     setCountry(selectedCountry);
     setShowLangModal(false);
 
-    // طلب رسالة ترحيب من API
+    // بناء prompt للترحيب
     const welcomePrompt =
       selectedLang === "ar"
         ? `اكتب رسالة ترحيب ودية واحترافية للعميل الجديد في منصة تأهيل.`
@@ -23,11 +24,17 @@ export default function ChatParent() {
         ? `Write a professional and friendly welcome message for a new user in Taheel platform.`
         : `Welcome to Taheel platform!`;
 
+    // طلب الترحيب من API
     try {
       const res = await fetch("/api/openai-gpt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: welcomePrompt, lang: selectedLang, country: selectedCountry, isWelcome: true }),
+        body: JSON.stringify({
+          prompt: welcomePrompt,
+          lang: selectedLang,
+          country: selectedCountry,
+          isWelcome: true,
+        }),
       });
       const data = await res.json();
       setMessages([
@@ -36,7 +43,7 @@ export default function ChatParent() {
           type: "bot",
           senderName: "Bot",
           createdAt: Date.now(),
-          text: data.text || "مرحبًا بك!",
+          text: data?.text || "مرحبًا بك!",
         },
       ]);
     } catch (err) {
@@ -52,10 +59,10 @@ export default function ChatParent() {
     }
   };
 
-  // إرسال رسالة من العميل
+  // دالة إرسال الرسائل من العميل
   const handleSendMsg = async (msg) => {
     if (!msg || !lang) return;
-    // أضف رسالة العميل أولاً
+    // أضف رسالة العميل
     setMessages((prev) => [
       ...prev,
       {
@@ -66,17 +73,13 @@ export default function ChatParent() {
         text: msg,
       },
     ]);
-    setInput(""); // إعادة تعيين الإدخال بعد إرسال الرسالة
+    setInput(""); // تفريغ المدخل
 
     try {
       const res = await fetch("/api/openai-gpt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: msg,
-          lang,
-          country,
-        }),
+        body: JSON.stringify({ prompt: msg, lang, country }),
       });
       const data = await res.json();
       setMessages((prev) => [
@@ -86,7 +89,7 @@ export default function ChatParent() {
           type: "bot",
           senderName: "Bot",
           createdAt: Date.now(),
-          text: data.text || "...",
+          text: data?.text || "...",
         },
       ]);
     } catch (err) {
@@ -103,7 +106,7 @@ export default function ChatParent() {
     }
   };
 
-  // إرسال الرسالة من الفورم
+  // دالة إرسال الرسالة من الفورم
   const handleSend = (e) => {
     e.preventDefault();
     if (input.trim()) {
@@ -122,7 +125,7 @@ export default function ChatParent() {
         />
       ) : (
         <ChatWidgetFull
-          messages={messages}
+          messages={messages || []} // حماية إضافية حتى لو حدث خطأ
           lang={lang}
           country={country}
           input={input}
