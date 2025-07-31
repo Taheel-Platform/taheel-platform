@@ -11,7 +11,6 @@ export default function LanguageSelectModal({
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
-  // اللغة بناء على الدولة المختارة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar"
@@ -25,7 +24,6 @@ export default function LanguageSelectModal({
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
 
-  // عنوان الحقل
   const countryLabel =
     countryLang === "ar" ? "اختر دولتك" :
     countryLang === "fr" ? "Choisissez votre pays" : "Choose your Country";
@@ -33,16 +31,15 @@ export default function LanguageSelectModal({
   const logoAlt = countryLang === "ar" ? "تأهيل" :
     countryLang === "fr" ? "Taheel (FR)" : "Taheel";
 
-  // ألوان متناسقة (نفس لون المودال)
-  const modalBg = "linear-gradient(120deg,#18233a 70%,#22304a 100%)";
-  const menuBg = modalBg; // نفس لون المودال للقائمة
+  // ألوان عصرية وغامقة متناسقة
+  const modalBg = "linear-gradient(120deg, #212a3a 70%, #18233a 100%)";
+  const menuBg = "linear-gradient(120deg, #18233a 60%, #212a3a 100%)";
   const optionBg = "#22304a";
   const accent = "#10b981";
   const white = "#fff";
   const grayText = "#b6c8e1";
   const optionHover = "#293556";
 
-  // زر الاستمرار
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -51,22 +48,22 @@ export default function LanguageSelectModal({
 
   return (
     <div
-      className="absolute inset-0 z-[1100] flex items-center justify-center"
+      className="absolute inset-0 z-[1200] flex items-center justify-center"
       lang={countryLang}
       dir={dir}
       style={{
         fontFamily,
-        background: "rgba(24,35,58,0.92)",
+        background: modalBg,
         transition: "background 0.3s"
       }}
     >
-      {/* ستايل مخصص للقائمة الغامقة بنفس لون المودال */}
+      {/* ستايل مخصص للقائمة المنسدلة داخل نفس الكومبوننت */}
       <style>
       {`
         .flags-select__menu {
           background: ${menuBg} !important;
-          border-radius: 14px !important;
-          box-shadow: 0 8px 32px 0 #22304a55 !important;
+          border-radius: 16px !important;
+          box-shadow: 0 8px 32px 0 #18233a99 !important;
           z-index: 9999 !important;
           direction: ${dir} !important;
         }
@@ -79,7 +76,7 @@ export default function LanguageSelectModal({
           font-family: ${fontFamily} !important;
           direction: ${dir} !important;
           text-align: ${dir === "rtl" ? "right" : "left"} !important;
-          border-radius: 8px !important;
+          border-radius: 10px !important;
           transition: background .2s;
         }
         .flags-select__option--is-selected {
@@ -96,8 +93,8 @@ export default function LanguageSelectModal({
         className="rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
         style={{
           boxShadow: "0 8px 32px 0 #22304a22",
-          borderBottom: "4px solid #eafbf6",
-          background: "linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%)",
+          borderBottom: "4px solid #10b981",
+          background: modalBg,
           minWidth: "320px",
           maxWidth: "430px"
         }}
@@ -113,8 +110,8 @@ export default function LanguageSelectModal({
           }}
         />
         <h2
-          className="font-extrabold text-[1.35rem] text-emerald-800 mb-2"
-          style={{ fontFamily }}
+          className="font-extrabold text-[1.35rem] text-emerald-400 mb-2"
+          style={{ fontFamily, textShadow: "0 2px 8px #22304a99" }}
         >
           {countryLang === "ar"
             ? "اختيار الدولة"
@@ -123,15 +120,20 @@ export default function LanguageSelectModal({
             : "Choose Country"}
         </h2>
         <p
-          className="mb-4 text-center text-gray-700 font-medium leading-relaxed"
-          style={{ fontFamily }}
+          className="mb-4 text-center"
+          style={{
+            color: grayText,
+            fontFamily,
+            fontWeight: 500,
+            lineHeight: "1.7"
+          }}
         >
           {welcomeMessages[countryLang] || welcomeMessages["ar"]}
         </p>
         {/* اختيار الدولة */}
         <div className="w-full mb-4">
           <label
-            className="block mb-1 text-emerald-700 font-semibold text-sm"
+            className="block mb-1 text-emerald-400 font-semibold text-sm"
             style={{ fontFamily }}
           >
             {countryLabel}
@@ -151,7 +153,7 @@ export default function LanguageSelectModal({
           />
         </div>
         <button
-          className={`bg-gradient-to-br from-blue-700 to-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-900 hover:to-emerald-700 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`bg-gradient-to-br from-emerald-600 to-blue-700 text-white px-6 py-2 rounded-full font-bold shadow hover:from-emerald-700 hover:to-blue-900 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
           style={{
             letterSpacing: "0.5px",
             fontFamily,
