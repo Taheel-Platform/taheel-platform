@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
 
 export default function LanguageSelectModal({
@@ -7,33 +7,40 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
+  // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
-  const countryLang = countriesLang[selectedCountry] || "ar";
   const [isLoading, setIsLoading] = useState(false);
 
-  const countryLabel =
-    countryLang === "ar" ? "اختر دولتك" :
-    countryLang === "fr" ? "Choisissez votre pays" :
-    "Choose your Country";
+  // اللغة بناء على اختيار الدولة
+  const countryLang = countriesLang[selectedCountry] || "ar";
+  const dir = countryLang === "ar" ? "rtl" : "ltr";
+  const fontFamily = countryLang === "ar"
+    ? "'Tajawal', 'Segoe UI', sans-serif"
+    : "'Segoe UI', 'Tajawal', sans-serif";
 
-  // Navy colors
-  const navyBg = "linear-gradient(120deg,#123163 70%,#194b8a 100%)";
-  const navySolid = "#123163";
-  const navyHover = "#194b8a";
-  const whiteColor = "#fff";
-
-  // رسالة الترحيب حسب اللغة
+  // رسائل وترجمة
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Please select your country to continue. You will receive an instant welcome message in your language.`,
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
-  const logoAlt = countryLang === "ar" ? "تأهيل" : countryLang === "fr" ? "Taheel (FR)" : "Taheel";
-  const dir = countryLang === "ar" ? "rtl" : "ltr";
-  const fontFamily = countryLang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
+  const countryLabel =
+    countryLang === "ar" ? "اختر دولتك" :
+    countryLang === "fr" ? "Choisissez votre pays" : "Choose your Country";
 
-  // عند الضغط على استمرار يرسل كل البيانات المطلوبة للـ onSelect
+  const logoAlt = countryLang === "ar" ? "تأهيل" :
+    countryLang === "fr" ? "Taheel (FR)" : "Taheel";
+
+  // ألوان عصرية وهادئة
+  const darkNavy = "#18233a";
+  const navy2 = "#22304a";
+  const navy3 = "#293556";
+  const accent = "#1565c0";
+  const white = "#fff";
+  const grayText = "#b6c8e1";
+
+  // إرسال بيانات الاختيار
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -42,76 +49,97 @@ export default function LanguageSelectModal({
 
   return (
     <div
-      className="absolute inset-0 z-[1200] flex items-center justify-center"
+      className="fixed inset-0 z-[1200] flex items-center justify-center"
       lang={countryLang}
       dir={dir}
       style={{
-        background: "transparent",
-        pointerEvents: "auto",
+        background: "rgba(24,35,58,0.87)",
         fontFamily,
+        transition: "background 0.3s"
       }}
     >
       <style>
-      {`
-      .flags-select__option,
-      .flags-select__selected {
-        color: ${whiteColor} !important;
-        background: ${navySolid} !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-        font-family: ${fontFamily} !important;
-        direction: ${dir} !important;
-        text-align: ${dir === "rtl" ? "right" : "left"} !important;
-        border-radius: 8px !important;
-        transition: background .2s;
-      }
-      .flags-select__menu {
-        background: ${navyBg} !important;
-        border-radius: 12px !important;
-        box-shadow: 0 6px 32px 0 #12316344;
-      }
-      .flags-select__option--is-selected {
-        background-color: #1565c0 !important;
-        color: #fff !important;
-      }
-      .flags-select__option:hover {
-        background-color: ${navyHover} !important;
-        color: #b8f7ed !important;
-      }
-      `}
+        {`
+        .flags-select__menu {
+          background: linear-gradient(120deg,${navy3},${navy2}) !important;
+          border-radius: 14px !important;
+          box-shadow: 0 6px 32px 0 #0008 !important;
+          z-index: 2001 !important;
+          position: absolute !important;
+        }
+        .flags-select__option,
+        .flags-select__selected {
+          color: ${white} !important;
+          background: ${navy2} !important;
+          font-weight: 600 !important;
+          font-size: 1rem !important;
+          font-family: ${fontFamily} !important;
+          direction: ${dir} !important;
+          text-align: ${dir === "rtl" ? "right" : "left"} !important;
+          border-radius: 8px !important;
+          transition: background .2s;
+        }
+        .flags-select__option--is-selected {
+          background-color: ${accent} !important;
+          color: ${white} !important;
+        }
+        .flags-select__option:hover {
+          background-color: ${navy3} !important;
+          color: #b8f7ed !important;
+        }
+        `}
       </style>
       <div
-        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-blue-700 relative animate-fadeIn font-sans"
+        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-blue-700 relative font-sans"
         style={{
-          boxShadow: "0 8px 32px 0 #194b8a33",
-          borderBottom: "4px solid #eafbf6",
-          background: "linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%)",
-          maxWidth: "430px",
+          boxShadow: "0 8px 32px 0 #29355633",
+          borderBottom: "4px solid #22304a",
+          background: "linear-gradient(120deg,#202a3c 70%,#293556 100%)",
           width: "100%",
-          minWidth: "320px"
+          minWidth: "320px",
+          maxWidth: "430px"
         }}
       >
         <img src="/taheel-bot.png"
-             alt={logoAlt}
-             className="w-20 mb-3 drop-shadow-lg animate-bounce"
-             style={{ filter: "drop-shadow(0 4px 14px #0b2545a0)" }}
+          alt={logoAlt}
+          className="w-20 mb-3 drop-shadow-lg animate-bounce"
+          style={{ filter: "drop-shadow(0 4px 14px #0b2545a0)" }}
         />
-        <h2 className="font-extrabold text-[1.35rem] text-blue-800 mb-2 tracking-wide" style={{ fontFamily }}>
+        <h2
+          className="font-extrabold text-[1.35rem] mb-2 tracking-wide"
+          style={{
+            color: white,
+            fontFamily,
+            textShadow: "0 2px 8px #29355699"
+          }}
+        >
           {countryLang === "ar"
             ? "اختيار الدولة"
             : countryLang === "fr"
             ? "Choisir le pays"
             : "Choose Country"}
         </h2>
-        <p className="mb-4 text-center text-gray-700 font-medium leading-relaxed" style={{ fontFamily }}>
+        <p
+          className="mb-4 text-center font-medium leading-relaxed"
+          style={{
+            color: grayText,
+            fontFamily,
+            lineHeight: "1.7"
+          }}
+        >
           {welcomeMessages[countryLang] || welcomeMessages["ar"]}
         </p>
-        {/* اختيار الدولة */}
         <div className="w-full mb-4">
-          <label className="block mb-1 text-blue-800 font-semibold text-sm" style={{ fontFamily }}>
+          <label
+            className="block mb-1 font-semibold text-sm"
+            style={{ color: white, fontFamily }}
+          >
             {countryLabel}
           </label>
-          <div className="rounded-xl overflow-hidden shadow" style={{ background: navySolid }}>
+          <div
+            className="rounded-xl overflow-hidden shadow"
+            style={{ background: navy2, borderRadius: "12px" }}
+          >
             <FlagsSelect
               countries={Object.keys(countries)}
               customLabels={countries}
@@ -150,7 +178,7 @@ export default function LanguageSelectModal({
                 : "Continue")}
         </button>
         <div className="w-full pt-2 flex items-center justify-center">
-          <span className="text-xs text-gray-400 font-semibold" style={{ fontFamily }}>
+          <span className="text-xs font-semibold" style={{ color: grayText, fontFamily }}>
             {countryLang === "ar"
               ? "الاختيار يحدد لغة الرسائل والترحيب تلقائيًا"
               : countryLang === "fr"
