@@ -7,24 +7,22 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
-  // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
-  // اللغة بناء على اختيار الدولة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar"
     ? "'Tajawal', 'Segoe UI', sans-serif"
     : "'Segoe UI', 'Tajawal', sans-serif";
 
-  // رسائل وترجمة
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Please select your country to continue. You will receive an instant welcome message in your language.`,
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
+
   const countryLabel =
     countryLang === "ar" ? "اختر دولتك" :
     countryLang === "fr" ? "Choisissez votre pays" : "Choose your Country";
@@ -33,14 +31,12 @@ export default function LanguageSelectModal({
     countryLang === "fr" ? "Taheel (FR)" : "Taheel";
 
   // ألوان عصرية وهادئة
-  const darkNavy = "#18233a";
   const navy2 = "#22304a";
   const navy3 = "#293556";
   const accent = "#1565c0";
   const white = "#fff";
   const grayText = "#b6c8e1";
 
-  // إرسال بيانات الاختيار
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -49,7 +45,7 @@ export default function LanguageSelectModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1200] flex items-center justify-center"
+      className="absolute inset-0 z-[100] flex items-center justify-center"
       lang={countryLang}
       dir={dir}
       style={{
@@ -64,7 +60,7 @@ export default function LanguageSelectModal({
           background: linear-gradient(120deg,${navy3},${navy2}) !important;
           border-radius: 14px !important;
           box-shadow: 0 6px 32px 0 #0008 !important;
-          z-index: 2001 !important;
+          z-index: 120 !important;
           position: absolute !important;
         }
         .flags-select__option,
