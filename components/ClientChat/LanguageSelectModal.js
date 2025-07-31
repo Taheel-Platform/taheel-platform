@@ -34,8 +34,8 @@ const LANGUAGES = [
 
 export default function LanguageSelectModal({
   userName = "زائر",
-  countries = {},       // الدول القادمة من البيرنت
-  countriesLang = {},   // لو عندك عرض إضافي للغات البلدان
+  countries = {},
+  countriesLang = {},
   onSelect
 }) {
   const [selectedLang, setSelectedLang] = useState("ar");
@@ -51,11 +51,13 @@ export default function LanguageSelectModal({
   const fallbackWelcome = `Welcome ${userName} 👋 to Taheel platform! Select your language and country to continue.`;
 
   // حماية قائمة اللغات
-  const filteredLanguages = (LANGUAGES || []).filter(
-    lang =>
-      lang.name.toLowerCase().includes(search.toLowerCase()) ||
-      lang.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredLanguages = Array.isArray(LANGUAGES)
+    ? LANGUAGES.filter(
+        lang =>
+          lang.name.toLowerCase().includes(search.toLowerCase()) ||
+          lang.code.toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
 
   // ترجمة العناوين حسب اللغة المختارة
   const titleLabel =
@@ -74,7 +76,9 @@ export default function LanguageSelectModal({
     "Continue";
 
   // حماية countries من undefined/null
-  const countryEntries = Object.entries(countries || {});
+  const countryEntries = countries && typeof countries === "object"
+    ? Object.entries(countries)
+    : [];
 
   return (
     <div className="taheel-modal-bg absolute inset-0 z-[1100] flex items-center justify-center font-sans">
@@ -109,7 +113,7 @@ export default function LanguageSelectModal({
         />
         {/* قائمة اللغات */}
         <div className="taheel-lang-list">
-          {(filteredLanguages || []).map(lang =>
+          {filteredLanguages.map(lang =>
             <div
               key={lang.code}
               className={`taheel-lang-item${selectedLang === lang.code ? " selected" : ""}`}
@@ -127,7 +131,7 @@ export default function LanguageSelectModal({
           onChange={e => setSelectedCountry(e.target.value)}
         >
           <option value="">{countryLabel}</option>
-          {(countryEntries || []).map(([code, name]) =>
+          {countryEntries.map(([code, name]) =>
             <option key={code} value={code}>{name}</option>
           )}
         </select>

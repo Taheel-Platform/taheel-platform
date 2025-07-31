@@ -7,21 +7,25 @@ import { getDatabase, ref as dbRef, push, remove, update, set, onValue } from "f
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 
+// إعداد الدول واللغات مع حماية ضد undefined
 const countriesObject = {};
 const countriesLang = {};
-countriesData.forEach((item) => {
-  countriesObject[item.value.toUpperCase()] = item.label;
-  countriesLang[item.value.toUpperCase()] = item.lang || "ar";
+(countriesData || []).forEach((item) => {
+  countriesObject[item.value?.toUpperCase() || ""] = item.label || "";
+  countriesLang[item.value?.toUpperCase() || ""] = item.lang || "ar";
 });
 
+// دالة لتحويل blob لـ base64 مع حماية
 function blobToBase64(blob) {
   return new Promise((resolve) => {
+    if (!blob) return resolve("");
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result);
     reader.readAsDataURL(blob);
   });
 }
 
+// الدالة الأساسية
 export default function ChatParent({ userId, userName, initialRoomId, onClose }) {
   // STATE MANAGEMENT
   const db = getDatabase();
@@ -51,6 +55,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
 
   const safeUserId = userId || "guest";
 
+  // جلب بيانات المستخدم مع حماية
   useEffect(() => {
     if (!safeUserId) return;
     const fetchUserData = async () => {
@@ -58,9 +63,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
         const firestore = getFirestore();
         const userDoc = doc(firestore, "users", safeUserId);
         const snap = await getDoc(userDoc);
-        if (snap.exists()) {
-          setUserData(snap.data());
-        }
+        setUserData(snap.exists() ? snap.data() : null);
       } catch (e) {
         setUserData(null);
       }
@@ -68,6 +71,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     fetchUserData();
   }, [safeUserId]);
 
+  // حماية اسم المستخدم
   const safeUserName =
     (userData &&
       (lang === "ar"
@@ -76,7 +80,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     userName ||
     "زائر";
 
-  // Firebase Room management
+  // إدارة الغرفة مع حماية
   useEffect(() => {
     if (!roomId) {
       let id = initialRoomId;
@@ -93,6 +97,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     }
   }, [roomId, initialRoomId]);
 
+  // حفظ بيانات الغرفة مع حماية
   useEffect(() => {
     if (!roomId || !safeUserId || !safeUserName || !selectedCountry || !lang) return;
     set(dbRef(db, `chats/${roomId}`), {
@@ -105,6 +110,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     });
   }, [db, roomId, safeUserId, safeUserName, selectedCountry, lang]);
 
+  // جلب الرسائل مع حماية
   useEffect(() => {
     if (!roomId) return;
     const msgsRef = dbRef(db, `chats/${roomId}/messages`);
@@ -131,6 +137,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     });
   }, [db, roomId, messages.length]);
 
+  // جلب حالة الموظف مع حماية
   useEffect(() => {
     if (!roomId) return;
     const chatRef = dbRef(db, `chats/${roomId}`);
@@ -142,7 +149,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     return () => unsub();
   }, [db, roomId]);
 
-  // LANG MODAL SELECT
+  // اختيار اللغة والدولة
   const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     setLang(selectedLang);
     setSelectedCountry(selectedCountry);
@@ -183,7 +190,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
           : selectedLang === "fr" ? "Assistant"
           : "Assistant",
         createdAt: Date.now(),
-        text: data.text
+        text: data.text || "",
       });
 
     } catch (err) {
@@ -210,7 +217,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     setClosed(false);
   };
 
-  // MESSAGE SENDING LOGIC
+  // إرسال الرسائل مع حماية
   const sendMessage = async (type = "text", content = {}) => {
     if (type === "image" || type === "audio") setUploading(true);
     const msg = {
@@ -224,6 +231,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     if (type === "image" || type === "audio") setUploading(false);
   };
 
+  // منطق إرسال الرسائل مع حماية
   const handleSend = async (e) => {
     e.preventDefault();
     if (closed || (uploading && (imagePreview || audioBlob)) || (waitingForAgent && !agentAccepted)) return;
@@ -267,11 +275,12 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
         }),
       });
       const data = await res.json();
-      await sendMessage("bot", { text: data.text });
+      await sendMessage("bot", { text: data.text || "" });
     }
     setInput("");
   };
 
+  // منطق الأسئلة السريعة مع حماية
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
@@ -293,7 +302,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
           body: JSON.stringify({ prompt, lang }),
         });
         const data = await res.json();
-        await sendMessage("bot", { text: data.text });
+        await sendMessage("bot", { text: data.text || "" });
         setNoBotHelpCount(0);
       } catch (err) {
         setNoBotHelpCount((c) => c + 1);
@@ -309,6 +318,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     }
   };
 
+  // طلب موظف خدمة العملاء
   const requestAgent = async () => {
     if (!roomId || !safeUserId || !safeUserName) return;
     await update(dbRef(db, `chats/${roomId}`), {
@@ -322,6 +332,19 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     setNoBotHelpCount(0);
   };
 
+  // دالة تنظيف الرسائل عند الإغلاق (تأكد أنها معرفة)
+  const clearChatMessages = async () => {
+    try {
+      // هنا يمكنك إزالة الرسائل من الغرفة إذا أردت بحذف كل عناصر messages من قاعدة البيانات
+      const msgsRef = dbRef(db, `chats/${roomId}/messages`);
+      // إذا أردت فعلاً حذف جميع الرسائل، أضف منطق الحذف هنا
+      // أو تجاهلها لو لا تريد حذف الرسائل عند الإغلاق
+    } catch (e) {
+      // لا مشكلة إذا فشلت عملية التنظيف
+    }
+  };
+
+  // إغلاق الشات مع إعادة التهيئة
   const closeChat = async () => {
     setClosed(true);        
     setShowLangModal(false); 
@@ -349,8 +372,9 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     setMinimized(false);
   };
 
+  // رفع الملفات مع حماية
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => setImagePreview(reader.result);
@@ -358,6 +382,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
     e.target.value = "";
   };
 
+  // التسجيل الصوتي مع حماية
   const handleRecord = async () => {
     if (!recording) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -372,26 +397,25 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
       recorder.start();
       setMediaRecorder(recorder);
       setRecording(true);
-    } else {
+    } else if (mediaRecorder) {
       mediaRecorder.stop();
       setRecording(false);
     }
   };
 
+  // اختيار الإيموجي مع حماية
   const handleSelectEmoji = (emoji) => {
-    setInput((prev) => prev + emoji.native);
+    setInput((prev) => prev + (emoji?.native || ""));
     setShowEmoji(false);
   };
 
-  // الدالة التي كانت تنظم اتجاه الدردشة يمكنك تمريرها كم prop أو حسابها هنا وتمريرها
+  // اتجاه الدردشة
   const dir = lang === "ar" ? "rtl" : "ltr";
   const headerButtonsStyle = lang === "ar"
     ? { position: "absolute", top: 12, left: 12, right: "auto", display: "flex", flexDirection: "row-reverse", gap: 8, zIndex: 11 }
     : { position: "absolute", top: 12, right: 12, left: "auto", display: "flex", flexDirection: "row", gap: 8, zIndex: 11 };
 
-  // countriesObject, countriesLang فقط للمودال
-
-  // واجهة الاستخدام:
+  // واجهة الاستخدام مع حماية الرسائل وبيانات الأسئلة الشائعة
   if (closed) return null;
   return (
     <>
@@ -404,7 +428,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
         />
       ) : (
         <ChatWidgetFull
-          messages={messages}
+          messages={messages || []}
           lang={lang}
           country={selectedCountry}
           input={input}
@@ -431,7 +455,7 @@ export default function ChatParent({ userId, userName, initialRoomId, onClose })
           closeChat={closeChat}
           dir={dir}
           headerButtonsStyle={headerButtonsStyle}
-          faqData={faqData}
+          faqData={faqData || []}
           chatEndRef={chatEndRef}
         />
       )}

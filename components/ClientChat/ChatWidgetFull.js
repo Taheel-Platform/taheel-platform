@@ -41,15 +41,20 @@ export default function ChatWidgetFull({
   faqData,
   chatEndRef,
 }) {
-  // renderMsgBubble كما هو بدون تغيير إلا لو تريد تعقيم اسم المرسل
+  // حماية الرسائل والأسئلة الشائعة
+  const safeMessages = Array.isArray(messages) ? messages : [];
+  const safeFaqData = Array.isArray(faqData) ? faqData : [];
+
   function renderMsgBubble(msg) {
-    let isSelf = msg.senderId === "guest"; // غيّر حسب ما تريد
+    let isSelf = msg.senderId === "guest";
     let isBot = msg.type === "bot";
     let isSystem = msg.type === "system";
     let base =
       "rounded-2xl px-4 py-3 mb-2 shadow transition-all max-w-[78%] whitespace-pre-line break-words";
     let align = isSelf
-      ? lang === "ar" ? "mr-auto self-end" : "ml-auto self-end"
+      ? lang === "ar"
+        ? "mr-auto self-end"
+        : "ml-auto self-end"
       : isBot
       ? "self-start"
       : isSystem
@@ -175,24 +180,24 @@ export default function ChatWidgetFull({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-  {(messages || []).map(renderMsgBubble)}
-  <div ref={chatEndRef} />
-</div>
+              {safeMessages.map(renderMsgBubble)}
+              <div ref={chatEndRef} />
+            </div>
 
-{!waitingForAgent && !agentAccepted && (messages || []).length === 1 && (
-  <div className="flex flex-wrap gap-2 mt-4 justify-center">
-    {(faqData || []).map((f, i) => (
-      <button
-        key={i}
-        onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
-        className="bg-gradient-to-br from-emerald-200 to-cyan-100 hover:from-emerald-300 hover:to-cyan-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
-        style={lang === "ar" ? { direction: "rtl", textAlign: "right" } : { direction: "ltr", textAlign: "left" }}
-      >
-        {f.q[lang] || f.q.en}
-      </button>
-    ))}
-  </div>
-)}
+            {!waitingForAgent && !agentAccepted && safeMessages.length === 1 && (
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                {safeFaqData.map((f, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleQuickFAQ(f.q?.[lang] || f.q?.en || "")}
+                    className="bg-gradient-to-br from-emerald-200 to-cyan-100 hover:from-emerald-300 hover:to-cyan-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+                    style={lang === "ar" ? { direction: "rtl", textAlign: "right" } : { direction: "ltr", textAlign: "left" }}
+                  >
+                    {f.q?.[lang] || f.q?.en || ""}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <form
               className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-[#222a36]"
@@ -314,16 +319,16 @@ export default function ChatWidgetFull({
                 </div>
               </div>
             )}
-            {!waitingForAgent && !agentAccepted && messages.length === 1 && (
+            {!waitingForAgent && !agentAccepted && safeMessages.length === 1 && (
               <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                {faqData.map((f, i) => (
+                {safeFaqData.map((f, i) => (
                   <button
                     key={i}
-                    onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
+                    onClick={() => handleQuickFAQ(f.q?.[lang] || f.q?.en || "")}
                     className="bg-gradient-to-br from-emerald-200 to-cyan-100 hover:from-emerald-300 hover:to-cyan-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
                     style={lang === "ar" ? { direction: "rtl", textAlign: "right" } : { direction: "ltr", textAlign: "left" }}
                   >
-                    {f.q[lang] || f.q.en}
+                    {f.q?.[lang] || f.q?.en || ""}
                   </button>
                 ))}
               </div>
