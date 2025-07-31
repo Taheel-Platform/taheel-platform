@@ -23,14 +23,17 @@ import emojiData from "@emoji-mart/data";
 import faqData from "./faqData";
 import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
-import countriesData from "../../lib/countries-ar-en.js";
+import countriesLang from "../../lib/countriesLang";
+
 
 const countriesObject = {};
-const countriesLang = {};
-countriesData.forEach((item) => {
-  countriesObject[item.value.toUpperCase()] = item.label;
-  countriesLang[item.value.toUpperCase()] = item.lang || "ar";
+const countriesLangMap = {};
+
+countriesLang.forEach((item) => {
+  countriesObject[item.code] = `${item.flag} ${item.name}`;
+  countriesLangMap[item.code] = item.lang;
 });
+
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {

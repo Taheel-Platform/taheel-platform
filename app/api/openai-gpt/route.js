@@ -118,6 +118,19 @@ export async function POST(req) {
     return NextResponse.json({ text: faqAnswer });
   }
 
+  if (!data?.choices?.[0]?.message?.content) {
+  return NextResponse.json({
+    text:
+      lang === "ar"
+        ? "نعتذر، حدث خطأ أثناء توليد الإجابة. يرجى المحاولة مرة أخرى أو التواصل مع خدمة العملاء."
+        : lang === "fr"
+        ? "Désolé, une erreur s'est produite lors de la génération de la réponse. Veuillez réessayer ou contacter le service client."
+        : "Sorry, something went wrong while generating the reply. Please try again or contact support.",
+    customerService: true,
+  });
+}
+
+
   // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
     const db = getFirestore();

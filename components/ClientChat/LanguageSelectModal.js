@@ -7,11 +7,11 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
-  const firstCountry = Object.keys(countries)[0] || "EG";
+  const firstCountry = Object.keys(countriesLang)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
-  const countryLang = countriesLang[selectedCountry] || "ar";
+  const countryLang = countriesLang[selectedCountry]?.lang || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar"
     ? "'Tajawal', 'Segoe UI', sans-serif"
@@ -167,8 +167,10 @@ export default function LanguageSelectModal({
             {countryLabel}
           </label>
           <FlagsSelect
-            countries={Object.keys(countries)}
-            customLabels={countries}
+  countries={Object.keys(countriesLang)}
+  customLabels={Object.fromEntries(
+    Object.entries(countriesLang).map(([code, obj]) => [code, obj.label])
+  )}
             selected={selectedCountry}
             onSelect={code => setSelectedCountry(code)}
             showSelectedLabel={true}
