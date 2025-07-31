@@ -531,7 +531,14 @@ export default function ChatWidgetFull({
         </button>
       ) : (
         <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir, fontFamily }}>
-          <div className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-600 relative overflow-hidden" style={{ maxHeight: "540px", boxShadow: "0 8px 32px 0 #10b98122" }}>
+          <div
+  className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-600 relative"
+  style={{
+    maxHeight: "540px",
+    boxShadow: "0 8px 32px 0 #10b98122",
+    overflow: "visible" // لو تحب تضيفها هنا مباشرة
+  }}
+>
             <div className="px-4 py-3 border-b border-emerald-600 text-blue-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white" style={{ fontSize: "1.12rem" }}>
               <span className="text-lg">
                 {lang === "ar"
