@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import FlagsSelect from "react-flags-select";
+import countriesLang from "@/lib/countriesLang"; // هذا هو الملف الصحيح
 
 export default function LanguageSelectModal({
   userName = "زائر",
-  countries,
-  countriesLang = {},
   onSelect
 }) {
   const firstCountry = Object.keys(countriesLang)[0] || "EG";
@@ -13,9 +12,11 @@ export default function LanguageSelectModal({
 
   const countryLang = countriesLang[selectedCountry]?.lang || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
-  const fontFamily = countryLang === "ar"
-    ? "'Tajawal', 'Segoe UI', sans-serif"
-    : "'Segoe UI', 'Tajawal', sans-serif";
+  const fontFamily =
+    countryLang === "ar"
+      ? "'Tajawal', 'Segoe UI', sans-serif"
+      : "'Segoe UI', 'Tajawal', sans-serif";
+
 
   // رسائل الترحيب
   const welcomeMessages = {
