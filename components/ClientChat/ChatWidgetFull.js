@@ -175,9 +175,24 @@ export default function ChatWidgetFull({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-              {messages.map(renderMsgBubble)}
-              <div ref={chatEndRef} />
-            </div>
+  {(messages || []).map(renderMsgBubble)}
+  <div ref={chatEndRef} />
+</div>
+
+{!waitingForAgent && !agentAccepted && (messages || []).length === 1 && (
+  <div className="flex flex-wrap gap-2 mt-4 justify-center">
+    {(faqData || []).map((f, i) => (
+      <button
+        key={i}
+        onClick={() => handleQuickFAQ(f.q[lang] || f.q.en)}
+        className="bg-gradient-to-br from-emerald-200 to-cyan-100 hover:from-emerald-300 hover:to-cyan-200 text-emerald-900 rounded-full px-4 py-2 text-sm font-semibold shadow chat-action-btn"
+        style={lang === "ar" ? { direction: "rtl", textAlign: "right" } : { direction: "ltr", textAlign: "left" }}
+      >
+        {f.q[lang] || f.q.en}
+      </button>
+    ))}
+  </div>
+)}
 
             <form
               className="border-t border-emerald-800 px-3 py-3 flex items-center gap-2 bg-[#222a36]"
