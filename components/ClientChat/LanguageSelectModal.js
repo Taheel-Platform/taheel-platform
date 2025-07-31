@@ -49,19 +49,24 @@ export default function LanguageSelectModal({
       lang={countryLang}
       dir={dir}
       style={{
-        background: "rgba(24,35,58,0.87)",
         fontFamily,
+        background: "rgba(24,35,58,0.87)",
         transition: "background 0.3s"
       }}
     >
       <style>
-        {`
+      {`
         .flags-select__menu {
-          background: linear-gradient(120deg,${navy3},${navy2}) !important;
+          position: fixed !important;
+          left: 50% !important;
+          top: 32% !important;
+          transform: translateX(-50%) !important;
+          z-index: 9999 !important;
+          min-width: 270px !important;
+          max-width: 380px !important;
+          background: linear-gradient(120deg,#293556,#22304a) !important;
           border-radius: 14px !important;
           box-shadow: 0 6px 32px 0 #0008 !important;
-          z-index: 120 !important;
-          position: absolute !important;
         }
         .flags-select__option,
         .flags-select__selected {
@@ -83,7 +88,7 @@ export default function LanguageSelectModal({
           background-color: ${navy3} !important;
           color: #b8f7ed !important;
         }
-        `}
+      `}
       </style>
       <div
         className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-blue-700 relative font-sans"
