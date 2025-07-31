@@ -7,24 +7,25 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
-  // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
   const [isLoading, setIsLoading] = useState(false);
 
-  // اللغة بناء على اختيار الدولة
+  // اللغة بناء على الدولة المختارة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar"
     ? "'Tajawal', 'Segoe UI', sans-serif"
     : "'Segoe UI', 'Tajawal', sans-serif";
 
-  // رسائل وترجمة
+  // رسائل الترحيب
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Please select your country to continue. You will receive an instant welcome message in your language.`,
     fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
+
+  // عنوان الحقل
   const countryLabel =
     countryLang === "ar" ? "اختر دولتك" :
     countryLang === "fr" ? "Choisissez votre pays" : "Choose your Country";
@@ -32,12 +33,13 @@ export default function LanguageSelectModal({
   const logoAlt = countryLang === "ar" ? "تأهيل" :
     countryLang === "fr" ? "Taheel (FR)" : "Taheel";
 
-  // ألوان عصرية وهادئة
-  const navy2 = "#22304a";
-  const navy3 = "#293556";
-  const accent = "#1565c0";
+  // ألوان غامقة للقائمة
+  const darkBg = "linear-gradient(120deg,#1A233A 70%,#22304A 100%)";
+  const darkSolid = "#22304a";
+  const accent = "#10b981";
   const white = "#fff";
   const grayText = "#b6c8e1";
+  const optionHover = "#233A56";
 
   // زر الاستمرار
   const handleContinue = () => {
@@ -48,34 +50,28 @@ export default function LanguageSelectModal({
 
   return (
     <div
-      className="absolute inset-0 z-[100] flex items-center justify-center"
+      className="absolute inset-0 z-[1100] flex items-center justify-center"
       lang={countryLang}
       dir={dir}
       style={{
         fontFamily,
-        background: "rgba(24,35,58,0.87)",
+        background: "rgba(24,35,58,0.92)",
         transition: "background 0.3s"
       }}
     >
+      {/* ستايل مخصص للقائمة الغامقة */}
       <style>
       {`
-        /* ضمان ظهور قائمة FlagsSelect فوق الكارد ونافذة الشات */
         .flags-select__menu {
-          position: fixed !important;
-          left: 50% !important;
-          top: 36% !important;
-          transform: translateX(-50%) !important;
-          z-index: 9999 !important;
-          min-width: 270px !important;
-          max-width: 380px !important;
-          background: linear-gradient(120deg,${navy3},${navy2}) !important;
+          background: ${darkBg} !important;
           border-radius: 14px !important;
-          box-shadow: 0 6px 32px 0 #0008 !important;
+          box-shadow: 0 8px 32px 0 #22304a55 !important;
+          z-index: 9999 !important;
         }
         .flags-select__option,
         .flags-select__selected {
           color: ${white} !important;
-          background: ${navy2} !important;
+          background: ${darkSolid} !important;
           font-weight: 600 !important;
           font-size: 1rem !important;
           font-family: ${fontFamily} !important;
@@ -89,18 +85,20 @@ export default function LanguageSelectModal({
           color: ${white} !important;
         }
         .flags-select__option:hover {
-          background-color: ${navy3} !important;
+          background-color: ${optionHover} !important;
           color: #b8f7ed !important;
+        }
+        .flags-select__menu {
+          direction: ${dir} !important;
         }
       `}
       </style>
       <div
-        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-blue-700 relative font-sans"
+        className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
         style={{
-          boxShadow: "0 8px 32px 0 #29355633",
-          borderBottom: "4px solid #22304a",
-          background: "linear-gradient(120deg,#202a3c 70%,#293556 100%)",
-          width: "100%",
+          boxShadow: "0 8px 32px 0 #22304a22",
+          borderBottom: "4px solid #eafbf6",
+          background: "linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%)",
           minWidth: "320px",
           maxWidth: "430px"
         }}
@@ -116,12 +114,8 @@ export default function LanguageSelectModal({
           }}
         />
         <h2
-          className="font-extrabold text-[1.35rem] mb-2 tracking-wide"
-          style={{
-            color: white,
-            fontFamily,
-            textShadow: "0 2px 8px #29355699"
-          }}
+          className="font-extrabold text-[1.35rem] text-emerald-800 mb-2"
+          style={{ fontFamily }}
         >
           {countryLang === "ar"
             ? "اختيار الدولة"
@@ -130,43 +124,35 @@ export default function LanguageSelectModal({
             : "Choose Country"}
         </h2>
         <p
-          className="mb-4 text-center font-medium leading-relaxed"
-          style={{
-            color: grayText,
-            fontFamily,
-            lineHeight: "1.7"
-          }}
+          className="mb-4 text-center text-gray-700 font-medium leading-relaxed"
+          style={{ fontFamily }}
         >
           {welcomeMessages[countryLang] || welcomeMessages["ar"]}
         </p>
+        {/* اختيار الدولة */}
         <div className="w-full mb-4">
           <label
-            className="block mb-1 font-semibold text-sm"
-            style={{ color: white, fontFamily }}
+            className="block mb-1 text-emerald-700 font-semibold text-sm"
+            style={{ fontFamily }}
           >
             {countryLabel}
           </label>
-          <div
-            className="rounded-xl overflow-hidden shadow"
-            style={{ background: navy2, borderRadius: "12px" }}
-          >
-            <FlagsSelect
-              countries={Object.keys(countries)}
-              customLabels={countries}
-              selected={selectedCountry}
-              onSelect={code => setSelectedCountry(code)}
-              showSelectedLabel={true}
-              showOptionLabel={true}
-              alignOptions={dir === "rtl" ? "right" : "left"}
-              className="w-full"
-              selectedSize={20}
-              optionsSize={16}
-              searchable
-            />
-          </div>
+          <FlagsSelect
+            countries={Object.keys(countries)}
+            customLabels={countries}
+            selected={selectedCountry}
+            onSelect={code => setSelectedCountry(code)}
+            showSelectedLabel={true}
+            showOptionLabel={true}
+            alignOptions={dir === "rtl" ? "right" : "left"}
+            className="w-full"
+            selectedSize={18}
+            optionsSize={16}
+            searchable
+          />
         </div>
         <button
-          className={`bg-gradient-to-br from-blue-700 to-blue-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-900 hover:to-blue-700 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`bg-gradient-to-br from-blue-700 to-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-900 hover:to-emerald-700 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
           style={{
             letterSpacing: "0.5px",
             fontFamily,
