@@ -55,7 +55,7 @@ export async function POST(req) {
     });
     const data = await response.json();
     return NextResponse.json({
-      text: data.choices?.[0]?.message?.content?.trim() || "",
+      text: data?.choices?.[0]?.message?.content?.trim() || "",
     });
   }
   // ===== نهاية الترحيب =====
@@ -69,24 +69,42 @@ export async function POST(req) {
   // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
     const db = getFirestore();
-    const servicesSnapshot = await getDocs(collection(db, "services"));
+    let servicesSnapshot;
+    try {
+      servicesSnapshot = await getDocs(collection(db, "services"));
+    } catch (e) {
+      // خطأ في جلب البيانات من الفايربيز
+      return NextResponse.json({
+        text: lang === "ar"
+          ? "حدث خطأ أثناء جلب بيانات الخدمات."
+          : lang === "en"
+          ? "An error occurred while fetching services data."
+          : "Une erreur est survenue lors de la récupération des données de service.",
+        customerService: true,
+      });
+    }
+
+    // حماية ضد undefined/null
     const services = [];
-    servicesSnapshot.forEach(doc => {
-      services.push(doc.data());
-    });
+    if (servicesSnapshot && typeof servicesSnapshot.forEach === "function") {
+      servicesSnapshot.forEach(doc => {
+        const data = doc.data();
+        if (data && typeof data === "object") services.push(data);
+      });
+    }
 
     // لو لم توجد بيانات في قاعدة البيانات
-    if (services.length === 0) {
+    if (!Array.isArray(services) || services.length === 0) {
       // الرد حسب اللغة المختارة أو fallback للإنجليزي
       let noDataMsg;
       if (lang === "ar") {
-        noDataMsg = "لم يتم العثور على بياناتك في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟";
+        noDataMsg = "لم يتم العثور على بيانات الخدمات في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟";
       } else if (lang === "en") {
-        noDataMsg = "No data was found for you in the database. Would you like to contact a customer service agent?";
+        noDataMsg = "No service data was found in the database. Would you like to contact a customer service agent?";
       } else if (lang === "fr") {
-        noDataMsg = "Aucune donnée n'a été trouvée dans la base de données. Voulez-vous contacter un agent du service client?";
+        noDataMsg = "Aucune donnée de service trouvée dans la base de données. Voulez-vous contacter un agent du service client?";
       } else {
-        noDataMsg = `No data was found for you in the database. Would you like to contact a customer service agent?`;
+        noDataMsg = `No service data found in the database. Would you like to contact a customer service agent?`;
       }
 
       return NextResponse.json({
@@ -95,9 +113,14 @@ export async function POST(req) {
       });
     }
 
-    // تجهيز بيانات الخدمات
-    const dataString = services
-      .map(s => `${s.name}: ${s.price || s.cost} (${s.description || ""})`)
+    // تجهيز بيانات الخدمات بشكل آمن
+    const dataString = (Array.isArray(services) ? services : [])
+      .map(s => {
+        const name = typeof s.name === "string" ? s.name : "";
+        const price = s.price || s.cost || "";
+        const description = typeof s.description === "string" ? s.description : "";
+        return `${name}: ${price} (${description})`;
+      })
       .join('\n');
 
     // بناء prompt موجه للـ OpenAI حسب لغة العميل
@@ -134,7 +157,7 @@ export async function POST(req) {
     });
     const data = await response.json();
     return NextResponse.json({
-      text: data.choices?.[0]?.message?.content?.trim() || "",
+      text: data?.choices?.[0]?.message?.content?.trim() || "",
     });
   }
 
@@ -172,6 +195,6 @@ export async function POST(req) {
   });
   const data = await response.json();
   return NextResponse.json({
-    text: data.choices?.[0]?.message?.content?.trim() || "",
+    text: data?.choices?.[0]?.message?.content?.trim() || "",
   });
 }
