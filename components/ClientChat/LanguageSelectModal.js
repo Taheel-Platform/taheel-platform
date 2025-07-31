@@ -33,13 +33,14 @@ export default function LanguageSelectModal({
   const logoAlt = countryLang === "ar" ? "تأهيل" :
     countryLang === "fr" ? "Taheel (FR)" : "Taheel";
 
-  // ألوان غامقة للقائمة
-  const darkBg = "linear-gradient(120deg,#1A233A 70%,#22304A 100%)";
-  const darkSolid = "#22304a";
+  // ألوان متناسقة (نفس لون المودال)
+  const modalBg = "linear-gradient(120deg,#18233a 70%,#22304a 100%)";
+  const menuBg = modalBg; // نفس لون المودال للقائمة
+  const optionBg = "#22304a";
   const accent = "#10b981";
   const white = "#fff";
   const grayText = "#b6c8e1";
-  const optionHover = "#233A56";
+  const optionHover = "#293556";
 
   // زر الاستمرار
   const handleContinue = () => {
@@ -59,19 +60,20 @@ export default function LanguageSelectModal({
         transition: "background 0.3s"
       }}
     >
-      {/* ستايل مخصص للقائمة الغامقة */}
+      {/* ستايل مخصص للقائمة الغامقة بنفس لون المودال */}
       <style>
       {`
         .flags-select__menu {
-          background: ${darkBg} !important;
+          background: ${menuBg} !important;
           border-radius: 14px !important;
           box-shadow: 0 8px 32px 0 #22304a55 !important;
           z-index: 9999 !important;
+          direction: ${dir} !important;
         }
         .flags-select__option,
         .flags-select__selected {
           color: ${white} !important;
-          background: ${darkSolid} !important;
+          background: ${optionBg} !important;
           font-weight: 600 !important;
           font-size: 1rem !important;
           font-family: ${fontFamily} !important;
@@ -88,13 +90,10 @@ export default function LanguageSelectModal({
           background-color: ${optionHover} !important;
           color: #b8f7ed !important;
         }
-        .flags-select__menu {
-          direction: ${dir} !important;
-        }
       `}
       </style>
       <div
-        className="bg-white rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
+        className="rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
         style={{
           boxShadow: "0 8px 32px 0 #22304a22",
           borderBottom: "4px solid #eafbf6",
