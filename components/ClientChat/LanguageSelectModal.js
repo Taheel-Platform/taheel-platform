@@ -59,36 +59,47 @@ export default function LanguageSelectModal({
     >
       {/* أضف هذا الجزء داخل الكومبوننت */}
       <style>
-      {`
-        .flags-select__menu {
-          background: ${menuBg} !important;
-          border-radius: 16px !important;
-          box-shadow: 0 8px 32px 0 #18233a99 !important;
-          z-index: 9999 !important;
-          direction: ${dir} !important;
-        }
-        .flags-select__option,
-        .flags-select__selected {
-          color: ${white} !important;
-          background: ${optionBg} !important;
-          font-weight: 600 !important;
-          font-size: 1rem !important;
-          font-family: ${fontFamily} !important;
-          direction: ${dir} !important;
-          text-align: ${dir === "rtl" ? "right" : "left"} !important;
-          border-radius: 10px !important;
-          transition: background .2s;
-        }
-        .flags-select__option--is-selected {
-          background-color: ${accent} !important;
-          color: ${white} !important;
-        }
-        .flags-select__option:hover {
-          background-color: ${optionHover} !important;
-          color: #b8f7ed !important;
-        }
-      `}
-      </style>
+{`
+  .flags-select__menu {
+    background: linear-gradient(120deg,#18233a 70%,#22304a 100%) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 8px 32px 0 #18233a99 !important;
+    z-index: 9999 !important;
+    direction: ${dir} !important;
+  }
+  .flags-select__option,
+  .flags-select__selected {
+    color: #fff !important;
+    background: #22304a !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    font-family: ${fontFamily} !important;
+    direction: ${dir} !important;
+    text-align: ${dir === "rtl" ? "right" : "left"} !important;
+    border-radius: 10px !important;
+    transition: background .2s;
+  }
+  .flags-select__option--is-selected {
+    background-color: #10b981 !important;
+    color: #fff !important;
+  }
+  .flags-select__option:hover {
+    background-color: #293556 !important;
+    color: #b8f7ed !important;
+  }
+  .flags-select__search {
+    background: #22304a !important;
+    color: #fff !important;
+    border-radius: 8px !important;
+    font-size: 1rem !important;
+    font-family: ${fontFamily} !important;
+    margin-bottom: 6px !important;
+    border: 1px solid #293556 !important;
+    direction: ${dir} !important;
+    text-align: ${dir === "rtl" ? "right" : "left"} !important;
+  }
+`}
+</style>
       <div
         className="rounded-2xl shadow-2xl px-8 py-7 min-w-[320px] max-w-[410px] flex flex-col items-center border-t-8 border-emerald-500 font-sans"
         style={{
