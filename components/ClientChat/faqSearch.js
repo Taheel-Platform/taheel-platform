@@ -1,13 +1,20 @@
 import faqData from "./faqData";
 
 export function findFaqAnswer(question, lang = "ar") {
-  const normalizedQ = question.trim().toLowerCase();
+  // حماية السؤال من null/undefined
+  const normalizedQ = typeof question === "string" ? question.trim().toLowerCase() : "";
   for (const item of faqData) {
+    // حماية كل قيمة من null أو undefined
+    const langQ = typeof item.q?.[lang] === "string" ? item.q[lang].toLowerCase() : "";
+    const enQ = typeof item.q?.en === "string" ? item.q.en.toLowerCase() : "";
+
+    // استخدم includes فقط إذا كانت normalizedQ غير فارغة
     if (
-      (item.q[lang] && normalizedQ.includes(item.q[lang].toLowerCase())) ||
-      (item.q.en && normalizedQ.includes(item.q.en.toLowerCase()))
+      (langQ && normalizedQ && normalizedQ.includes(langQ)) ||
+      (enQ && normalizedQ && normalizedQ.includes(enQ))
     ) {
-      return item.a[lang] || item.a.en;
+      // الجواب
+      return (item.a && (item.a[lang] || item.a.en)) || null;
     }
   }
   return null;
