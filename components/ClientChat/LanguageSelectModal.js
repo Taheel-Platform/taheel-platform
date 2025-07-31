@@ -14,7 +14,6 @@ export default function LanguageSelectModal({
   // اللغة الافتراضية بناء على الدولة المختارة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const [isLoading, setIsLoading] = useState(false);
-  const modalRef = useRef();
 
   // عنوان الحقل حسب اللغة
   const countryLabel =
@@ -32,17 +31,6 @@ export default function LanguageSelectModal({
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
 
-  // اغلاق المودال بالـ ESC
-  useEffect(() => {
-    const escHandler = (e) => {
-      if (e.key === "Escape") {
-        setIsLoading(false);
-      }
-    };
-    window.addEventListener("keydown", escHandler);
-    return () => window.removeEventListener("keydown", escHandler);
-  }, []);
-
   // ارسال اختيار اللغة والدولة مع حماية عند الضغط
   const handleContinue = () => {
     if (isLoading) return;
@@ -50,44 +38,63 @@ export default function LanguageSelectModal({
     onSelect(countryLang, selectedCountry);
   };
 
+  // ----------- تعديل شكل FlagsSelect -----------
+  // ألوان داكنة للمنيو والقائمة مع نص أبيض أو فاتح
+  const selectMenuBg = "linear-gradient(120deg,#135d6b 60%,#1b8d6d 100%)";
+  const selectOptionBg = "#157264";
+  const selectOptionHoverBg = "#1b8d6d";
+  const selectOptionColor = "#ffffff";
+
   return (
     <div
-      ref={modalRef}
-      className="fixed inset-0 z-[1200] flex items-center justify-center bg-gradient-to-br from-[#e9f9f6]/85 via-[#dbeffd]/85 to-[#b8f7ed]/85 backdrop-blur-[2.5px]"
+      className="absolute inset-0 z-[1200] flex items-center justify-center"
       lang={countryLang}
       dir={dir}
-      style={{ fontFamily, transition: "all .25s" }}
+      style={{
+        background: "transparent",
+        pointerEvents: "auto",
+        fontFamily,
+      }}
     >
       <style>
         {`
         .flags-select__option,
         .flags-select__selected {
-          color: #0b2545 !important;
-          background: #ffffff !important;
+          color: ${selectOptionColor} !important;
+          background: ${selectOptionBg} !important;
           font-weight: 600 !important;
           font-size: 1rem !important;
           font-family: ${fontFamily} !important;
           direction: ${dir} !important;
           text-align: ${dir === "rtl" ? "right" : "left"} !important;
-        }
-        .flags-select__option--is-selected {
-          background-color: #e0f7fa !important;
-          color: #00695c !important;
-        }
-        .flags-select__option:hover {
-          background-color: #f0f4f8 !important;
-          color: #00897b !important;
+          border-radius: 8px !important;
         }
         .flags-select__menu {
-          direction: ${dir} !important;
+          background: ${selectMenuBg} !important;
+          border-radius: 12px !important;
+          box-shadow: 0 6px 32px 0 #135d6b22;
+        }
+        .flags-select__option--is-selected {
+          background-color: #10b981 !important;
+          color: #ffffff !important;
+        }
+        .flags-select__option:hover {
+          background-color: ${selectOptionHoverBg} !important;
+          color: #b8f7ed !important;
         }
         `}
       </style>
-      <div className="bg-white rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-emerald-500 relative animate-fadeIn font-sans"
-           style={{
-             boxShadow: "0 8px 32px 0 rgba(16,185,129,0.12)",
-             borderBottom: "4px solid #edf7f6"
-           }}>
+      <div
+        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-emerald-500 relative animate-fadeIn font-sans"
+        style={{
+          boxShadow: "0 8px 32px 0 #10b98122",
+          borderBottom: "4px solid #edf7f6",
+          background: "linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%)",
+          maxWidth: "430px",
+          width: "100%",
+          minWidth: "320px"
+        }}
+      >
         <img src="/taheel-bot.png"
              alt={logoAlt}
              className="w-20 mb-3 drop-shadow-lg animate-bounce"
@@ -108,22 +115,24 @@ export default function LanguageSelectModal({
           <label className="block mb-1 text-emerald-700 font-semibold text-sm" style={{ fontFamily }}>
             {countryLabel}
           </label>
-          <FlagsSelect
-            countries={Object.keys(countries)}
-            customLabels={countries}
-            selected={selectedCountry}
-            onSelect={code => setSelectedCountry(code)}
-            showSelectedLabel={true}
-            showOptionLabel={true}
-            alignOptions={dir === "rtl" ? "right" : "left"}
-            className="w-full"
-            selectedSize={20}
-            optionsSize={16}
-            searchable
-          />
+          <div className="rounded-xl overflow-hidden shadow" style={{ background: selectMenuBg }}>
+            <FlagsSelect
+              countries={Object.keys(countries)}
+              customLabels={countries}
+              selected={selectedCountry}
+              onSelect={code => setSelectedCountry(code)}
+              showSelectedLabel={true}
+              showOptionLabel={true}
+              alignOptions={dir === "rtl" ? "right" : "left"}
+              className="w-full"
+              selectedSize={20}
+              optionsSize={16}
+              searchable
+            />
+          </div>
         </div>
         <button
-          className={`bg-gradient-to-br from-blue-600 to-emerald-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-700 hover:to-emerald-600 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`bg-gradient-to-br from-emerald-600 to-blue-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-emerald-700 hover:to-blue-600 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
           style={{
             letterSpacing: "0.5px",
             fontFamily,
