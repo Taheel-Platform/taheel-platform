@@ -17,26 +17,26 @@ export default function LanguageSelectModal({
     countryLang === "fr" ? "Choisissez votre pays" :
     "Choose your Country";
 
+  // Navy colors
+  const navyBg = "linear-gradient(120deg,#123163 70%,#194b8a 100%)";
+  const navySolid = "#123163";
+  const navyHover = "#194b8a";
+  const whiteColor = "#fff";
+
+  // رسالة الترحيب حسب اللغة
   const welcomeMessages = {
-    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك واللغة المناسبة للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
-    en: `Welcome ${userName} 👋 to Taheel platform! Please select your country and preferred language to continue. You will receive an instant welcome message in your language.`,
-    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays et la langue souhaitée pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
+    ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
+    en: `Welcome ${userName} 👋 to Taheel platform! Please select your country to continue. You will receive an instant welcome message in your language.`,
+    fr: `Bienvenue ${userName} 👋 sur la plateforme Taheel ! Veuillez choisir votre pays pour continuer. Vous recevrez un message de bienvenue instantané dans votre langue.`
   };
   const logoAlt = countryLang === "ar" ? "تأهيل" : countryLang === "fr" ? "Taheel (FR)" : "Taheel";
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
 
-  // ألوان داكنة جدا للقائمة
-  const selectMenuBg = "linear-gradient(120deg,#113c3c 60%,#134d4d 100%)";
-  const selectOptionBg = "#134d4d";
-  const selectOptionHoverBg = "#157264";
-  const selectOptionColor = "#fff";
-
   // عند الضغط على استمرار يرسل كل البيانات المطلوبة للـ onSelect
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
-    // يرسل اللغة، الدولة، الاسم
     onSelect(countryLang, selectedCountry, userName);
   };
 
@@ -52,38 +52,39 @@ export default function LanguageSelectModal({
       }}
     >
       <style>
-        {`
-        .flags-select__option,
-        .flags-select__selected {
-          color: ${selectOptionColor} !important;
-          background: ${selectOptionBg} !important;
-          font-weight: 600 !important;
-          font-size: 1rem !important;
-          font-family: ${fontFamily} !important;
-          direction: ${dir} !important;
-          text-align: ${dir === "rtl" ? "right" : "left"} !important;
-          border-radius: 8px !important;
-        }
-        .flags-select__menu {
-          background: ${selectMenuBg} !important;
-          border-radius: 12px !important;
-          box-shadow: 0 6px 32px 0 #135d6b22;
-        }
-        .flags-select__option--is-selected {
-          background-color: #10b981 !important;
-          color: #ffffff !important;
-        }
-        .flags-select__option:hover {
-          background-color: ${selectOptionHoverBg} !important;
-          color: #b8f7ed !important;
-        }
-        `}
+      {`
+      .flags-select__option,
+      .flags-select__selected {
+        color: ${whiteColor} !important;
+        background: ${navySolid} !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        font-family: ${fontFamily} !important;
+        direction: ${dir} !important;
+        text-align: ${dir === "rtl" ? "right" : "left"} !important;
+        border-radius: 8px !important;
+        transition: background .2s;
+      }
+      .flags-select__menu {
+        background: ${navyBg} !important;
+        border-radius: 12px !important;
+        box-shadow: 0 6px 32px 0 #12316344;
+      }
+      .flags-select__option--is-selected {
+        background-color: #1565c0 !important;
+        color: #fff !important;
+      }
+      .flags-select__option:hover {
+        background-color: ${navyHover} !important;
+        color: #b8f7ed !important;
+      }
+      `}
       </style>
       <div
-        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-emerald-500 relative animate-fadeIn font-sans"
+        className="rounded-3xl shadow-2xl px-8 py-7 min-w-[330px] max-w-[430px] flex flex-col items-center border-t-8 border-blue-700 relative animate-fadeIn font-sans"
         style={{
-          boxShadow: "0 8px 32px 0 #10b98122",
-          borderBottom: "4px solid #edf7f6",
+          boxShadow: "0 8px 32px 0 #194b8a33",
+          borderBottom: "4px solid #eafbf6",
           background: "linear-gradient(120deg,#eafbf6 60%,#e1f7fa 100%)",
           maxWidth: "430px",
           width: "100%",
@@ -95,22 +96,22 @@ export default function LanguageSelectModal({
              className="w-20 mb-3 drop-shadow-lg animate-bounce"
              style={{ filter: "drop-shadow(0 4px 14px #0b2545a0)" }}
         />
-        <h2 className="font-extrabold text-[1.35rem] text-emerald-800 mb-2 tracking-wide" style={{ fontFamily }}>
+        <h2 className="font-extrabold text-[1.35rem] text-blue-800 mb-2 tracking-wide" style={{ fontFamily }}>
           {countryLang === "ar"
-            ? "اختيار اللغة والدولة"
+            ? "اختيار الدولة"
             : countryLang === "fr"
-            ? "Choisir la langue et le pays"
-            : "Choose Language & Country"}
+            ? "Choisir le pays"
+            : "Choose Country"}
         </h2>
         <p className="mb-4 text-center text-gray-700 font-medium leading-relaxed" style={{ fontFamily }}>
           {welcomeMessages[countryLang] || welcomeMessages["ar"]}
         </p>
         {/* اختيار الدولة */}
         <div className="w-full mb-4">
-          <label className="block mb-1 text-emerald-700 font-semibold text-sm" style={{ fontFamily }}>
+          <label className="block mb-1 text-blue-800 font-semibold text-sm" style={{ fontFamily }}>
             {countryLabel}
           </label>
-          <div className="rounded-xl overflow-hidden shadow" style={{ background: selectMenuBg }}>
+          <div className="rounded-xl overflow-hidden shadow" style={{ background: navySolid }}>
             <FlagsSelect
               countries={Object.keys(countries)}
               customLabels={countries}
@@ -127,11 +128,11 @@ export default function LanguageSelectModal({
           </div>
         </div>
         <button
-          className={`bg-gradient-to-br from-emerald-600 to-blue-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-emerald-700 hover:to-blue-600 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+          className={`bg-gradient-to-br from-blue-700 to-blue-500 text-white px-6 py-2 rounded-full font-bold shadow hover:from-blue-900 hover:to-blue-700 transition mb-2 w-full text-lg ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
           style={{
             letterSpacing: "0.5px",
             fontFamily,
-            boxShadow: "0 2px 14px 0 #10b98142"
+            boxShadow: "0 2px 14px 0 #194b8a77"
           }}
           onClick={handleContinue}
           disabled={isLoading}
