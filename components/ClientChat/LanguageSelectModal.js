@@ -54,8 +54,8 @@ export default function LanguageSelectModal({
   const filteredLanguages = Array.isArray(LANGUAGES)
     ? LANGUAGES.filter(
         lang =>
-          lang.name.toLowerCase().includes(search.toLowerCase()) ||
-          lang.code.toLowerCase().includes(search.toLowerCase())
+          (lang.name && lang.name.toLowerCase().includes(search.toLowerCase())) ||
+          (lang.code && lang.code.toLowerCase().includes(search.toLowerCase()))
       )
     : [];
 
@@ -79,6 +79,30 @@ export default function LanguageSelectModal({
   const countryEntries = countries && typeof countries === "object"
     ? Object.entries(countries)
     : [];
+
+  // دالة تغيير اللغة
+  const handleLangChange = (code) => {
+    setSelectedLang(code);
+    // إذا أردت تغيير الدولة تلقائياً حسب اللغة
+    // يمكن إضافة منطق هنا باستخدام countriesLang
+  };
+
+  // دالة تغيير البحث
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+  };
+
+  // دالة تغيير الدولة
+  const handleCountryChange = (e) => {
+    setSelectedCountry(e.target.value);
+  };
+
+  // دالة الضغط على استمرار
+  const handleContinue = () => {
+    if (selectedLang && selectedCountry && typeof onSelect === "function") {
+      onSelect(selectedLang, selectedCountry);
+    }
+  };
 
   return (
     <div className="taheel-modal-bg absolute inset-0 z-[1100] flex items-center justify-center font-sans">
@@ -108,7 +132,7 @@ export default function LanguageSelectModal({
           className="taheel-lang-search"
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={handleSearchChange}
           placeholder={selectedLang === "ar" ? "ابحث عن اللغة..." : "Search language..."}
         />
         {/* قائمة اللغات */}
@@ -117,7 +141,7 @@ export default function LanguageSelectModal({
             <div
               key={lang.code}
               className={`taheel-lang-item${selectedLang === lang.code ? " selected" : ""}`}
-              onClick={() => setSelectedLang(lang.code)}
+              onClick={() => handleLangChange(lang.code)}
             >
               <span style={{ fontSize: "1.5em" }}>{lang.flag}</span>
               <span>{lang.name}</span>
@@ -128,7 +152,7 @@ export default function LanguageSelectModal({
         <select
           className="taheel-country-select"
           value={selectedCountry}
-          onChange={e => setSelectedCountry(e.target.value)}
+          onChange={handleCountryChange}
         >
           <option value="">{countryLabel}</option>
           {countryEntries.map(([code, name]) =>
@@ -138,7 +162,7 @@ export default function LanguageSelectModal({
         <button
           className="taheel-modal-btn w-full"
           disabled={!selectedLang || !selectedCountry}
-          onClick={() => onSelect(selectedLang, selectedCountry)}
+          onClick={handleContinue}
         >
           {continueBtn}
         </button>

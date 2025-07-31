@@ -45,6 +45,11 @@ export default function ChatWidgetFull({
   const safeMessages = Array.isArray(messages) ? messages : [];
   const safeFaqData = Array.isArray(faqData) ? faqData : [];
 
+  // دالة تغيير الإدخال بشكل آمن
+  const handleInputChange = (e) => {
+    if (typeof setInput === "function") setInput(e.target.value);
+  };
+
   function renderMsgBubble(msg) {
     let isSelf = msg.senderId === "guest";
     let isBot = msg.type === "bot";
@@ -274,7 +279,7 @@ export default function ChatWidgetFull({
                     : "Tapez votre message ou question..."
                 }
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 disabled={
                   uploading ||
                   recording ||
@@ -298,8 +303,8 @@ export default function ChatWidgetFull({
                   <button
                     type="button"
                     onClick={() => {
-                      setImagePreview(null);
-                      setAudioBlob(null);
+                      if (typeof setImagePreview === "function") setImagePreview(null);
+                      if (typeof setAudioBlob === "function") setAudioBlob(null);
                     }}
                     className="ml-1 text-red-600 font-bold"
                   >
