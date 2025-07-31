@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import ChatWidgetFull from "./ChatWidgetFull";
 import LanguageSelectModal from "./LanguageSelectModal";
 
-export default function ChatParent() {
-  // إدارة حالة اللغة والدولة ومدى ظهور المودال
+export default function ChatParent({ initialLang = "ar", initialCountry = "", initialMessages = [] }) {
+  // إدارة الحالة بشكل آمن وقابل للتوسعة
   const [showLangModal, setShowLangModal] = useState(true);
-  const [lang, setLang] = useState("");
-  const [country, setCountry] = useState("");
+  const [lang, setLang] = useState(initialLang);
+  const [country, setCountry] = useState(initialCountry);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]); // دائماً Array
+  const [messages, setMessages] = useState(Array.isArray(initialMessages) ? initialMessages : []);
 
-  // دالة استقبال اللغة والدولة من المودال
+  // استقبال اللغة والدولة من المودال
   const handleLanguageSelect = async (selectedLang, selectedCountry) => {
     setLang(selectedLang);
     setCountry(selectedCountry);
@@ -59,10 +59,10 @@ export default function ChatParent() {
     }
   };
 
-  // دالة إرسال الرسائل من العميل
+  // إرسال رسالة من العميل
   const handleSendMsg = async (msg) => {
     if (!msg || !lang) return;
-    // أضف رسالة العميل
+    // أضف رسالة العميل أولاً
     setMessages((prev) => [
       ...prev,
       {
@@ -106,13 +106,16 @@ export default function ChatParent() {
     }
   };
 
-  // دالة إرسال الرسالة من الفورم
+  // إرسال الرسالة من الفورم
   const handleSend = (e) => {
     e.preventDefault();
     if (input.trim()) {
       handleSendMsg(input.trim());
     }
   };
+
+  // الحماية النهائية: كل رسالة في ChatWidgetFull يجب أن تكون Array
+  const safeMessages = Array.isArray(messages) ? messages : [];
 
   return (
     <>
@@ -125,7 +128,7 @@ export default function ChatParent() {
         />
       ) : (
         <ChatWidgetFull
-          messages={messages || []} // حماية إضافية حتى لو حدث خطأ
+          messages={safeMessages}
           lang={lang}
           country={country}
           input={input}
