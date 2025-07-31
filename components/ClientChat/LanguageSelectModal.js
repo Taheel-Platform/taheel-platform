@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import FlagsSelect from "react-flags-select";
 
 export default function LanguageSelectModal({
@@ -7,21 +7,16 @@ export default function LanguageSelectModal({
   countriesLang = {},
   onSelect
 }) {
-  // الدولة الافتراضية أول دولة في القائمة
   const firstCountry = Object.keys(countries)[0] || "EG";
   const [selectedCountry, setSelectedCountry] = useState(firstCountry);
-
-  // اللغة الافتراضية بناء على الدولة المختارة
   const countryLang = countriesLang[selectedCountry] || "ar";
   const [isLoading, setIsLoading] = useState(false);
 
-  // عنوان الحقل حسب اللغة
   const countryLabel =
     countryLang === "ar" ? "اختر دولتك" :
     countryLang === "fr" ? "Choisissez votre pays" :
     "Choose your Country";
 
-  // رسالة الترحيب حسب اللغة
   const welcomeMessages = {
     ar: `مرحبًا بك ${userName} 👋 في منصة تأهيل! يرجى اختيار دولتك واللغة المناسبة للمتابعة. ستصلك رسالة ترحيب تلقائية بلغتك.`,
     en: `Welcome ${userName} 👋 to Taheel platform! Please select your country and preferred language to continue. You will receive an instant welcome message in your language.`,
@@ -31,19 +26,19 @@ export default function LanguageSelectModal({
   const dir = countryLang === "ar" ? "rtl" : "ltr";
   const fontFamily = countryLang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
 
-  // ارسال اختيار اللغة والدولة مع حماية عند الضغط
+  // ألوان داكنة جدا للقائمة
+  const selectMenuBg = "linear-gradient(120deg,#113c3c 60%,#134d4d 100%)";
+  const selectOptionBg = "#134d4d";
+  const selectOptionHoverBg = "#157264";
+  const selectOptionColor = "#fff";
+
+  // عند الضغط على استمرار يرسل كل البيانات المطلوبة للـ onSelect
   const handleContinue = () => {
     if (isLoading) return;
     setIsLoading(true);
-    onSelect(countryLang, selectedCountry);
+    // يرسل اللغة، الدولة، الاسم
+    onSelect(countryLang, selectedCountry, userName);
   };
-
-  // ----------- تعديل شكل FlagsSelect -----------
-  // ألوان داكنة للمنيو والقائمة مع نص أبيض أو فاتح
-  const selectMenuBg = "linear-gradient(120deg,#135d6b 60%,#1b8d6d 100%)";
-  const selectOptionBg = "#157264";
-  const selectOptionHoverBg = "#1b8d6d";
-  const selectOptionColor = "#ffffff";
 
   return (
     <div

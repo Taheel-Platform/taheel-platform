@@ -566,10 +566,45 @@ export default function ChatWidgetFull({
                     userName={safeUserName}
                     countries={countriesObject}
                     countriesLang={countriesLang}
-                    onSelect={(chosenLang, chosenCountry) => {
+                    onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
                       setLang(chosenLang);
                       setSelectedCountry(chosenCountry);
                       setShowLangModal(false);
+
+                      // إرسال طلب الترحيب للذكاء الصناعي
+                      try {
+                        const res = await fetch("/api/openai-gpt", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            prompt: "", // أو رسالة ترحيب فارغة، الـ API سيعرف أنها ترحيب من isWelcome:true
+                            lang: chosenLang,
+                            country: chosenCountry,
+                            userName: chosenUserName,
+                            isWelcome: true
+                          }),
+                        });
+                        const data = await res.json();
+                        setMessages([
+                          {
+                            id: "welcome-" + Date.now(),
+                            type: "bot",
+                            senderName: "Bot",
+                            createdAt: Date.now(),
+                            text: data?.text || "مرحبًا بك!",
+                          },
+                        ]);
+                      } catch (err) {
+                        setMessages([
+                          {
+                            id: "welcome-" + Date.now(),
+                            type: "bot",
+                            senderName: "Bot",
+                            createdAt: Date.now(),
+                            text: "مرحبًا بك!",
+                          },
+                        ]);
+                      }
                     }}
                   />
                 </div>
