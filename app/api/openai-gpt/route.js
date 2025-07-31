@@ -15,27 +15,78 @@ const firebaseConfig = {
 };
 if (!getApps().length) initializeApp(firebaseConfig);
 
+// خريطة البلد للغة
+const countryLangMap = {
+  "SA": "ar", // السعودية
+  "AE": "ar", // الإمارات
+  "EG": "ar", // مصر
+  "JO": "ar",
+  "KW": "ar",
+  "QA": "ar",
+  "OM": "ar",
+  "BH": "ar",
+  "DZ": "ar",
+  "MA": "ar",
+  "TN": "ar",
+  "LB": "ar",
+  "SY": "ar",
+  "IQ": "ar",
+  "PS": "ar",
+  "SD": "ar",
+  "YE": "ar",
+  "LY": "ar",
+  "MR": "ar",
+  "DJ": "ar",
+  "SO": "ar",
+  "FR": "fr",
+  "BE": "fr",
+  "CH": "fr",
+  "US": "en",
+  "GB": "en",
+  "CA": "en",
+  "DE": "de",
+  "ES": "es",
+  "IT": "it",
+  // أضف باقي الدول حسب الحاجة
+};
+
 export async function POST(req) {
   // استقبال بيانات العميل من المودال/الشات
-  const { prompt, lang = "ar", country, userName, isWelcome } = await req.json();
+  let { prompt, lang, country, userName, isWelcome } = await req.json();
+
+  // تحديد اللغة من البلد لو لم يتم إرسالها
+  if (!lang && country) {
+    const countryCode = country.length === 2 ? country.toUpperCase() : null;
+    lang = countryLangMap[countryCode] || "ar";
+  }
 
   // ===== رسالة ترحيب تلقائية من OpenAI =====
   if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
     let welcomePrompt = "";
     switch (lang) {
       case "ar":
-        welcomePrompt = `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${userName || "العميل"} في منصة تأهيل.`;
+        welcomePrompt = `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${userName || "العميل"} في منصة تأهيل، واذكر الدولة ${country || ""} في الترحيب.`;
         break;
       case "en":
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform.`;
+        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform. Mention the country ${country || ""} in the welcome.`;
         break;
       case "fr":
-        welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${userName || "le client"} sur la plateforme Taheel.`;
+        welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${userName || "le client"} sur la plateforme Taheel. Mentionne le pays ${country || ""} dans le message.`;
         break;
       default:
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform. Respond ONLY in language code: ${lang}.`;
+        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${userName || "the client"} on Taheel platform. Country: ${country || ""}. Respond ONLY in language code: ${lang}.`;
         break;
     }
+
+    // رسالة النظام لتأكيد اللغة المختارة
+    const systemMessage =
+      lang === "ar"
+        ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
+        : lang === "en"
+        ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
+        : lang === "fr"
+        ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
+        : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
 
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -46,7 +97,10 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: welcomePrompt }],
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: welcomePrompt }
+        ],
         max_tokens: 300,
         temperature: 0.4,
       }),
@@ -141,6 +195,16 @@ export async function POST(req) {
         break;
     }
 
+    // رسالة النظام لتأكيد اللغة المختارة
+    const systemMessage =
+      lang === "ar"
+        ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
+        : lang === "en"
+        ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
+        : lang === "fr"
+        ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
+        : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+
     // إرسال الطلب للـ OpenAI بنفس اللغة المختارة
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -151,7 +215,10 @@ export async function POST(req) {
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: systemPrompt }],
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: systemPrompt }
+        ],
         max_tokens: 700,
         temperature: 0.4,
       }),
@@ -179,6 +246,16 @@ export async function POST(req) {
       break;
   }
 
+  // رسالة النظام لتأكيد اللغة المختارة
+  const systemMessage =
+    lang === "ar"
+      ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
+      : lang === "en"
+      ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
+      : lang === "fr"
+      ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
+      : `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -188,7 +265,10 @@ export async function POST(req) {
     },
     body: JSON.stringify({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: userPrompt }
+      ],
       max_tokens: 700,
       temperature: 0.4,
     }),
