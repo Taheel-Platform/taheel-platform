@@ -25,6 +25,26 @@ const STATES_LIST = [
   "france", "usa", "uk", "canada", "germany", "italy", "spain", "portugal", "india", "china", "japan", "korea", "russia", "brazil", "australia", "south africa", "turkey", "indonesia"
 ];
 
+// helper: اسم عميل صالح
+function getValidClientName({ userName, userData = {}, country = "", lang = "ar" }) {
+  let name = (userName || "").trim();
+  if (!name || name.length < 2 || STATES_LIST.includes(name.toLowerCase()) || name.toLowerCase() === country?.toLowerCase() || /^\d+$/.test(name)) {
+    name = lang === "ar"
+      ? userData.nameAr || userData.name || userData.firstName || ""
+      : lang === "en"
+      ? userData.nameEn || userData.name || userData.firstName || ""
+      : userData.nameEn || userData.nameAr || userData.name || userData.firstName || "";
+  }
+  if (!name || name.length < 2 || STATES_LIST.includes(name.toLowerCase()) || name.toLowerCase() === country?.toLowerCase() || /^\d+$/.test(name)) {
+    name = lang === "ar"
+      ? "ضيفنا الكريم"
+      : lang === "en"
+      ? "Our valued guest"
+      : "Cher client";
+  }
+  return name;
+}
+
 export async function POST(req) {
   let {
     prompt,
@@ -34,7 +54,7 @@ export async function POST(req) {
     isWelcome,
     userId,
     waitingForAgent,
-    customerServiceRequestCount = 0, // يبدأ من صفر
+    customerServiceRequestCount = 0,
     clientType // نوع العميل (company, resident, nonresident, ...)
   } = await req.json();
 
@@ -48,84 +68,39 @@ export async function POST(req) {
         : "Vous êtes en cours de transfert vers un agent du service client. Veuillez patienter...",
       customerService: true,
       aiSilenced: true,
+      showTransferButton: false,
+      suggestAgent: false,
+      customerServiceRequestCount
     });
   }
 
   // --- بيانات العميل ---
-  let realName = (userName && userName.trim()) || "";
+  let userDataFromFirebase = {};
   let realLang = lang;
+  let realClientType = clientType || "company";
   let realEmail = "";
   let realRole = "";
-  let clientRequests = [];
-  let clientServices = [];
-  let realClientType = clientType || "company"; // fallback
 
-  // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
+  // جلب بيانات العميل من فايربيز
   if (userId) {
     try {
       const userRef = db.collection("users").doc(userId);
       const snap = await userRef.get();
-
       if (snap.exists) {
         const data = snap.data();
-        // لو لم يُرسل اسم من المودال، استخدم من فايربيز
-        if (!userName) {
-          realName = realLang === "ar"
-            ? data.nameAr || data.name || data.firstName || realName
-            : realLang === "en"
-            ? data.nameEn || data.name || data.firstName || realName
-            : data.nameEn || data.nameAr || data.name || data.firstName || realName;
-        }
+        userDataFromFirebase = data;
         realEmail = data.email || "";
         realRole = data.role || "";
         if (data.lang) realLang = data.lang;
         if (data.clientType) realClientType = data.clientType;
       }
-
-      // جلب الطلبات
-      const requestsSnap = await userRef.collection("requests").get();
-      requestsSnap.forEach(doc => {
-        const req = doc.data();
-        clientRequests.push({
-          id: doc.id,
-          type: req.type || "",
-          status: req.status || "",
-          date: req.date || req.createdAt || ""
-        });
-      });
-
-      // جلب الخدمات
-      const servicesSnap = await userRef.collection("services").get();
-      servicesSnap.forEach(doc => {
-        const svc = doc.data();
-        clientServices.push({
-          id: doc.id,
-          name: svc.name || "",
-          price: svc.price || "",
-          status: svc.status || "",
-          desc: svc.description || ""
-        });
-      });
-
-    } catch (err) { /* تجاهل الخطأ */ }
+    } catch (err) {}
   }
 
-  // تحقق أخير من الاسم (لا يكون دولة أو فارغ أو قصير أو كله أرقام فقط)
-  if (
-    !realName ||
-    STATES_LIST.includes(realName.toLowerCase()) ||
-    realName.toLowerCase() === (country || "").toLowerCase() ||
-    realName === "" ||
-    realName.length < 2 ||
-    /^\d+$/.test(realName)
-  ) {
-    realName = realLang === "ar"
-      ? "ضيفنا الكريم"
-      : realLang === "en"
-      ? "Our valued guest"
-      : "Cher client";
-  }
+  // اسم العميل
+  let realName = getValidClientName({ userName, userData: userDataFromFirebase, country, lang: realLang });
 
+  // لغة العميل
   if (!realLang && country) {
     const countryCode = country.length === 2 ? country.toUpperCase() : null;
     realLang = countryLangMap[countryCode] || "ar";
@@ -133,43 +108,48 @@ export async function POST(req) {
   if (!realLang) realLang = "ar";
 
   // --- رسالة الترحيب (مرة واحدة) ---
-  // --- رسالة الترحيب (مرة واحدة) ---
-if (isWelcome) {
-  let welcomeText =
-    realLang === "ar"
-      ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
-      : realLang === "en"
-      ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
-      : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
+  if (isWelcome) {
+    let welcomeText =
+      realLang === "ar"
+        ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
+        : realLang === "en"
+        ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
+        : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
 
-  return NextResponse.json({
-    text: welcomeText,
-    isWelcome: true,
-  });
-}
+    return NextResponse.json({
+      text: welcomeText,
+      isWelcome: true,
+      showTransferButton: false,
+      suggestAgent: false,
+      aiSilenced: false,
+      customerServiceRequestCount
+    });
+  }
 
   // --- البحث في الأسئلة الشائعة ---
   const faqAnswer = findFaqAnswer(prompt, realLang);
   if (faqAnswer) {
-    return NextResponse.json({ text: faqAnswer });
+    return NextResponse.json({
+      text: faqAnswer,
+      showTransferButton: false,
+      suggestAgent: false,
+      aiSilenced: false,
+      customerServiceRequestCount
+    });
   }
 
-  // --- البحث عن الخدمات من فايرستور حسب نوع العميل ---
+  // --- البحث عن الخدمات ---
   if (/سعر|price|cost|خدمة|service|كم|fees|رسوم|تأسيس|company|formation/i.test(prompt)) {
     let services = [];
-
-    // جلب الخدمات حسب نوع العميل من servicesByClientType
     try {
       const servicesByTypeRef = db.collection("servicesByClientType").doc(realClientType);
       const servicesDoc = await servicesByTypeRef.get();
       if (servicesDoc.exists) {
         const data = servicesDoc.data();
-        // كل خدمة عبارة عن حقل
         services = Object.values(data).filter(s => s && typeof s === "object" && s.isActive);
       }
-    } catch (e) {/* تجاهل الخطأ */ }
+    } catch (e) {}
 
-    // fallback لو مفيش خدمات في المسار الجديد
     if (!Array.isArray(services) || services.length === 0) {
       try {
         const servicesSnapshot = await db.collection("services").get();
@@ -188,6 +168,10 @@ if (isWelcome) {
             ? "An error occurred while fetching services data."
             : "Une erreur est survenue lors de la récupération des données de service.",
           customerService: true,
+          showTransferButton: false,
+          suggestAgent: false,
+          aiSilenced: false,
+          customerServiceRequestCount
         });
       }
     }
@@ -203,10 +187,13 @@ if (isWelcome) {
       return NextResponse.json({
         text: noDataMsg,
         customerService: true,
+        showTransferButton: false,
+        suggestAgent: false,
+        aiSilenced: false,
+        customerServiceRequestCount
       });
     }
 
-    // حضر نص الخدمات بلغة العميل
     const dataString = services
       .map(s => {
         const name = realLang === "ar" ? (s.name || "") : (s.name_en || s.name || "");
@@ -261,28 +248,33 @@ if (isWelcome) {
     const data = await response.json();
     return NextResponse.json({
       text: data?.choices?.[0]?.message?.content?.trim() || "",
+      showTransferButton: false,
+      suggestAgent: false,
+      aiSilenced: false,
+      customerServiceRequestCount
     });
   }
 
   // --- البحث عن طلب (tracking) ---
   if (/طلب|tracking|رقم الطلب|order\s*number|track/i.test(prompt)) {
-    // استخراج رقم الطلب من البرومبت (بسيط)
     const orderNumberMatch = prompt.match(/(?:طلب|tracking|رقم الطلب|order\s*number|#)(\d+)/i);
     const orderId = orderNumberMatch ? orderNumberMatch[1] : null;
 
     if (!orderId) {
-      // لو مفيش رقم طلب واضح، اسأله عن الرقم
       return NextResponse.json({
         text: realLang === "ar"
           ? "من فضلك أدخل رقم الطلب أو الكود حتى أستطيع مساعدتك."
           : realLang === "en"
           ? "Please provide the order number or code so I can assist you."
           : "Veuillez fournir le numéro ou le code de la demande pour que je puisse vous aider.",
-        askOrderId: true
+        askOrderId: true,
+        showTransferButton: false,
+        suggestAgent: false,
+        aiSilenced: false,
+        customerServiceRequestCount
       });
     }
 
-    // جلب تفاصيل الطلب من فايربيز
     try {
       let orderData = null;
       const userRef = db.collection("users").doc(userId);
@@ -296,7 +288,11 @@ if (isWelcome) {
             ? `تفاصيل طلبك: النوع: ${orderData.type || ""}, الحالة: ${orderData.status || ""}, التاريخ: ${orderData.date || orderData.createdAt || ""}`
             : realLang === "en"
             ? `Order details: Type: ${orderData.type || ""}, Status: ${orderData.status || ""}, Date: ${orderData.date || orderData.createdAt || ""}`
-            : `Détails de la demande : Type : ${orderData.type || ""}, Statut : ${orderData.status || ""}, Date : ${orderData.date || orderData.createdAt || ""}`
+            : `Détails de la demande : Type : ${orderData.type || ""}, Statut : ${orderData.status || ""}, Date : ${orderData.date || orderData.createdAt || ""}`,
+          showTransferButton: false,
+          suggestAgent: false,
+          aiSilenced: false,
+          customerServiceRequestCount
         });
       }
       return NextResponse.json({
@@ -305,7 +301,11 @@ if (isWelcome) {
           : realLang === "en"
           ? "No order found with this number. Please check and try again."
           : "Aucune demande trouvée avec ce numéro. Veuillez vérifier et réessayer.",
-        notFound: true
+        notFound: true,
+        showTransferButton: false,
+        suggestAgent: false,
+        aiSilenced: false,
+        customerServiceRequestCount
       });
     } catch (e) {
       return NextResponse.json({
@@ -314,7 +314,11 @@ if (isWelcome) {
           : realLang === "en"
           ? "An error occurred while fetching order details."
           : "Une erreur est survenue lors de la récupération des détails de la demande.",
-        customerService: true
+        customerService: true,
+        showTransferButton: false,
+        suggestAgent: false,
+        aiSilenced: false,
+        customerServiceRequestCount
       });
     }
   }
@@ -326,23 +330,27 @@ if (isWelcome) {
         ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
         : realLang === "en"
         ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
-        : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis."
+        : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis.",
+      showTransferButton: false,
+      suggestAgent: false,
+      aiSilenced: false,
+      customerServiceRequestCount
     });
   }
 
   // --- سؤال غير مفهوم او مش واضح ---
   if (!prompt || prompt.trim().length < 2) {
-    // سؤال غير واضح أو فارغ
     customerServiceRequestCount += 1;
     if (customerServiceRequestCount >= 5) {
-      // اقترح عليه خدمة العملاء بعد 5 محاولات
       return NextResponse.json({
         text: realLang === "ar"
-          ? "يبدو أن سؤالك غير واضح أو لم أتمكن من المساعدة. إذا رغبت بالتواصل مع موظف خدمة العملاء، اكتب ذلك وسأحولك فورًا."
+          ? "يبدو أن سؤالك غير واضح أو لم أتمكن من المساعدة. إذا رغبت بالتواصل مع موظف خدمة العملاء، اضغط الزر بالأسفل."
           : realLang === "en"
-          ? "Your question is not clear or I couldn't assist you. If you wish to contact a customer service agent, just write that and I'll transfer you."
-          : "Votre question n'est pas claire ou je n'ai pas pu vous aider. Si vous souhaitez contacter un agent du service client, écrivez-le et je vous transférerai.",
-        suggestAgent: true,
+          ? "Your question is not clear or I couldn't assist you. If you wish to contact a customer service agent, click the button below."
+          : "Votre question n'est pas claire ou je n'ai pas pu vous aider. Si vous souhaitez contacter un agent du service client, cliquez sur le bouton ci-dessous.",
+        suggestAgent: false,
+        showTransferButton: true,
+        aiSilenced: false,
         customerServiceRequestCount
       });
     }
@@ -352,7 +360,9 @@ if (isWelcome) {
         : realLang === "en"
         ? "Could you please clarify or rephrase your question?"
         : "Pouvez-vous clarifier ou reformuler votre question ?",
-      unclear: true,
+      suggestAgent: true,
+      showTransferButton: false,
+      aiSilenced: false,
       customerServiceRequestCount
     });
   }
@@ -360,18 +370,8 @@ if (isWelcome) {
   // --- العميل طلب موظف خدمة عملاء صراحة ---
   const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent|اريد التحدث مع موظف|عايز اكلم موظف|اريد التواصل مع موظف|اريد الدعم)/i;
   if (customerServiceRegex.test(prompt)) {
-    // بعد 3 مرات فقط يظهر زر التحويل
-    if (customerServiceRequestCount < 3) {
-      return NextResponse.json({
-        text: realLang === "ar"
-          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
-          : realLang === "en"
-          ? "I'm here to help! Please try to explain your request or question."
-          : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
-        customerServicePrompt: true,
-        customerServiceRequestCount: customerServiceRequestCount + 1
-      });
-    } else {
+    customerServiceRequestCount += 1;
+    if (customerServiceRequestCount >= 3) {
       return NextResponse.json({
         text: realLang === "ar"
           ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
@@ -380,7 +380,20 @@ if (isWelcome) {
           : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
         showTransferButton: true,
         aiSilenced: true,
-        customerServiceRequestCount: customerServiceRequestCount + 1
+        suggestAgent: false,
+        customerServiceRequestCount
+      });
+    } else {
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
+          : realLang === "en"
+          ? "I'm here to help! Please try to explain your request or question."
+          : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
+        showTransferButton: false,
+        suggestAgent: true,
+        aiSilenced: false,
+        customerServiceRequestCount
       });
     }
   }
@@ -431,5 +444,9 @@ if (isWelcome) {
   const data = await response.json();
   return NextResponse.json({
     text: data?.choices?.[0]?.message?.content?.trim() || "",
+    showTransferButton: false,
+    suggestAgent: false,
+    aiSilenced: false,
+    customerServiceRequestCount
   });
 }
