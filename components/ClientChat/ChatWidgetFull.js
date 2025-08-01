@@ -275,16 +275,31 @@ export default function ChatWidgetFull({
       await sendMessage("bot", { text: data.text });
 
       // افحص الرد من الذكاء الصناعي لوجود عبارة التحويل، وأظهر الزر بناءً عليها
-      if (
-        data.text?.includes("هل ترغب في التواصل مع موظف خدمة العملاء؟") ||
-        data.text?.includes("Would you like to contact a customer service agent?") ||
-        data.text?.includes("Voulez-vous contacter un agent du service client ?")
-      ) {
-        setShowAgentButton(true);
-      } else {
-        setShowAgentButton(false);
-      }
+if (
+  data.text?.includes("هل ترغب في التواصل مع موظف خدمة العملاء؟") ||
+  data.text?.includes("Would you like to contact a customer service agent?") ||
+  data.text?.includes("Voulez-vous contacter un agent du service client ?")
+) {
+  setNoBotHelpCount((prev) => {
+    const newCount = prev + 1;
+    if (newCount >= 3) { // عدل الرقم حسب رغبتك
+      setShowAgentButton(true);
+    } else {
+      setShowAgentButton(false);
     }
+    return newCount;
+  });
+} else {
+  setNoBotHelpCount(0);
+  setShowAgentButton(false);
+}
+    }
+    if (
+  /خدمة العملاء|موظف خدمة|اتواصل مع موظف|customer service|support agent|contact agent|live agent/i.test(textMsg)
+) {
+  setShowAgentButton(true);
+  setNoBotHelpCount(3); // أو أي رقم يفعل الزر فورًا
+}
     setInput("");
   };
 
