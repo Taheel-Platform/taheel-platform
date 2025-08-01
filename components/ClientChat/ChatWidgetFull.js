@@ -564,62 +564,53 @@ export default function ChatWidgetFull({
       countries={countriesObject}
       countriesLang={countriesLang}
       onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-        // اجعل اللغة والاسم في الواجهة من اختيار المستخدم
+        // حدّث اللغة والدولة بعد اختيار العميل
         setLang(chosenLang);
         setSelectedCountry(chosenCountry);
-        setShowLangModal(false);
 
-        // أرسل الترحيب للذكاء الصناعي بالاسم واللغة المختارين فقط
+        // جهّز ترحيب افتراضي في حال فشل الـ API
+        let welcomeText =
+          chosenLang === "ar"
+            ? `مرحبًا بك يا ${chosenUserName}!`
+            : chosenLang === "en"
+            ? `Welcome ${chosenUserName}!`
+            : chosenLang === "fr"
+            ? `Bienvenue ${chosenUserName}!`
+            : `مرحبًا بك يا ${chosenUserName}!`;
+
+        // جلب رسالة الترحيب من الـ API لو أمكن
         try {
           const res = await fetch("/api/openai-gpt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               prompt: "",
-              lang: chosenLang,             // اللغة من المودال
+              lang: chosenLang,
               country: chosenCountry,
-              userName: chosenUserName,     // الاسم من المودال
+              userName: chosenUserName,
               isWelcome: true,
-              userId,                       // لو عندك معرف المستخدم
+              userId,
             }),
           });
           const data = await res.json();
-          // غيّر setMessages ليضع رسالة ترحيب واحدة فقط (لا تضف على الرسائل السابقة)
-          setMessages([
-            {
-              id: "welcome-" + Date.now(),
-              type: "bot",
-              senderName: "Bot",
-              createdAt: Date.now(),
-              text: data.text || 
-                (chosenLang === "ar"
-                  ? `مرحبًا بك يا ${chosenUserName}!`
-                  : chosenLang === "en"
-                  ? `Welcome ${chosenUserName}!`
-                  : chosenLang === "fr"
-                  ? `Bienvenue ${chosenUserName}!`
-                  : `مرحبًا بك يا ${chosenUserName}!`
-                ),
-            },
-          ]);
+          if (data.text) welcomeText = data.text;
         } catch (err) {
-          setMessages([
-            {
-              id: "welcome-" + Date.now(),
-              type: "bot",
-              senderName: "Bot",
-              createdAt: Date.now(),
-              text:
-                chosenLang === "ar"
-                  ? `مرحبًا بك يا ${chosenUserName}!`
-                  : chosenLang === "en"
-                  ? `Welcome ${chosenUserName}!`
-                  : chosenLang === "fr"
-                  ? `Bienvenue ${chosenUserName}!`
-                  : `مرحبًا بك يا ${chosenUserName}!`,
-            },
-          ]);
+          // تجاهل أي خطأ واستخدم النص الافتراضي
         }
+
+        // أضف رسالة الترحيب فقط
+        setMessages([
+          {
+            id: "welcome-" + Date.now(),
+            type: "bot",
+            senderName: "Bot",
+            createdAt: Date.now(),
+            text: welcomeText,
+          },
+        ]);
+
+        // أغلق المودال في النهاية
+        setShowLangModal(false);
       }}
     />
   </div>

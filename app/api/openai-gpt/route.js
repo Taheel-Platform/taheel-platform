@@ -14,7 +14,11 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-const countryLangMap = { EG: "ar", SA: "ar", AE: "ar", QA: "ar", KW: "ar", OM: "ar", JO: "ar", MA: "ar", DZ: "ar", TN: "ar", LB: "ar", IQ: "ar", PS: "ar", FR: "fr", US: "en", GB: "en", CA: "en", DE: "de", IT: "it", ES: "es", PT: "pt", IN: "hi", CN: "zh", JP: "ja", KR: "ko", RU: "ru", BR: "pt", AU: "en", ZA: "en", TR: "tr", ID: "id" };
+const countryLangMap = {
+  EG: "ar", SA: "ar", AE: "ar", QA: "ar", KW: "ar", OM: "ar", JO: "ar", MA: "ar", DZ: "ar", TN: "ar", LB: "ar", IQ: "ar", PS: "ar",
+  FR: "fr", US: "en", GB: "en", CA: "en", DE: "de", IT: "it", ES: "es", PT: "pt", IN: "hi", CN: "zh", JP: "ja", KR: "ko", RU: "ru",
+  BR: "pt", AU: "en", ZA: "en", TR: "tr", ID: "id"
+};
 
 export async function POST(req) {
   let {
@@ -42,7 +46,7 @@ export async function POST(req) {
   }
 
   // بيانات العميل
-  let realName = userName;
+  let realName = userName || "زائر";
   let realLang = lang;
   let realEmail = "";
   let realRole = "";
@@ -57,11 +61,14 @@ export async function POST(req) {
 
       if (snap.exists) {
         const data = snap.data();
-        realName = lang === "ar"
-          ? data.nameAr || data.name || data.firstName || realName
-          : lang === "en"
-          ? data.nameEn || data.name || data.firstName || realName
-          : data.nameEn || data.nameAr || data.name || data.firstName || realName;
+        // لو لم يُرسل اسم من المودال، استخدم من فايربيز
+        if (!userName) {
+          realName = lang === "ar"
+            ? data.nameAr || data.name || data.firstName || realName
+            : lang === "en"
+            ? data.nameEn || data.name || data.firstName || realName
+            : data.nameEn || data.nameAr || data.name || data.firstName || realName;
+        }
         realEmail = data.email || "";
         realRole = data.role || "";
         if (data.lang) realLang = data.lang;
@@ -100,39 +107,79 @@ export async function POST(req) {
     realLang = countryLangMap[countryCode] || "ar";
   }
   if (!realLang) realLang = "ar";
-  if (!realName) realName = "زائر";
+
+  // تعريف الشركة حسب اللغة
+  const companyInfo =
+    realLang === "ar"
+      ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
+      : realLang === "en"
+      ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
+      : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis.";
+
+  // ملخص الطلبات
+  const requestsText = clientRequests.length
+    ? clientRequests.map(r =>
+        realLang === "ar"
+          ? `نوع: ${r.type || ""}, حالة: ${r.status || ""}, تاريخ: ${r.date || ""}`
+          : realLang === "en"
+          ? `Type: ${r.type || ""}, Status: ${r.status || ""}, Date: ${r.date || ""}`
+          : `Type : ${r.type || ""}, Statut : ${r.status || ""}, Date : ${r.date || ""}`
+      ).join("\n")
+    : realLang === "ar"
+    ? "لا يوجد طلبات حالية."
+    : realLang === "en"
+    ? "No current requests."
+    : "Aucune demande actuelle.";
+
+  // ملخص الخدمات
+  const servicesText = clientServices.length
+    ? clientServices.map(s =>
+        realLang === "ar"
+          ? `${s.name || ""}: ${s.status || ""} (${s.price || ""})`
+          : realLang === "en"
+          ? `${s.name || ""}: ${s.status || ""} (${s.price || ""})`
+          : `${s.name || ""} : ${s.status || ""} (${s.price || ""})`
+      ).join("\n")
+    : realLang === "ar"
+    ? "لا يوجد خدمات مفعلة."
+    : realLang === "en"
+    ? "No activated services."
+    : "Aucun service activé.";
 
   // 2. رسالة الترحيب - ترسل مرة واحدة فقط
-if (isWelcome) {
-  // ... إعداد بيانات الترحيب
-  let welcomePrompt = "";
-  switch (realLang) {
-    case "ar":
-      welcomePrompt =
-        `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
-        `نبذة عن الشركة: ${companyInfo}\n\n` +
-        `طلبات العميل:\n${requestsText}\n\n` +
-        `الخدمات المفعلة:\n${servicesText}\n\n` +
-        "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة. لا تذكر خدمة العملاء أو الدعم في رسالة الترحيب.";
-      break;
-    case "en":
-      welcomePrompt =
-        `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
-        `About the company: ${companyInfo}\n\n` +
-        `Client requests:\n${requestsText}\n\n` +
-        `Activated services:\n${servicesText}\n\n` +
-        "Make the welcome personal and mention any services or requests if available. Do not mention customer service or support in the welcome message.";
-      break;
-    case "fr":
-      welcomePrompt =
-        `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
-        `À propos de l'entreprise : ${companyInfo}\n\n` +
-        `Demandes du client :\n${requestsText}\n\n` +
-        `Services activés :\n${servicesText}\n\n` +
-        "Rends le message personnel et mentionne les services ou demandes s'ils existent. N'inclus pas le service client ou le support dans le message de bienvenue.";
-      break;
-    // ... باقي اللغات
-  }
+  if (isWelcome) {
+    let welcomePrompt = "";
+    switch (realLang) {
+      case "ar":
+        welcomePrompt =
+          `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
+          `نبذة عن الشركة: ${companyInfo}\n\n` +
+          `طلبات العميل:\n${requestsText}\n\n` +
+          `الخدمات المفعلة:\n${servicesText}\n\n` +
+          "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة. لا تذكر خدمة العملاء أو الدعم في رسالة الترحيب.";
+        break;
+      case "en":
+        welcomePrompt =
+          `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
+          `About the company: ${companyInfo}\n\n` +
+          `Client requests:\n${requestsText}\n\n` +
+          `Activated services:\n${servicesText}\n\n` +
+          "Make the welcome personal and mention any services or requests if available. Do not mention customer service or support in the welcome message.";
+        break;
+      case "fr":
+        welcomePrompt =
+          `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
+          `À propos de l'entreprise : ${companyInfo}\n\n` +
+          `Demandes du client :\n${requestsText}\n\n` +
+          `Services activés :\n${servicesText}\n\n` +
+          "Rends le message personnel et mentionne les services ou demandes s'ils existent. N'inclus pas le service client ou le support dans le message de bienvenue.";
+        break;
+      // أضف لغات أخرى إذا لزم الأمر
+      default:
+        welcomePrompt =
+          `Write a professional and friendly welcome message for the new user named ${realName}. About the company: ${companyInfo}. Client requests: ${requestsText}. Activated services: ${servicesText}.`;
+        break;
+    }
 
     const systemMessage =
       realLang === "ar"
@@ -161,26 +208,27 @@ if (isWelcome) {
       }),
     });
     const data = await response.json();
+
     // تأكيد أن الرسالة الترحيبية تبدأ باسم العميل
-let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
-if (!welcomeText) {
-  // fallback حسب اللغة المختارة
-  if (realLang === "ar") {
-    welcomeText = `مرحبًا بك يا ${realName}!`;
-  } else if (realLang === "en") {
-    welcomeText = `Welcome ${realName}!`;
-  } else if (realLang === "fr") {
-    welcomeText = `Bienvenue ${realName}!`;
-  } else {
-    welcomeText = `مرحبًا بك يا ${realName}!`;
-  }
-}
-if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
-  welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
-}
-if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
-  welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
-}
+    let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
+    if (!welcomeText) {
+      // fallback حسب اللغة المختارة
+      if (realLang === "ar") {
+        welcomeText = `مرحبًا بك يا ${realName}!`;
+      } else if (realLang === "en") {
+        welcomeText = `Welcome ${realName}!`;
+      } else if (realLang === "fr") {
+        welcomeText = `Bienvenue ${realName}!`;
+      } else {
+        welcomeText = `مرحبًا بك يا ${realName}!`;
+      }
+    }
+    if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
+      welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
+    }
+    if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
+      welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
+    }
     // أضف الفرنسي لو تحب
 
     return NextResponse.json({
@@ -223,30 +271,17 @@ if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realNa
       let noDataMsg;
       switch (realLang) {
         case "ar":
-  welcomePrompt =
-    `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
-    `نبذة عن الشركة: ${companyInfo}\n\n` +
-    `طلبات العميل:\n${requestsText}\n\n` +
-    `الخدمات المفعلة:\n${servicesText}\n\n` +
-    "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة. لا تذكر خدمة العملاء أو الدعم في الترحيب.";
-  break;
-case "en":
-  welcomePrompt =
-    `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
-    `About the company: ${companyInfo}\n\n` +
-    `Client requests:\n${requestsText}\n\n` +
-    `Activated services:\n${servicesText}\n\n` +
-    "Make the welcome personal and mention any services or requests if available. Do not mention customer service or support in the welcome message.";
-  break;
-case "fr":
-  welcomePrompt =
-    `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
-    `À propos de l'entreprise : ${companyInfo}\n\n` +
-    `Demandes du client :\n${requestsText}\n\n` +
-    `Services activés :\n${servicesText}\n\n` +
-    "Rends le message personnel et mentionne les services ou demandes s'ils existent. N'inclus pas le service client ou le support dans le message de bienvenue.";
-  break;
-
+          noDataMsg = "لا توجد بيانات خدمات متاحة حالياً.";
+          break;
+        case "en":
+          noDataMsg = "No services data available at the moment.";
+          break;
+        case "fr":
+          noDataMsg = "Aucune donnée de service disponible pour le moment.";
+          break;
+        default:
+          noDataMsg = "No services data available.";
+          break;
       }
       return NextResponse.json({
         text: noDataMsg,
@@ -340,21 +375,21 @@ case "fr":
   }
 
   // 6. الرد العام من OpenAI
-let userPrompt = "";
-switch (realLang) {
-  case "ar":
-    userPrompt = `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.`;
-    break;
-  case "en":
-    userPrompt = `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.`;
-    break;
-  case "fr":
-    userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.`;
-    break;
-  default:
-    userPrompt = `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.`;
-    break;
-}
+  let userPrompt = "";
+  switch (realLang) {
+    case "ar":
+      userPrompt = `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.`;
+      break;
+    case "en":
+      userPrompt = `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.`;
+      break;
+    case "fr":
+      userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.`;
+      break;
+    default:
+      userPrompt = `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.`;
+      break;
+  }
 
   const systemMessage =
     realLang === "ar"
