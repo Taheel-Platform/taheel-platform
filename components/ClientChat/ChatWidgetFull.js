@@ -73,8 +73,6 @@ export default function ChatWidgetFull({
   const [showAgentButton, setShowAgentButton] = useState(false);
   const chatEndRef = useRef(null);
 
-  const [welcomeSent, setWelcomeSent] = useState(false);
-
   const safeUserId = userId || "guest";
   const fontFamily = lang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -107,8 +105,19 @@ export default function ChatWidgetFull({
   const sendAudio = typeof Audio !== "undefined" ? new Audio("/sounds/send.mp3") : null;
   const receiveAudio = typeof Audio !== "undefined" ? new Audio("/sounds/receive.mp3") : null;
 
-  const playSend = () => { if (sendAudio) { sendAudio.currentTime = 0; sendAudio.play(); } };
-  const playReceive = () => { if (receiveAudio) { receiveAudio.currentTime = 0; receiveAudio.play(); } };
+  const playSend = () => {
+    if (sendAudio) {
+      sendAudio.currentTime = 0;
+      sendAudio.play();
+    }
+  };
+
+  const playReceive = () => {
+    if (receiveAudio) {
+      receiveAudio.currentTime = 0;
+      receiveAudio.play();
+    }
+  };
 
   const handleOpenChat = () => {
     setClosed(false);
@@ -126,7 +135,6 @@ export default function ChatWidgetFull({
     setRecording(false);
     setShowEmoji(false);
     setShowAgentButton(false);
-    setWelcomeSent(false);
   };
 
   useEffect(() => {
@@ -201,8 +209,49 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // لا ترسل رسالة ترحيب تلقائيًا من useEffect أبداً!
-  // الترحيب يكون فقط من onSelect في LanguageSelectModal
+  // رسالة الترحيب من OpenAI بعد اختيار اللغة والدولة
+  useEffect(() => {
+    if (
+      !showLangModal &&
+      messages.length === 0 &&
+      roomId &&
+      !waitingForAgent &&
+      !agentAccepted &&
+      lang &&
+      selectedCountry
+    ) {
+      const fetchWelcome = async () => {
+        // عرف welcomePrompt هنا:
+        const welcomePrompt =
+          lang === "ar"
+            ? `اكتب رسالة ترحيب للعميل في منصة تأهيل باللغة العربية ودولته ${selectedCountry}.`
+            : lang === "en"
+            ? `Write a welcome message for the client in Taheel Platform in English. Country: ${selectedCountry}.`
+            : `Écris un message de bienvenue au client sur la plateforme Taheel en français. Pays: ${selectedCountry}.`;
+
+        try {
+          const res = await fetch("/api/openai-gpt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: welcomePrompt, lang }),
+          });
+          const data = await res.json();
+          await sendMessage("bot", { text: data.text });
+        } catch (err) {
+          await sendMessage("bot", {
+            text:
+              lang === "ar"
+                ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
+                : lang === "en"
+                ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
+                : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
+          });
+        }
+      };
+      fetchWelcome();
+    }
+    // eslint-disable-next-line
+  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
 
   // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
   const sendMessage = async (type = "text", content = {}) => {
@@ -237,6 +286,7 @@ export default function ChatWidgetFull({
       setInput("");
       return;
     }
+    // داخل handleSend
     const textMsg = input.trim();
     if (!textMsg) return;
 
@@ -248,6 +298,7 @@ export default function ChatWidgetFull({
       await sendMessage("bot", { text: foundAnswer });
       setShowAgentButton(false);
     } else {
+      // هنا استخدم prompt حسب اللغة المختارة + منطق تحويل الموظف بالذكاء الصناعي
       const openAIPrompt =
         lang === "ar"
           ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${textMsg}.
@@ -266,6 +317,7 @@ export default function ChatWidgetFull({
       const data = await res.json();
       await sendMessage("bot", { text: data.text });
 
+      // افحص الرد من الذكاء الصناعي لوجود عبارة التحويل، وأظهر الزر بناءً عليها
       if (
         data.text?.includes("هل ترغب في التواصل مع موظف خدمة العملاء؟") ||
         data.text?.includes("Would you like to contact a customer service agent?") ||
@@ -279,6 +331,7 @@ export default function ChatWidgetFull({
     setInput("");
   };
 
+  // الأسئلة السريعة (FAQ)
   const handleQuickFAQ = async (q) => {
     setInput("");
     await sendMessage("text", { text: q });
@@ -384,6 +437,7 @@ export default function ChatWidgetFull({
     setShowEmoji(false);
   };
 
+  // ---- Bubble Render ----
   function renderMsgBubble(msg) {
     let isSelf = msg.senderId === safeUserId;
     let isBot = msg.type === "bot";
@@ -464,6 +518,7 @@ export default function ChatWidgetFull({
     );
   }
 
+  // ---- Header Buttons ----
   const headerButtonsClass =
     lang === "ar"
       ? "chat-header-buttons left-2 flex-row-reverse"
@@ -471,6 +526,7 @@ export default function ChatWidgetFull({
 
   if (closed) return null;
 
+  // ---- Widget Render ----
   return (
     <>
       <style>{`
@@ -550,65 +606,48 @@ export default function ChatWidgetFull({
                     userName={safeUserName}
                     countries={countriesObject}
                     countriesLang={countriesLang}
-onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-  setLang(chosenLang);
-  setSelectedCountry(chosenCountry);
-  setShowLangModal(false);
-  setWelcomeSent(true);
+                    onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
+                      setLang(chosenLang);
+                      setSelectedCountry(chosenCountry);
+                      setShowLangModal(false);
 
-  // انتظر roomId لو لازم
-  if (!roomId) return;
-
-  try {
-    const res = await fetch("/api/openai-gpt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: "",
-        lang: chosenLang,
-        country: chosenCountry,
-        userName: chosenUserName,
-        isWelcome: true,
-        userId: userId // أضفه هنا!
-      }),
-    });
-    const data = await res.json();
-    setMessages([
-      {
-        id: "welcome-" + Date.now(),
-        type: "bot",
-        senderName: "Bot",
-        createdAt: Date.now(),
-        text:
-          data.text ||
-          (chosenLang === "ar"
-            ? `مرحبًا بك يا ${chosenUserName}!`
-            : chosenLang === "en"
-            ? `Welcome ${chosenUserName}!`
-            : chosenLang === "fr"
-            ? `Bienvenue ${chosenUserName}!`
-            : `مرحبًا بك يا ${chosenUserName}!`),
-      },
-    ]);
-  } catch (err) {
-    setMessages([
-      {
-        id: "welcome-" + Date.now(),
-        type: "bot",
-        senderName: "Bot",
-        createdAt: Date.now(),
-        text:
-          chosenLang === "ar"
-            ? `مرحبًا بك يا ${chosenUserName}!`
-            : chosenLang === "en"
-            ? `Welcome ${chosenUserName}!`
-            : chosenLang === "fr"
-            ? `Bienvenue ${chosenUserName}!`
-            : `مرحبًا بك يا ${chosenUserName}!`,
-      },
-    ]);
-  }
-}}
+                      // إرسال طلب الترحيب للذكاء الصناعي
+try {
+  const res = await fetch("/api/openai-gpt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: "",
+      lang: chosenLang,
+      country: chosenCountry,
+      userName: chosenUserName,
+      isWelcome: true
+    }),
+  });
+  const data = await res.json();
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: "welcome-" + Date.now(),
+      type: "bot",
+      senderName: "Bot",
+      createdAt: Date.now(),
+      text: data.text || `مرحبًا بك يا ${chosenUserName}!`, // لو الرد فارغ أضف الاسم يدوي
+    },
+  ]);
+} catch (err) {
+  setMessages((prev) => [
+    ...prev,
+    {
+      id: "welcome-" + Date.now(),
+      type: "bot",
+      senderName: "Bot",
+      createdAt: Date.now(),
+      text: `مرحبًا بك يا ${chosenUserName}!`,
+    },
+  ]);
+}
+                    }}
                   />
                 </div>
               )}
@@ -725,6 +764,7 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
                 )}
               </form>
             )}
+            {/* زر التحويل للموظف بناءً على منطق الذكاء الصناعي */}
             {!waitingForAgent && !agentAccepted && !showLangModal && showAgentButton && (
               <div className="flex justify-center p-3">
                 <button
@@ -741,6 +781,26 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
                 </button>
               </div>
             )}
+            {/* زر التحويل القديم (احتياطي في حال رغبتك بالإبقاء عليه بناءً على عداد فشل البوت) */}
+            {/* 
+            {!waitingForAgent && !agentAccepted && !showLangModal && noBotHelpCount >= 2 && (
+              <div className="flex justify-center p-3">
+                <button
+                  type="button"
+                  onClick={requestAgent}
+                  className="bg-gradient-to-br from-yellow-400 to-blue-100 hover:from-yellow-500 hover:to-blue-200 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
+                  title={lang === "ar" ? "اتواصل مع الموظف" : lang === "en" ? "Contact Agent" : "Contacter un agent"}
+                  style={{ fontFamily }}
+                >
+                  {lang === "ar"
+                    ? "اتواصل مع موظف خدمة العملاء"
+                    : lang === "en"
+                    ? "Contact Customer Service"
+                    : "Contacter le service client"}
+                </button>
+              </div>
+            )}
+            */}
             {waitingForAgent && !agentAccepted && !showLangModal && (
               <div className="flex justify-center p-3">
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-blue-200 shadow" style={{ fontFamily }}>
