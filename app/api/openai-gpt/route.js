@@ -1,11 +1,19 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { findFaqAnswer } from "../../../components/ClientChat/faqSearch";
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
-// إعداد فايربيز (مرة واحدة فقط)
-const firebaseConfig = { /* نفس الإعدادات */ };
-if (!getApps().length) initializeApp(firebaseConfig);
+// إعداد فايربيز أدمن لمرة واحدة فقط
+const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount),
+    // يمكنك إضافة databaseURL أو storageBucket إذا احتجت
+  });
+}
+
+const db = getFirestore();
 
 const countryLangMap = { /* نفس خريطة البلد للغة */ };
 
@@ -23,11 +31,10 @@ export async function POST(req) {
   // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
   if (userId) {
     try {
-      const db = getFirestore();
-      const userRef = doc(db, "users", userId);
-      const snap = await getDoc(userRef);
+      const userRef = db.collection("users").doc(userId);
+      const snap = await userRef.get();
 
-      if (snap.exists()) {
+      if (snap.exists) {
         const data = snap.data();
         realName = lang === "ar"
           ? data.nameAr || data.name || data.firstName || realName
@@ -40,8 +47,7 @@ export async function POST(req) {
       }
 
       // جلب الطلبات
-      const requestsCol = collection(db, "users", userId, "requests");
-      const requestsSnap = await getDocs(requestsCol);
+      const requestsSnap = await userRef.collection("requests").get();
       requestsSnap.forEach(doc => {
         const req = doc.data();
         clientRequests.push({
@@ -53,8 +59,7 @@ export async function POST(req) {
       });
 
       // جلب الخدمات
-      const servicesCol = collection(db, "users", userId, "services");
-      const servicesSnap = await getDocs(servicesCol);
+      const servicesSnap = await userRef.collection("services").get();
       servicesSnap.forEach(doc => {
         const svc = doc.data();
         clientServices.push({
@@ -78,7 +83,6 @@ export async function POST(req) {
 
   // ===== رسالة ترحيب تلقائية من OpenAI مع بيانات العميل =====
   if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
-    // تجهيز بيانات الطلبات والخدمات للنص
     const requestsText = clientRequests.length
       ? clientRequests.map(
           r => `طلب رقم ${r.id}: النوع: ${r.type}, الحالة: ${r.status}, التاريخ: ${r.date}`
@@ -91,15 +95,13 @@ export async function POST(req) {
         ).join("\n")
       : "لا توجد خدمات مفعلة حتى الآن.";
 
-    // معلومات الشركة (يمكنك تعديل النص كما تريد)
     const companyInfo =
       realLang === "ar"
         ? "منصة تأهيل هي منصة إلكترونية متخصصة في تقديم حلول التدريب والتأهيل للأفراد والشركات في الوطن العربي. مقرنا الرئيسي في دبي، الإمارات العربية المتحدة، ونسعى لتقديم أفضل الخدمات الرقمية في مجال التطوير المهني والتعليم المستمر."
         : realLang === "en"
         ? "Taheel is a leading digital platform for training and qualification solutions for individuals and companies in the Arab world. Headquartered in Dubai, UAE, we strive to offer top-quality professional development and continuous learning services."
-        : "Taheel est une plateforme numérique leader dans le domaine de la formation et de la qualification pour les individus et les entreprises dans le monde arabe. Notre siège est à Dubaï, EAU."
+        : "Taheel est une plateforme numérique leader dans le domaine de la formation et de la qualification pour les individus et les entreprises dans le monde arabe. Notre siège est à Dubaï, EAU.";
 
-    // بناء البرومبت ليكون مخصص للعميل
     let welcomePrompt = "";
     switch (realLang) {
       case "ar":
@@ -169,7 +171,7 @@ export async function POST(req) {
   }
   // ===== نهاية الترحيب =====
 
-  // 1. البحث في الأسئلة الشائعة أولاً (حسب لغة العميل النهائية)
+  // 1. البحث في الأسئلة الشائعة أولاً
   const faqAnswer = findFaqAnswer(prompt, realLang);
   if (faqAnswer) {
     return NextResponse.json({ text: faqAnswer });
@@ -177,12 +179,10 @@ export async function POST(req) {
 
   // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
-    const db = getFirestore();
     let servicesSnapshot;
     try {
-      servicesSnapshot = await getDocs(collection(db, "services"));
+      servicesSnapshot = await db.collection("services").get();
     } catch (e) {
-      // خطأ في جلب البيانات
       return NextResponse.json({
         text: realLang === "ar"
           ? "حدث خطأ أثناء جلب بيانات الخدمات."
@@ -193,7 +193,6 @@ export async function POST(req) {
       });
     }
 
-    // حماية ضد undefined/null
     const services = [];
     if (servicesSnapshot && typeof servicesSnapshot.forEach === "function") {
       servicesSnapshot.forEach(doc => {
@@ -202,7 +201,6 @@ export async function POST(req) {
       });
     }
 
-    // لو لم توجد بيانات
     if (!Array.isArray(services) || services.length === 0) {
       let noDataMsg;
       switch (realLang) {
@@ -225,7 +223,6 @@ export async function POST(req) {
       });
     }
 
-    // تجهيز بيانات الخدمات بشكل آمن
     const dataString = services
       .map(s => {
         const name = typeof s.name === "string" ? s.name : "";
@@ -235,7 +232,6 @@ export async function POST(req) {
       })
       .join('\n');
 
-    // بناء prompt للـ OpenAI حسب اللغة النهائية للعميل
     let systemPrompt = "";
     switch (realLang) {
       case "ar":
@@ -252,7 +248,6 @@ export async function POST(req) {
         break;
     }
 
-    // رسالة النظام لتأكيد اللغة النهائية
     const systemMessage =
       realLang === "ar"
         ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
@@ -262,7 +257,6 @@ export async function POST(req) {
         ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
         : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
 
-    // إرسال الطلب للـ OpenAI بنفس اللغة النهائية للعميل
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -287,31 +281,30 @@ export async function POST(req) {
   }
 
   // 3. الرد العام من OpenAI بنفس اللغة النهائية للعميل
-let userPrompt = "";
-switch (realLang) {
-  case "ar":
-    userPrompt =
-      `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.\n` +
-      `إذا استشعرت أن العميل يريد التواصل مع موظف خدمة العملاء أو لم تستطع مساعدته، أضف جملة واضحة في نهاية الرد: "هل ترغب في التواصل مع موظف خدمة العملاء؟ اضغط الزر بالأسفل."`;
-    break;
-  case "en":
-    userPrompt =
-      `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.\n` +
-      `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
-    break;
-  case "fr":
-    userPrompt =
-      `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.\n` +
-      `Si tu vois que le client demande un agent du service client ou que tu ne peux pas répondre, ajoute à la fin : "Voulez-vous contacter un agent du service client ? Cliquez sur le bouton ci-dessous."`;
-    break;
-  default:
-    userPrompt =
-      `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.\n` +
-      `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
-    break;
-}
+  let userPrompt = "";
+  switch (realLang) {
+    case "ar":
+      userPrompt =
+        `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.\n` +
+        `إذا استشعرت أن العميل يريد التواصل مع موظف خدمة العملاء أو لم تستطع مساعدته، أضف جملة واضحة في نهاية الرد: "هل ترغب في التواصل مع موظف خدمة العملاء؟ اضغط الزر بالأسفل."`;
+      break;
+    case "en":
+      userPrompt =
+        `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.\n` +
+        `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
+      break;
+    case "fr":
+      userPrompt =
+        `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.\n` +
+        `Si tu vois que le client demande un agent du service client ou que tu ne peux pas répondre, ajoute à la fin : "Voulez-vous contacter un agent du service client ? Cliquez sur le bouton ci-dessous."`;
+      break;
+    default:
+      userPrompt =
+        `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.\n` +
+        `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
+      break;
+  }
 
-  // رسالة النظام لتأكيد اللغة النهائية للعميل
   const systemMessage =
     realLang === "ar"
       ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
