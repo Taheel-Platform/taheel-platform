@@ -133,19 +133,20 @@ export async function POST(req) {
   if (!realLang) realLang = "ar";
 
   // --- رسالة الترحيب (مرة واحدة) ---
-  if (isWelcome) {
-    let welcomeText =
-      realLang === "ar"
-        ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
-        : realLang === "en"
-        ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
-        : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
+  // --- رسالة الترحيب (مرة واحدة) ---
+if (isWelcome) {
+  let welcomeText =
+    realLang === "ar"
+      ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
+      : realLang === "en"
+      ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
+      : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
 
-    return NextResponse.json({
-      text: welcomeText,
-      isWelcome: true,
-    });
-  }
+  return NextResponse.json({
+    text: welcomeText,
+    isWelcome: true,
+  });
+}
 
   // --- البحث في الأسئلة الشائعة ---
   const faqAnswer = findFaqAnswer(prompt, realLang);
