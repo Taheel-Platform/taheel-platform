@@ -67,15 +67,26 @@ export default function ChatWidgetFull({
   const [selectedCountry, setSelectedCountry] = useState("");
   const [lang, setLang] = useState(initialLang);
 
-  // *** تمت إزالة noBotHelpCount ***
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
   const [showAgentButton, setShowAgentButton] = useState(false);
   const chatEndRef = useRef(null);
 
   const safeUserId = userId || "guest";
-  const fontFamily = lang === "ar" ? "Tajawal, Segoe UI, sans-serif" : "Segoe UI, Tajawal, sans-serif";
-  const dir = lang === "ar" ? "rtl" : "ltr";
+
+  // --------- اللغات ذات الاتجاه من اليمين لليسار ----------
+  const rtlLangs = ['ar', 'he', 'fa', 'ur'];
+  const dir = rtlLangs.includes(lang) ? 'rtl' : 'ltr';
+  const fontFamily =
+    lang === 'ar' ? 'Tajawal, Segoe UI, sans-serif'
+    : lang === 'zh' ? 'Noto Sans SC, Segoe UI, sans-serif'
+    : 'Segoe UI, Tajawal, sans-serif';
+
+  // --------- أزرار الهيدر تتحرك حسب اللغة ---------
+  const headerButtonsClass =
+    dir === "rtl"
+      ? "chat-header-buttons right-2 flex-row-reverse"
+      : "chat-header-buttons left-2 flex-row";
 
   useEffect(() => {
     if (!safeUserId) return;
@@ -431,12 +442,6 @@ export default function ChatWidgetFull({
     );
   }
 
-  // ---- Header Buttons ----
-  const headerButtonsClass =
-    lang === "ar"
-      ? "chat-header-buttons left-2 flex-row-reverse"
-      : "chat-header-buttons left-2 flex-row";
-
   if (closed) return null;
 
   // ---- Widget Render ----
@@ -513,48 +518,48 @@ export default function ChatWidgetFull({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-{showLangModal && (
-  <div className="flex justify-center mb-2">
-    <LanguageSelectModal
-      userName={safeUserName}
-      countries={countriesObject}
-      countriesLang={countriesLang}
-onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-  setLang(chosenLang);
-  setSelectedCountry(chosenCountry);
+              {showLangModal && (
+                <div className="flex justify-center mb-2">
+                  <LanguageSelectModal
+                    userName={safeUserName}
+                    countries={countriesObject}
+                    countriesLang={countriesLang}
+                    onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
+                      setLang(chosenLang);
+                      setSelectedCountry(chosenCountry);
 
-  let welcomeText =
-    chosenLang === "ar"
-      ? `مرحبًا بك يا ${chosenUserName}!`
-      : chosenLang === "en"
-      ? `Welcome ${chosenUserName}!`
-      : chosenLang === "fr"
-      ? `Bienvenue ${chosenUserName}!`
-      : `مرحبًا بك يا ${chosenUserName}!`;
+                      let welcomeText =
+                        chosenLang === "ar"
+                          ? `مرحبًا بك يا ${chosenUserName}!`
+                          : chosenLang === "en"
+                          ? `Welcome ${chosenUserName}!`
+                          : chosenLang === "fr"
+                          ? `Bienvenue ${chosenUserName}!`
+                          : `مرحبًا بك يا ${chosenUserName}!`;
 
-  try {
-    const res = await fetch("/api/openai-gpt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: "",
-        lang: chosenLang,
-        country: chosenCountry,
-        userName: chosenUserName,
-        isWelcome: true,
-        userId,
-      }),
-    });
-    const data = await res.json();
-    if (data.text) welcomeText = data.text;
-  } catch (err) {}
+                      try {
+                        const res = await fetch("/api/openai-gpt", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            prompt: "",
+                            lang: chosenLang,
+                            country: chosenCountry,
+                            userName: chosenUserName,
+                            isWelcome: true,
+                            userId,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (data.text) welcomeText = data.text;
+                      } catch (err) {}
 
-  await sendMessage("bot", { text: welcomeText });
-  setShowLangModal(false);
-}}
-    />
-  </div>
-)}
+                      await sendMessage("bot", { text: welcomeText });
+                      setShowLangModal(false);
+                    }}
+                  />
+                </div>
+              )}
               {!showLangModal && (Array.isArray(messages) ? messages.map(renderMsgBubble) : null)}
               <div ref={chatEndRef} />
             </div>
@@ -668,7 +673,6 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
                 )}
               </form>
             )}
-            {/* زر التحويل للموظف بناءً على فلاج backend فقط */}
             {!waitingForAgent && !agentAccepted && !showLangModal && showAgentButton && (
               <div className="flex justify-center p-3">
                 <button

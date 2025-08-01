@@ -108,23 +108,35 @@ export async function POST(req) {
   if (!realLang) realLang = "ar";
 
   // --- رسالة الترحيب (مرة واحدة) ---
-  if (isWelcome) {
-    let welcomeText =
-      realLang === "ar"
-        ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
-        : realLang === "en"
-        ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
-        : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
-
-    return NextResponse.json({
-      text: welcomeText,
-      isWelcome: true,
-      showTransferButton: false,
-      suggestAgent: false,
-      aiSilenced: false,
-      customerServiceRequestCount
-    });
-  }
+if (isWelcome) {
+  const welcomePrompt = `Write a professional welcome message for ${realName} on Taheel platform. Reply ONLY in this language: ${realLang}.`;
+  const apiKey = process.env.OPENAI_API_KEY;
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: "You are a helpful personal assistant." },
+        { role: "user", content: welcomePrompt }
+      ],
+      max_tokens: 300,
+      temperature: 0.2,
+    }),
+  });
+  const data = await response.json();
+  return NextResponse.json({
+    text: data?.choices?.[0]?.message?.content?.trim() || "",
+    isWelcome: true,
+    showTransferButton: false,
+    suggestAgent: false,
+    aiSilenced: false,
+    customerServiceRequestCount
+  });
+}
 
   // --- البحث في الأسئلة الشائعة ---
   const faqAnswer = findFaqAnswer(prompt, realLang);
