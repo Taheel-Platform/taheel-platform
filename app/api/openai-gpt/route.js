@@ -59,6 +59,19 @@ export async function POST(req) {
   let clientRequests = [];
   let clientServices = [];
 
+  // ===== حل المشكلة: الذكاء الصناعي يسكت لو العميل قيد التحويل =====
+  if (waitingForAgent) {
+    return NextResponse.json({
+      text: lang === "ar"
+        ? "تم تحويلك لموظف خدمة العملاء. يرجى الانتظار..."
+        : lang === "en"
+        ? "You are being transferred to a customer service agent. Please wait..."
+        : "Vous êtes en cours de transfert vers un agent du service client. Veuillez patienter...",
+      customerService: true,
+      aiSilenced: true,
+    });
+  }
+  
   // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
   if (userId) {
     try {
