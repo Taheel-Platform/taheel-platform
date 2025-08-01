@@ -556,7 +556,8 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
   setShowLangModal(false);
   setWelcomeSent(true);
 
-  console.log("LANG:", chosenLang, "COUNTRY:", chosenCountry, "USER:", chosenUserName);
+  // انتظر roomId لو لازم
+  if (!roomId) return;
 
   try {
     const res = await fetch("/api/openai-gpt", {
@@ -567,18 +568,26 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
         lang: chosenLang,
         country: chosenCountry,
         userName: chosenUserName,
-        isWelcome: true
+        isWelcome: true,
+        userId: userId // أضفه هنا!
       }),
     });
     const data = await res.json();
-    console.log("WELCOME DATA:", data);
     setMessages([
       {
         id: "welcome-" + Date.now(),
         type: "bot",
         senderName: "Bot",
         createdAt: Date.now(),
-        text: data.text || `مرحبًا بك يا ${chosenUserName}!`,
+        text:
+          data.text ||
+          (chosenLang === "ar"
+            ? `مرحبًا بك يا ${chosenUserName}!`
+            : chosenLang === "en"
+            ? `Welcome ${chosenUserName}!`
+            : chosenLang === "fr"
+            ? `Bienvenue ${chosenUserName}!`
+            : `مرحبًا بك يا ${chosenUserName}!`),
       },
     ]);
   } catch (err) {
@@ -588,7 +597,14 @@ onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
         type: "bot",
         senderName: "Bot",
         createdAt: Date.now(),
-        text: `مرحبًا بك يا ${chosenUserName}!`,
+        text:
+          chosenLang === "ar"
+            ? `مرحبًا بك يا ${chosenUserName}!`
+            : chosenLang === "en"
+            ? `Welcome ${chosenUserName}!`
+            : chosenLang === "fr"
+            ? `Bienvenue ${chosenUserName}!`
+            : `مرحبًا بك يا ${chosenUserName}!`,
       },
     ]);
   }
