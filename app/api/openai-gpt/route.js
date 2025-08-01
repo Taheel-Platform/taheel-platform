@@ -15,7 +15,38 @@ if (!getApps().length) {
 
 const db = getFirestore();
 
-const countryLangMap = { /* نفس خريطة البلد للغة */ };
+const countryLangMap = { EG: "ar", // مصر
+  SA: "ar", // السعودية
+  AE: "ar", // الإمارات
+  QA: "ar", // قطر
+  KW: "ar", // الكويت
+  OM: "ar", // عمان
+  JO: "ar", // الأردن
+  MA: "ar", // المغرب
+  DZ: "ar", // الجزائر
+  TN: "ar", // تونس
+  LB: "ar", // لبنان
+  IQ: "ar", // العراق
+  PS: "ar", // فلسطين
+  FR: "fr", // فرنسا
+  US: "en", // أمريكا
+  GB: "en", // بريطانيا
+  CA: "en", // كندا
+  DE: "de", // ألمانيا 
+  IT: "it", // إيطاليا
+  ES: "es", // إسبانيا
+  PT: "pt", // البرتغال
+  IN: "hi", // الهند
+  CN: "zh", // الصين
+  JP: "ja", // اليابان
+  KR: "ko", // كوريا الجنوبية
+  RU: "ru", // روسيا
+  BR: "pt", // البرازيل
+  AU: "en", // أستراليا
+  ZA: "en", // جنوب أفريقيا
+  TR: "tr", // تركيا
+  ID: "id", // إندونيسيا
+};
 
 export async function POST(req) {
   let { prompt, lang, country, userName, isWelcome, userId } = await req.json();
