@@ -20,6 +20,11 @@ const countryLangMap = {
   BR: "pt", AU: "en", ZA: "en", TR: "tr", ID: "id"
 };
 
+const STATES_LIST = [
+  "الإمارات", "مصر", "السعودية", "قطر", "الكويت", "عمان", "الأردن", "المغرب", "الجزائر", "تونس", "لبنان", "العراق", "فلسطين",
+  "france", "usa", "uk", "canada", "germany", "italy", "spain", "portugal", "india", "china", "japan", "korea", "russia", "brazil", "australia", "south africa", "turkey", "indonesia"
+];
+
 export async function POST(req) {
   let {
     prompt,
@@ -28,8 +33,9 @@ export async function POST(req) {
     userName,
     isWelcome,
     userId,
-    waitingForAgent, // يجب ترسله من الواجهة
-    customerServiceRequestCount = 10 // عدد مرات طلب خدمة العملاء (ترسله من الواجهة)
+    waitingForAgent,
+    customerServiceRequestCount = 0, // يبدأ من صفر
+    clientType // نوع العميل (company, resident, nonresident, ...)
   } = await req.json();
 
   // 1. لو العميل محول للموظف خلاص: الذكاء الصناعي يسكت
@@ -45,14 +51,14 @@ export async function POST(req) {
     });
   }
 
-  // بيانات العميل
+  // --- بيانات العميل ---
   let realName = (userName && userName.trim()) || "";
   let realLang = lang;
   let realEmail = "";
   let realRole = "";
   let clientRequests = [];
   let clientServices = [];
-
+  let realClientType = clientType || "company"; // fallback
 
   // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
   if (userId) {
@@ -64,15 +70,16 @@ export async function POST(req) {
         const data = snap.data();
         // لو لم يُرسل اسم من المودال، استخدم من فايربيز
         if (!userName) {
-          realName = lang === "ar"
+          realName = realLang === "ar"
             ? data.nameAr || data.name || data.firstName || realName
-            : lang === "en"
+            : realLang === "en"
             ? data.nameEn || data.name || data.firstName || realName
             : data.nameEn || data.nameAr || data.name || data.firstName || realName;
         }
         realEmail = data.email || "";
         realRole = data.role || "";
         if (data.lang) realLang = data.lang;
+        if (data.clientType) realClientType = data.clientType;
       }
 
       // جلب الطلبات
@@ -103,18 +110,21 @@ export async function POST(req) {
     } catch (err) { /* تجاهل الخطأ */ }
   }
 
+  // تحقق أخير من الاسم (لا يكون دولة أو فارغ أو قصير أو كله أرقام فقط)
   if (
-  !realName ||
-  realName.toLowerCase() === (country || "").toLowerCase() ||
-  realName === "" ||
-  realName.length < 2
-) {
-  realName = realLang === "ar"
-    ? "ضيفنا الكريم"
-    : realLang === "en"
-    ? "Our valued guest"
-    : "Cher client";
-}
+    !realName ||
+    STATES_LIST.includes(realName.toLowerCase()) ||
+    realName.toLowerCase() === (country || "").toLowerCase() ||
+    realName === "" ||
+    realName.length < 2 ||
+    /^\d+$/.test(realName)
+  ) {
+    realName = realLang === "ar"
+      ? "ضيفنا الكريم"
+      : realLang === "en"
+      ? "Our valued guest"
+      : "Cher client";
+  }
 
   if (!realLang && country) {
     const countryCode = country.length === 2 ? country.toUpperCase() : null;
@@ -122,128 +132,14 @@ export async function POST(req) {
   }
   if (!realLang) realLang = "ar";
 
-  // تعريف الشركة حسب اللغة
-  const companyInfo =
-    realLang === "ar"
-      ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
-      : realLang === "en"
-      ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
-      : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis.";
-
-  // ملخص الطلبات
-  const requestsText = clientRequests.length
-    ? clientRequests.map(r =>
-        realLang === "ar"
-          ? `نوع: ${r.type || ""}, حالة: ${r.status || ""}, تاريخ: ${r.date || ""}`
-          : realLang === "en"
-          ? `Type: ${r.type || ""}, Status: ${r.status || ""}, Date: ${r.date || ""}`
-          : `Type : ${r.type || ""}, Statut : ${r.status || ""}, Date : ${r.date || ""}`
-      ).join("\n")
-    : realLang === "ar"
-    ? "لا يوجد طلبات حالية."
-    : realLang === "en"
-    ? "No current requests."
-    : "Aucune demande actuelle.";
-
-  // ملخص الخدمات
-  const servicesText = clientServices.length
-    ? clientServices.map(s =>
-        realLang === "ar"
-          ? `${s.name || ""}: ${s.status || ""} (${s.price || ""})`
-          : realLang === "en"
-          ? `${s.name || ""}: ${s.status || ""} (${s.price || ""})`
-          : `${s.name || ""} : ${s.status || ""} (${s.price || ""})`
-      ).join("\n")
-    : realLang === "ar"
-    ? "لا يوجد خدمات مفعلة."
-    : realLang === "en"
-    ? "No activated services."
-    : "Aucun service activé.";
-
-  // 2. رسالة الترحيب - ترسل مرة واحدة فقط
+  // --- رسالة الترحيب (مرة واحدة) ---
   if (isWelcome) {
-    let welcomePrompt = "";
-    switch (realLang) {
-      case "ar":
-        welcomePrompt =
-          `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
-          `نبذة عن الشركة: ${companyInfo}\n\n` +
-          `طلبات العميل:\n${requestsText}\n\n` +
-          `الخدمات المفعلة:\n${servicesText}\n\n` +
-          "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة. لا تذكر خدمة العملاء أو الدعم في رسالة الترحيب.";
-        break;
-      case "en":
-        welcomePrompt =
-          `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
-          `About the company: ${companyInfo}\n\n` +
-          `Client requests:\n${requestsText}\n\n` +
-          `Activated services:\n${servicesText}\n\n` +
-          "Make the welcome personal and mention any services or requests if available. Do not mention customer service or support in the welcome message.";
-        break;
-      case "fr":
-        welcomePrompt =
-          `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
-          `À propos de l'entreprise : ${companyInfo}\n\n` +
-          `Demandes du client :\n${requestsText}\n\n` +
-          `Services activés :\n${servicesText}\n\n` +
-          "Rends le message personnel et mentionne les services ou demandes s'ils existent. N'inclus pas le service client ou le support dans le message de bienvenue.";
-        break;
-      // أضف لغات أخرى إذا لزم الأمر
-      default:
-        welcomePrompt =
-          `Write a professional and friendly welcome message for the new user named ${realName}. About the company: ${companyInfo}. Client requests: ${requestsText}. Activated services: ${servicesText}.`;
-        break;
-    }
-
-    const systemMessage =
+    let welcomeText =
       realLang === "ar"
-        ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
+        ? `مرحبًا بك يا ${realName} : أنا مساعدك الشخصي في منصة تأهيل، أول منصة رقمية شاملة للخدمات الحكومية في الإمارات العربية المتحدة. كيف أقدر أساعدك اليوم؟`
         : realLang === "en"
-        ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-        : realLang === "fr"
-        ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-        : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
-
-    const apiKey = process.env.OPENAI_API_KEY;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: welcomePrompt }
-        ],
-        max_tokens: 500,
-        temperature: 0.4,
-      }),
-    });
-    const data = await response.json();
-
-    // تأكيد أن الرسالة الترحيبية تبدأ باسم العميل
-    let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
-    if (!welcomeText) {
-      // fallback حسب اللغة المختارة
-      if (realLang === "ar") {
-        welcomeText = `مرحبًا بك يا ${realName}!`;
-      } else if (realLang === "en") {
-        welcomeText = `Welcome ${realName}!`;
-      } else if (realLang === "fr") {
-        welcomeText = `Bienvenue ${realName}!`;
-      } else {
-        welcomeText = `مرحبًا بك يا ${realName}!`;
-      }
-    }
-    if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
-      welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
-    }
-    if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
-      welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
-    }
-    // أضف الفرنسي لو تحب
+        ? `Welcome ${realName}! I am your personal assistant on Taheel, the first comprehensive digital platform for government services in the UAE. How may I assist you today?`
+        : `Bienvenue ${realName} ! Je suis votre assistant personnel sur Taheel, première plateforme numérique complète pour les services gouvernementaux aux Émirats arabes unis. Comment puis-je vous aider aujourd'hui ?`;
 
     return NextResponse.json({
       text: welcomeText,
@@ -251,51 +147,57 @@ export async function POST(req) {
     });
   }
 
-  // 3. البحث في الأسئلة الشائعة أولاً
+  // --- البحث في الأسئلة الشائعة ---
   const faqAnswer = findFaqAnswer(prompt, realLang);
   if (faqAnswer) {
     return NextResponse.json({ text: faqAnswer });
   }
 
-  // 4. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
-  if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
-    let servicesSnapshot;
-    try {
-      servicesSnapshot = await db.collection("services").get();
-    } catch (e) {
-      return NextResponse.json({
-        text: realLang === "ar"
-          ? "حدث خطأ أثناء جلب بيانات الخدمات."
-          : realLang === "en"
-          ? "An error occurred while fetching services data."
-          : "Une erreur est survenue lors de la récupération des données de service.",
-        customerService: true,
-      });
-    }
+  // --- البحث عن الخدمات من فايرستور حسب نوع العميل ---
+  if (/سعر|price|cost|خدمة|service|كم|fees|رسوم|تأسيس|company|formation/i.test(prompt)) {
+    let services = [];
 
-    const services = [];
-    if (servicesSnapshot && typeof servicesSnapshot.forEach === "function") {
-      servicesSnapshot.forEach(doc => {
-        const data = doc.data();
-        if (data && typeof data === "object") services.push(data);
-      });
+    // جلب الخدمات حسب نوع العميل من servicesByClientType
+    try {
+      const servicesByTypeRef = db.collection("servicesByClientType").doc(realClientType);
+      const servicesDoc = await servicesByTypeRef.get();
+      if (servicesDoc.exists) {
+        const data = servicesDoc.data();
+        // كل خدمة عبارة عن حقل
+        services = Object.values(data).filter(s => s && typeof s === "object" && s.isActive);
+      }
+    } catch (e) {/* تجاهل الخطأ */ }
+
+    // fallback لو مفيش خدمات في المسار الجديد
+    if (!Array.isArray(services) || services.length === 0) {
+      try {
+        const servicesSnapshot = await db.collection("services").get();
+        if (servicesSnapshot && typeof servicesSnapshot.forEach === "function") {
+          services = [];
+          servicesSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data && typeof data === "object" && data.isActive) services.push(data);
+          });
+        }
+      } catch (e) {
+        return NextResponse.json({
+          text: realLang === "ar"
+            ? "حدث خطأ أثناء جلب بيانات الخدمات."
+            : realLang === "en"
+            ? "An error occurred while fetching services data."
+            : "Une erreur est survenue lors de la récupération des données de service.",
+          customerService: true,
+        });
+      }
     }
 
     if (!Array.isArray(services) || services.length === 0) {
       let noDataMsg;
       switch (realLang) {
-        case "ar":
-          noDataMsg = "لا توجد بيانات خدمات متاحة حالياً.";
-          break;
-        case "en":
-          noDataMsg = "No services data available at the moment.";
-          break;
-        case "fr":
-          noDataMsg = "Aucune donnée de service disponible pour le moment.";
-          break;
-        default:
-          noDataMsg = "No services data available.";
-          break;
+        case "ar": noDataMsg = "لا توجد بيانات خدمات متاحة حالياً."; break;
+        case "en": noDataMsg = "No services data available at the moment."; break;
+        case "fr": noDataMsg = "Aucune donnée de service disponible pour le moment."; break;
+        default: noDataMsg = "No services data available."; break;
       }
       return NextResponse.json({
         text: noDataMsg,
@@ -303,11 +205,12 @@ export async function POST(req) {
       });
     }
 
+    // حضر نص الخدمات بلغة العميل
     const dataString = services
       .map(s => {
-        const name = typeof s.name === "string" ? s.name : "";
+        const name = realLang === "ar" ? (s.name || "") : (s.name_en || s.name || "");
         const price = s.price || s.cost || "";
-        const description = typeof s.description === "string" ? s.description : "";
+        const description = realLang === "ar" ? (s.description || "") : (s.description_en || s.description || "");
         return `${name}: ${price} (${description})`;
       })
       .join('\n');
@@ -360,35 +263,128 @@ export async function POST(req) {
     });
   }
 
-  // 5. الرد على جمل طلب خدمة العملاء (ذكاء صناعي)
-const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent)/i;
-if (customerServiceRegex.test(prompt)) {
-  if (customerServiceRequestCount < 2) {
-    // أول أو ثاني محاولة: شجعه يكمل مع البوت فقط
+  // --- البحث عن طلب (tracking) ---
+  if (/طلب|tracking|رقم الطلب|order\s*number|track/i.test(prompt)) {
+    // استخراج رقم الطلب من البرومبت (بسيط)
+    const orderNumberMatch = prompt.match(/(?:طلب|tracking|رقم الطلب|order\s*number|#)(\d+)/i);
+    const orderId = orderNumberMatch ? orderNumberMatch[1] : null;
+
+    if (!orderId) {
+      // لو مفيش رقم طلب واضح، اسأله عن الرقم
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "من فضلك أدخل رقم الطلب أو الكود حتى أستطيع مساعدتك."
+          : realLang === "en"
+          ? "Please provide the order number or code so I can assist you."
+          : "Veuillez fournir le numéro ou le code de la demande pour que je puisse vous aider.",
+        askOrderId: true
+      });
+    }
+
+    // جلب تفاصيل الطلب من فايربيز
+    try {
+      let orderData = null;
+      const userRef = db.collection("users").doc(userId);
+      const reqSnap = await userRef.collection("requests").doc(orderId).get();
+      if (reqSnap.exists) {
+        orderData = reqSnap.data();
+      }
+      if (orderData) {
+        return NextResponse.json({
+          text: realLang === "ar"
+            ? `تفاصيل طلبك: النوع: ${orderData.type || ""}, الحالة: ${orderData.status || ""}, التاريخ: ${orderData.date || orderData.createdAt || ""}`
+            : realLang === "en"
+            ? `Order details: Type: ${orderData.type || ""}, Status: ${orderData.status || ""}, Date: ${orderData.date || orderData.createdAt || ""}`
+            : `Détails de la demande : Type : ${orderData.type || ""}, Statut : ${orderData.status || ""}, Date : ${orderData.date || orderData.createdAt || ""}`
+        });
+      }
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "لم أجد طلب بهذا الرقم. تأكد من الرقم وحاول مرة أخرى."
+          : realLang === "en"
+          ? "No order found with this number. Please check and try again."
+          : "Aucune demande trouvée avec ce numéro. Veuillez vérifier et réessayer.",
+        notFound: true
+      });
+    } catch (e) {
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "حدث خطأ أثناء جلب تفاصيل الطلب."
+          : realLang === "en"
+          ? "An error occurred while fetching order details."
+          : "Une erreur est survenue lors de la récupération des détails de la demande.",
+        customerService: true
+      });
+    }
+  }
+
+  // --- أسئلة عن الشركة ---
+  if (/منصة|taheel|تأهيل|about\s+company|about\s+taheel|الشركة|company\s+info/i.test(prompt)) {
     return NextResponse.json({
       text: realLang === "ar"
-        ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
+        ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
         : realLang === "en"
-        ? "I'm here to help! Please try to explain your request or question."
-        : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
-      customerServicePrompt: true,
-      customerServiceRequestCount: customerServiceRequestCount + 1 // زود العدّاد
-    });
-  } else {
-    // في المرة الثالثة أو أكثر: فعّل زر التحويل
-    return NextResponse.json({
-      text: realLang === "ar"
-        ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
-        : realLang === "en"
-        ? "You can now contact a customer service agent. Click the button below to be transferred."
-        : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
-      showTransferButton: true,
-      customerServiceRequestCount: customerServiceRequestCount + 1
+        ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
+        : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis."
     });
   }
-}
 
-  // 6. الرد العام من OpenAI
+  // --- سؤال غير مفهوم او مش واضح ---
+  if (!prompt || prompt.trim().length < 2) {
+    // سؤال غير واضح أو فارغ
+    customerServiceRequestCount += 1;
+    if (customerServiceRequestCount >= 5) {
+      // اقترح عليه خدمة العملاء بعد 5 محاولات
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "يبدو أن سؤالك غير واضح أو لم أتمكن من المساعدة. إذا رغبت بالتواصل مع موظف خدمة العملاء، اكتب ذلك وسأحولك فورًا."
+          : realLang === "en"
+          ? "Your question is not clear or I couldn't assist you. If you wish to contact a customer service agent, just write that and I'll transfer you."
+          : "Votre question n'est pas claire ou je n'ai pas pu vous aider. Si vous souhaitez contacter un agent du service client, écrivez-le et je vous transférerai.",
+        suggestAgent: true,
+        customerServiceRequestCount
+      });
+    }
+    return NextResponse.json({
+      text: realLang === "ar"
+        ? "ممكن توضح لي سؤالك أكتر أو تعيد صياغته؟"
+        : realLang === "en"
+        ? "Could you please clarify or rephrase your question?"
+        : "Pouvez-vous clarifier ou reformuler votre question ?",
+      unclear: true,
+      customerServiceRequestCount
+    });
+  }
+
+  // --- العميل طلب موظف خدمة عملاء صراحة ---
+  const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent|اريد التحدث مع موظف|عايز اكلم موظف|اريد التواصل مع موظف|اريد الدعم)/i;
+  if (customerServiceRegex.test(prompt)) {
+    // بعد 3 مرات فقط يظهر زر التحويل
+    if (customerServiceRequestCount < 3) {
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
+          : realLang === "en"
+          ? "I'm here to help! Please try to explain your request or question."
+          : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
+        customerServicePrompt: true,
+        customerServiceRequestCount: customerServiceRequestCount + 1
+      });
+    } else {
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
+          : realLang === "en"
+          ? "You can now contact a customer service agent. Click the button below to be transferred."
+          : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
+        showTransferButton: true,
+        aiSilenced: true,
+        customerServiceRequestCount: customerServiceRequestCount + 1
+      });
+    }
+  }
+
+  // --- الرد العام من OpenAI لأي سؤال آخر ---
   let userPrompt = "";
   switch (realLang) {
     case "ar":
