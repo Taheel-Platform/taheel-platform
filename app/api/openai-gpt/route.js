@@ -187,13 +187,25 @@ export async function POST(req) {
     });
     const data = await response.json();
     // تأكيد أن الرسالة الترحيبية تبدأ باسم العميل
-    let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
-    if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
-      welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
-    }
-    if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
-      welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
-    }
+let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
+if (!welcomeText) {
+  // fallback حسب اللغة المختارة
+  if (realLang === "ar") {
+    welcomeText = `مرحبًا بك يا ${realName}!`;
+  } else if (realLang === "en") {
+    welcomeText = `Welcome ${realName}!`;
+  } else if (realLang === "fr") {
+    welcomeText = `Bienvenue ${realName}!`;
+  } else {
+    welcomeText = `مرحبًا بك يا ${realName}!`;
+  }
+}
+if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
+  welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
+}
+if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
+  welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
+}
     // أضف الفرنسي لو تحب
 
     return NextResponse.json({
