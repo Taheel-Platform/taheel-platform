@@ -557,57 +557,73 @@ export default function ChatWidgetFull({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col chat-bg-grad">
-              {showLangModal && (
-                <div className="flex justify-center mb-2">
-                  <LanguageSelectModal
-                    userName={safeUserName}
-                    countries={countriesObject}
-                    countriesLang={countriesLang}
-                    onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-                      setLang(chosenLang);
-                      setSelectedCountry(chosenCountry);
-                      setShowLangModal(false);
+{showLangModal && (
+  <div className="flex justify-center mb-2">
+    <LanguageSelectModal
+      userName={safeUserName}
+      countries={countriesObject}
+      countriesLang={countriesLang}
+      onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
+        // اجعل اللغة والاسم في الواجهة من اختيار المستخدم
+        setLang(chosenLang);
+        setSelectedCountry(chosenCountry);
+        setShowLangModal(false);
 
-                      // إرسال طلب الترحيب للذكاء الصناعي
-try {
-  const res = await fetch("/api/openai-gpt", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt: "",
-      lang: chosenLang,
-      country: chosenCountry,
-      userName: chosenUserName,
-      isWelcome: true
-    }),
-  });
-  const data = await res.json();
-  setMessages((prev) => [
-    ...prev,
-    {
-      id: "welcome-" + Date.now(),
-      type: "bot",
-      senderName: "Bot",
-      createdAt: Date.now(),
-      text: data.text || `مرحبًا بك يا ${chosenUserName}!`, // لو الرد فارغ أضف الاسم يدوي
-    },
-  ]);
-} catch (err) {
-  setMessages((prev) => [
-    ...prev,
-    {
-      id: "welcome-" + Date.now(),
-      type: "bot",
-      senderName: "Bot",
-      createdAt: Date.now(),
-      text: `مرحبًا بك يا ${chosenUserName}!`,
-    },
-  ]);
-}
-                    }}
-                  />
-                </div>
-              )}
+        // أرسل الترحيب للذكاء الصناعي بالاسم واللغة المختارين فقط
+        try {
+          const res = await fetch("/api/openai-gpt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: "",
+              lang: chosenLang,             // اللغة من المودال
+              country: chosenCountry,
+              userName: chosenUserName,     // الاسم من المودال
+              isWelcome: true,
+              userId,                       // لو عندك معرف المستخدم
+            }),
+          });
+          const data = await res.json();
+          // غيّر setMessages ليضع رسالة ترحيب واحدة فقط (لا تضف على الرسائل السابقة)
+          setMessages([
+            {
+              id: "welcome-" + Date.now(),
+              type: "bot",
+              senderName: "Bot",
+              createdAt: Date.now(),
+              text: data.text || 
+                (chosenLang === "ar"
+                  ? `مرحبًا بك يا ${chosenUserName}!`
+                  : chosenLang === "en"
+                  ? `Welcome ${chosenUserName}!`
+                  : chosenLang === "fr"
+                  ? `Bienvenue ${chosenUserName}!`
+                  : `مرحبًا بك يا ${chosenUserName}!`
+                ),
+            },
+          ]);
+        } catch (err) {
+          setMessages([
+            {
+              id: "welcome-" + Date.now(),
+              type: "bot",
+              senderName: "Bot",
+              createdAt: Date.now(),
+              text:
+                chosenLang === "ar"
+                  ? `مرحبًا بك يا ${chosenUserName}!`
+                  : chosenLang === "en"
+                  ? `Welcome ${chosenUserName}!`
+                  : chosenLang === "fr"
+                  ? `Bienvenue ${chosenUserName}!`
+                  : `مرحبًا بك يا ${chosenUserName}!`,
+            },
+          ]);
+        }
+      }}
+    />
+  </div>
+)}
               {!showLangModal && (Array.isArray(messages) ? messages.map(renderMsgBubble) : null)}
               <div ref={chatEndRef} />
             </div>
