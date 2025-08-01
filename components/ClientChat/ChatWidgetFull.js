@@ -209,49 +209,6 @@ export default function ChatWidgetFull({
     return () => unsub();
   }, [db, roomId]);
 
-  // رسالة الترحيب من OpenAI بعد اختيار اللغة والدولة
-  useEffect(() => {
-    if (
-      !showLangModal &&
-      messages.length === 0 &&
-      roomId &&
-      !waitingForAgent &&
-      !agentAccepted &&
-      lang &&
-      selectedCountry
-    ) {
-      const fetchWelcome = async () => {
-        // عرف welcomePrompt هنا:
-        const welcomePrompt =
-          lang === "ar"
-            ? `اكتب رسالة ترحيب للعميل في منصة تأهيل باللغة العربية ودولته ${selectedCountry}.`
-            : lang === "en"
-            ? `Write a welcome message for the client in Taheel Platform in English. Country: ${selectedCountry}.`
-            : `Écris un message de bienvenue au client sur la plateforme Taheel en français. Pays: ${selectedCountry}.`;
-
-        try {
-          const res = await fetch("/api/openai-gpt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: welcomePrompt, lang }),
-          });
-          const data = await res.json();
-          await sendMessage("bot", { text: data.text });
-        } catch (err) {
-          await sendMessage("bot", {
-            text:
-              lang === "ar"
-                ? `مرحبًا ${safeUserName} من ${selectedCountry ? selectedCountry : ""} في خدمة الدردشة الذكية! يمكنك كتابة أي سؤال أو اختيار من الأسئلة الشائعة.`
-                : lang === "en"
-                ? `Welcome ${safeUserName}${selectedCountry ? " from " + selectedCountry : ""} to Smart Chat! You can ask any question or choose from FAQs.`
-                : `Bienvenue ${safeUserName}${selectedCountry ? " de " + selectedCountry : ""}! Vous pouvez poser n'importe quelle question ou choisir parmi les questions fréquentes.`,
-          });
-        }
-      };
-      fetchWelcome();
-    }
-    // eslint-disable-next-line
-  }, [messages.length, roomId, waitingForAgent, agentAccepted, showLangModal, lang, selectedCountry, safeUserName]);
 
   // إرسال سؤال المستخدم للـ OpenAI إن لم يجد إجابة في الأسئلة الشائعة
   const sendMessage = async (type = "text", content = {}) => {
