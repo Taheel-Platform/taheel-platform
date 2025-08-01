@@ -9,57 +9,26 @@ const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
 if (!getApps().length) {
   initializeApp({
     credential: cert(serviceAccount),
-    // يمكنك إضافة databaseURL أو storageBucket إذا احتجت
   });
 }
 
 const db = getFirestore();
 
-const countryLangMap = { EG: "ar", // مصر
-  SA: "ar", // السعودية
-  AE: "ar", // الإمارات
-  QA: "ar", // قطر
-  KW: "ar", // الكويت
-  OM: "ar", // عمان
-  JO: "ar", // الأردن
-  MA: "ar", // المغرب
-  DZ: "ar", // الجزائر
-  TN: "ar", // تونس
-  LB: "ar", // لبنان
-  IQ: "ar", // العراق
-  PS: "ar", // فلسطين
-  FR: "fr", // فرنسا
-  US: "en", // أمريكا
-  GB: "en", // بريطانيا
-  CA: "en", // كندا
-  DE: "de", // ألمانيا 
-  IT: "it", // إيطاليا
-  ES: "es", // إسبانيا
-  PT: "pt", // البرتغال
-  IN: "hi", // الهند
-  CN: "zh", // الصين
-  JP: "ja", // اليابان
-  KR: "ko", // كوريا الجنوبية
-  RU: "ru", // روسيا
-  BR: "pt", // البرازيل
-  AU: "en", // أستراليا
-  ZA: "en", // جنوب أفريقيا
-  TR: "tr", // تركيا
-  ID: "id", // إندونيسيا
-};
+const countryLangMap = { EG: "ar", SA: "ar", AE: "ar", QA: "ar", KW: "ar", OM: "ar", JO: "ar", MA: "ar", DZ: "ar", TN: "ar", LB: "ar", IQ: "ar", PS: "ar", FR: "fr", US: "en", GB: "en", CA: "en", DE: "de", IT: "it", ES: "es", PT: "pt", IN: "hi", CN: "zh", JP: "ja", KR: "ko", RU: "ru", BR: "pt", AU: "en", ZA: "en", TR: "tr", ID: "id" };
 
 export async function POST(req) {
-  let { prompt, lang, country, userName, isWelcome, userId } = await req.json();
+  let {
+    prompt,
+    lang,
+    country,
+    userName,
+    isWelcome,
+    userId,
+    waitingForAgent, // يجب ترسله من الواجهة
+    customerServiceRequestCount = 0 // عدد مرات طلب خدمة العملاء (ترسله من الواجهة)
+  } = await req.json();
 
-  // بيانات العميل الأساسية
-  let realName = userName;
-  let realLang = lang;
-  let realEmail = "";
-  let realRole = "";
-  let clientRequests = [];
-  let clientServices = [];
-
-  // ===== حل المشكلة: الذكاء الصناعي يسكت لو العميل قيد التحويل =====
+  // 1. لو العميل محول للموظف خلاص: الذكاء الصناعي يسكت
   if (waitingForAgent) {
     return NextResponse.json({
       text: lang === "ar"
@@ -71,7 +40,15 @@ export async function POST(req) {
       aiSilenced: true,
     });
   }
-  
+
+  // بيانات العميل
+  let realName = userName;
+  let realLang = lang;
+  let realEmail = "";
+  let realRole = "";
+  let clientRequests = [];
+  let clientServices = [];
+
   // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
   if (userId) {
     try {
@@ -125,8 +102,8 @@ export async function POST(req) {
   if (!realLang) realLang = "ar";
   if (!realName) realName = "زائر";
 
-  // ===== رسالة ترحيب تلقائية من OpenAI مع بيانات العميل =====
-  if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
+  // 2. رسالة الترحيب - ترسل مرة واحدة فقط
+  if (isWelcome) {
     const requestsText = clientRequests.length
       ? clientRequests.map(
           r => `طلب رقم ${r.id}: النوع: ${r.type}, الحالة: ${r.status}, التاريخ: ${r.date}`
@@ -211,17 +188,17 @@ export async function POST(req) {
     const data = await response.json();
     return NextResponse.json({
       text: data?.choices?.[0]?.message?.content?.trim() || "",
+      isWelcome: true,
     });
   }
-  // ===== نهاية الترحيب =====
 
-  // 1. البحث في الأسئلة الشائعة أولاً
+  // 3. البحث في الأسئلة الشائعة أولاً
   const faqAnswer = findFaqAnswer(prompt, realLang);
   if (faqAnswer) {
     return NextResponse.json({ text: faqAnswer });
   }
 
-  // 2. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
+  // 4. بحث في الخدمات أو الأسعار أو التتبع من قاعدة البيانات
   if (/سعر|price|cost|خدمة|service|تتبع|tracking/i.test(prompt)) {
     let servicesSnapshot;
     try {
@@ -324,7 +301,35 @@ export async function POST(req) {
     });
   }
 
-  // 3. الرد العام من OpenAI بنفس اللغة النهائية للعميل
+  // 5. الرد على جمل طلب خدمة العملاء (ذكاء صناعي)
+  const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent)/i;
+  if (customerServiceRegex.test(prompt)) {
+    // لو أول مرة أو الثانية: شجعه يكمل مع الذكاء الصناعي فقط
+    if (customerServiceRequestCount < 2) {
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟ إذا كنت بحاجة للتواصل مع موظف خدمة العملاء اضغط الزر في الأسفل بعد المحاولة أكثر من مرة."
+          : realLang === "en"
+          ? "I'm here to help! Please try to explain your request or question, and if you still need to contact customer service, the option will appear soon."
+          : "Je suis là pour vous aider ! Essayez d’expliquer votre question, et si vous souhaitez toujours contacter un agent, l’option apparaîtra sous peu.",
+        customerServicePrompt: true,
+        customerServiceRequestCount: customerServiceRequestCount + 1 // عُدّل في الواجهة
+      });
+    } else {
+      // للمرة الثالثة أو أكثر: أظهر زر التحويل
+      return NextResponse.json({
+        text: realLang === "ar"
+          ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
+          : realLang === "en"
+          ? "You can now contact a customer service agent. Click the button below to be transferred."
+          : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
+        showTransferButton: true,
+        customerServiceRequestCount: customerServiceRequestCount + 1
+      });
+    }
+  }
+
+  // 6. الرد العام من OpenAI
   let userPrompt = "";
   switch (realLang) {
     case "ar":
