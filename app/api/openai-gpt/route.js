@@ -347,32 +347,32 @@ export async function POST(req) {
   }
 
   // 5. الرد على جمل طلب خدمة العملاء (ذكاء صناعي)
-  const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent)/i;
-  if (customerServiceRegex.test(prompt)) {
-    // لو أول مرة أو الثانية: شجعه يكمل مع الذكاء الصناعي فقط
-    if (customerServiceRequestCount < 2) {
-      return NextResponse.json({
-        text: realLang === "ar"
-          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
-          : realLang === "en"
-          ? "I'm here to help! Please try to explain your request or question."
-          : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
-        customerServicePrompt: true,
-        customerServiceRequestCount: customerServiceRequestCount + 1 // عُدّل في الواجهة
-      });
-    } else {
-      // للمرة الثالثة أو أكثر: أظهر زر التحويل
-      return NextResponse.json({
-        text: realLang === "ar"
-          ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
-          : realLang === "en"
-          ? "You can now contact a customer service agent. Click the button below to be transferred."
-          : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
-        showTransferButton: true,
-        customerServiceRequestCount: customerServiceRequestCount + 1
-      });
-    }
+const customerServiceRegex = /(خدمة العملاء|موظف خدمة العملاء|اتواصل مع موظف|أكلم موظف|customer service|customer agent|contact agent|support agent|live agent)/i;
+if (customerServiceRegex.test(prompt)) {
+  if (customerServiceRequestCount < 2) {
+    // أول أو ثاني محاولة: شجعه يكمل مع البوت فقط
+    return NextResponse.json({
+      text: realLang === "ar"
+        ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
+        : realLang === "en"
+        ? "I'm here to help! Please try to explain your request or question."
+        : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
+      customerServicePrompt: true,
+      customerServiceRequestCount: customerServiceRequestCount + 1 // زود العدّاد
+    });
+  } else {
+    // في المرة الثالثة أو أكثر: فعّل زر التحويل
+    return NextResponse.json({
+      text: realLang === "ar"
+        ? "تم تفعيل خيار التواصل مع موظف خدمة العملاء. اضغط الزر بالأسفل ليتم تحويلك."
+        : realLang === "en"
+        ? "You can now contact a customer service agent. Click the button below to be transferred."
+        : "Vous pouvez maintenant contacter un agent du service client. Cliquez sur le bouton ci-dessous.",
+      showTransferButton: true,
+      customerServiceRequestCount: customerServiceRequestCount + 1
+    });
   }
+}
 
   // 6. الرد العام من OpenAI
   let userPrompt = "";

@@ -563,55 +563,40 @@ export default function ChatWidgetFull({
       userName={safeUserName}
       countries={countriesObject}
       countriesLang={countriesLang}
-      onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-        // حدّث اللغة والدولة بعد اختيار العميل
-        setLang(chosenLang);
-        setSelectedCountry(chosenCountry);
+onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
+  setLang(chosenLang);
+  setSelectedCountry(chosenCountry);
 
-        // جهّز ترحيب افتراضي في حال فشل الـ API
-        let welcomeText =
-          chosenLang === "ar"
-            ? `مرحبًا بك يا ${chosenUserName}!`
-            : chosenLang === "en"
-            ? `Welcome ${chosenUserName}!`
-            : chosenLang === "fr"
-            ? `Bienvenue ${chosenUserName}!`
-            : `مرحبًا بك يا ${chosenUserName}!`;
+  let welcomeText =
+    chosenLang === "ar"
+      ? `مرحبًا بك يا ${chosenUserName}!`
+      : chosenLang === "en"
+      ? `Welcome ${chosenUserName}!`
+      : chosenLang === "fr"
+      ? `Bienvenue ${chosenUserName}!`
+      : `مرحبًا بك يا ${chosenUserName}!`;
 
-        // جلب رسالة الترحيب من الـ API لو أمكن
-        try {
-          const res = await fetch("/api/openai-gpt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              prompt: "",
-              lang: chosenLang,
-              country: chosenCountry,
-              userName: chosenUserName,
-              isWelcome: true,
-              userId,
-            }),
-          });
-          const data = await res.json();
-          if (data.text) welcomeText = data.text;
-        } catch (err) {
-          // تجاهل أي خطأ واستخدم النص الافتراضي
-        }
+  try {
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "",
+        lang: chosenLang,
+        country: chosenCountry,
+        userName: chosenUserName,
+        isWelcome: true,
+        userId,
+      }),
+    });
+    const data = await res.json();
+    if (data.text) welcomeText = data.text;
+  } catch (err) {}
 
-        // أضف رسالة الترحيب فقط
-        setMessages([
-          {
-            id: "welcome-" + Date.now(),
-            type: "bot",
-            senderName: "Bot",
-            createdAt: Date.now(),
-            text: welcomeText,
-          },
-        ]);
-
-        // أغلق المودال في النهاية
-        setShowLangModal(false);
-      }}
+  // هنا التغيير
+  await sendMessage("bot", { text: welcomeText });
+  setShowLangModal(false);
+}}
     />
   </div>
 )}
