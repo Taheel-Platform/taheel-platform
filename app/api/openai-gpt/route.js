@@ -287,21 +287,29 @@ export async function POST(req) {
   }
 
   // 3. الرد العام من OpenAI بنفس اللغة النهائية للعميل
-  let userPrompt = "";
-  switch (realLang) {
-    case "ar":
-      userPrompt = `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}`;
-      break;
-    case "en":
-      userPrompt = `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}`;
-      break;
-    case "fr":
-      userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}`;
-      break;
-    default:
-      userPrompt = `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.`;
-      break;
-  }
+let userPrompt = "";
+switch (realLang) {
+  case "ar":
+    userPrompt =
+      `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.\n` +
+      `إذا استشعرت أن العميل يريد التواصل مع موظف خدمة العملاء أو لم تستطع مساعدته، أضف جملة واضحة في نهاية الرد: "هل ترغب في التواصل مع موظف خدمة العملاء؟ اضغط الزر بالأسفل."`;
+    break;
+  case "en":
+    userPrompt =
+      `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.\n` +
+      `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
+    break;
+  case "fr":
+    userPrompt =
+      `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.\n` +
+      `Si tu vois que le client demande un agent du service client ou que tu ne peux pas répondre, ajoute à la fin : "Voulez-vous contacter un agent du service client ? Cliquez sur le bouton ci-dessous."`;
+    break;
+  default:
+    userPrompt =
+      `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.\n` +
+      `If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`;
+    break;
+}
 
   // رسالة النظام لتأكيد اللغة النهائية للعميل
   const systemMessage =
