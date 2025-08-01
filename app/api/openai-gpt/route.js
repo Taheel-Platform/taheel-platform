@@ -248,17 +248,30 @@ if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realNa
       let noDataMsg;
       switch (realLang) {
         case "ar":
-          noDataMsg = "لم يتم العثور على بيانات الخدمات في قاعدة البيانات. هل ترغب بالتواصل مع موظف خدمة العملاء؟";
-          break;
-        case "en":
-          noDataMsg = "No service data was found in the database. Would you like to contact a customer service agent?";
-          break;
-        case "fr":
-          noDataMsg = "Aucune donnée de service trouvée dans la base de données. Voulez-vous contacter un agent du service client?";
-          break;
-        default:
-          noDataMsg = `No service data found in the database. Would you like to contact a customer service agent?`;
-          break;
+  welcomePrompt =
+    `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
+    `نبذة عن الشركة: ${companyInfo}\n\n` +
+    `طلبات العميل:\n${requestsText}\n\n` +
+    `الخدمات المفعلة:\n${servicesText}\n\n` +
+    "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة. لا تذكر خدمة العملاء أو الدعم في الترحيب.";
+  break;
+case "en":
+  welcomePrompt =
+    `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
+    `About the company: ${companyInfo}\n\n` +
+    `Client requests:\n${requestsText}\n\n` +
+    `Activated services:\n${servicesText}\n\n` +
+    "Make the welcome personal and mention any services or requests if available. Do not mention customer service or support in the welcome message.";
+  break;
+case "fr":
+  welcomePrompt =
+    `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
+    `À propos de l'entreprise : ${companyInfo}\n\n` +
+    `Demandes du client :\n${requestsText}\n\n` +
+    `Services activés :\n${servicesText}\n\n` +
+    "Rends le message personnel et mentionne les services ou demandes s'ils existent. N'inclus pas le service client ou le support dans le message de bienvenue.";
+  break;
+  
       }
       return NextResponse.json({
         text: noDataMsg,
