@@ -550,46 +550,49 @@ export default function ChatWidgetFull({
                     userName={safeUserName}
                     countries={countriesObject}
                     countriesLang={countriesLang}
-                    onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
-                      setLang(chosenLang);
-                      setSelectedCountry(chosenCountry);
-                      setShowLangModal(false);
-                      setWelcomeSent(true);
+onSelect={async (chosenLang, chosenCountry, chosenUserName) => {
+  setLang(chosenLang);
+  setSelectedCountry(chosenCountry);
+  setShowLangModal(false);
+  setWelcomeSent(true);
 
-                      try {
-                        const res = await fetch("/api/openai-gpt", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            prompt: "",
-                            lang: chosenLang,
-                            country: chosenCountry,
-                            userName: chosenUserName,
-                            isWelcome: true
-                          }),
-                        });
-                        const data = await res.json();
-                        setMessages([
-                          {
-                            id: "welcome-" + Date.now(),
-                            type: "bot",
-                            senderName: "Bot",
-                            createdAt: Date.now(),
-                            text: data.text || `مرحبًا بك يا ${chosenUserName}!`,
-                          },
-                        ]);
-                      } catch (err) {
-                        setMessages([
-                          {
-                            id: "welcome-" + Date.now(),
-                            type: "bot",
-                            senderName: "Bot",
-                            createdAt: Date.now(),
-                            text: `مرحبًا بك يا ${chosenUserName}!`,
-                          },
-                        ]);
-                      }
-                    }}
+  console.log("LANG:", chosenLang, "COUNTRY:", chosenCountry, "USER:", chosenUserName);
+
+  try {
+    const res = await fetch("/api/openai-gpt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "",
+        lang: chosenLang,
+        country: chosenCountry,
+        userName: chosenUserName,
+        isWelcome: true
+      }),
+    });
+    const data = await res.json();
+    console.log("WELCOME DATA:", data);
+    setMessages([
+      {
+        id: "welcome-" + Date.now(),
+        type: "bot",
+        senderName: "Bot",
+        createdAt: Date.now(),
+        text: data.text || `مرحبًا بك يا ${chosenUserName}!`,
+      },
+    ]);
+  } catch (err) {
+    setMessages([
+      {
+        id: "welcome-" + Date.now(),
+        type: "bot",
+        senderName: "Bot",
+        createdAt: Date.now(),
+        text: `مرحبًا بك يا ${chosenUserName}!`,
+      },
+    ]);
+  }
+}}
                   />
                 </div>
               )}
