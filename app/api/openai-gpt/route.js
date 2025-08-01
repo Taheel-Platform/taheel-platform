@@ -186,8 +186,18 @@ export async function POST(req) {
       }),
     });
     const data = await response.json();
+    // تأكيد أن الرسالة الترحيبية تبدأ باسم العميل
+    let welcomeText = data?.choices?.[0]?.message?.content?.trim() || "";
+    if (realLang === "ar" && !welcomeText.startsWith(`مرحبًا بك يا ${realName}`)) {
+      welcomeText = `مرحبًا بك يا ${realName}!\n\n${welcomeText}`;
+    }
+    if (realLang === "en" && !welcomeText.toLowerCase().startsWith(`welcome ${realName.toLowerCase()}`)) {
+      welcomeText = `Welcome ${realName}!\n\n${welcomeText}`;
+    }
+    // أضف الفرنسي لو تحب
+
     return NextResponse.json({
-      text: data?.choices?.[0]?.message?.content?.trim() || "",
+      text: welcomeText,
       isWelcome: true,
     });
   }
@@ -308,10 +318,10 @@ export async function POST(req) {
     if (customerServiceRequestCount < 2) {
       return NextResponse.json({
         text: realLang === "ar"
-          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟ إذا كنت بحاجة للتواصل مع موظف خدمة العملاء اضغط الزر في الأسفل بعد المحاولة أكثر من مرة."
+          ? "أنا هنا لأساعدك! هل ترغب في شرح مشكلتك أو سؤالك بشكل أوضح؟"
           : realLang === "en"
-          ? "I'm here to help! Please try to explain your request or question, and if you still need to contact customer service, the option will appear soon."
-          : "Je suis là pour vous aider ! Essayez d’expliquer votre question, et si vous souhaitez toujours contacter un agent, l’option apparaîtra sous peu.",
+          ? "I'm here to help! Please try to explain your request or question."
+          : "Je suis là pour vous aider ! Essayez d’expliquer votre question.",
         customerServicePrompt: true,
         customerServiceRequestCount: customerServiceRequestCount + 1 // عُدّل في الواجهة
       });
