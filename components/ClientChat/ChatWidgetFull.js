@@ -25,15 +25,12 @@ import { findFaqAnswer } from "./faqSearch";
 import LanguageSelectModal from "./LanguageSelectModal";
 import countriesLang from "../../lib/countriesLang";
 
-
 const countriesObject = {};
 const countriesLangMap = {};
-
 countriesLang.forEach((item) => {
   countriesObject[item.code] = `${item.flag} ${item.name}`;
   countriesLangMap[item.code] = item.lang;
 });
-
 
 function blobToBase64(blob) {
   return new Promise((resolve) => {
@@ -73,7 +70,7 @@ export default function ChatWidgetFull({
   const [noBotHelpCount, setNoBotHelpCount] = useState(0);
   const [waitingForAgent, setWaitingForAgent] = useState(false);
   const [agentAccepted, setAgentAccepted] = useState(false);
-
+  const [showAgentButton, setShowAgentButton] = useState(false);
   const chatEndRef = useRef(null);
 
   const safeUserId = userId || "guest";
@@ -137,6 +134,7 @@ export default function ChatWidgetFull({
     setAudioBlob(null);
     setRecording(false);
     setShowEmoji(false);
+    setShowAgentButton(false);
   };
 
   useEffect(() => {
@@ -298,14 +296,19 @@ export default function ChatWidgetFull({
 
     if (foundAnswer) {
       await sendMessage("bot", { text: foundAnswer });
+      setShowAgentButton(false);
     } else {
-      // هنا استخدم prompt حسب اللغة المختارة
+      // هنا استخدم prompt حسب اللغة المختارة + منطق تحويل الموظف بالذكاء الصناعي
       const openAIPrompt =
         lang === "ar"
-          ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${textMsg}`
+          ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${textMsg}.
+             إذا وجدت أن العميل يطلب موظف خدمة العملاء أو لا يمكن الرد عليه، أضف جملة واضحة في نهاية الرد: "هل ترغب في التواصل مع موظف خدمة العملاء؟ اضغط الزر بالأسفل."`
           : lang === "en"
-          ? `Answer this question professionally in English only: ${textMsg}`
-          : `Réponds à cette question professionnellement uniquement en français: ${textMsg}`;
+          ? `Answer this question professionally in English only: ${textMsg}.
+             If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`
+          : `Réponds à cette question professionnellement uniquement en français: ${textMsg}.
+             Si tu vois que le client demande un agent du service client ou que tu ne peux pas répondre, ajoute à la fin : "Voulez-vous contacter un agent du service client ? Cliquez sur le bouton ci-dessous."`;
+
       const res = await fetch("/api/openai-gpt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -313,6 +316,17 @@ export default function ChatWidgetFull({
       });
       const data = await res.json();
       await sendMessage("bot", { text: data.text });
+
+      // افحص الرد من الذكاء الصناعي لوجود عبارة التحويل، وأظهر الزر بناءً عليها
+      if (
+        data.text?.includes("هل ترغب في التواصل مع موظف خدمة العملاء؟") ||
+        data.text?.includes("Would you like to contact a customer service agent?") ||
+        data.text?.includes("Voulez-vous contacter un agent du service client ?")
+      ) {
+        setShowAgentButton(true);
+      } else {
+        setShowAgentButton(false);
+      }
     }
     setInput("");
   };
@@ -325,14 +339,18 @@ export default function ChatWidgetFull({
     if (foundAnswer) {
       await sendMessage("bot", { text: foundAnswer });
       setNoBotHelpCount(0);
+      setShowAgentButton(false);
     } else {
       try {
         const prompt =
           lang === "ar"
-            ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${q}`
+            ? `أجب على هذا السؤال بشكل احترافي باللغة العربية فقط: ${q}.
+               إذا وجدت أن العميل يطلب موظف خدمة العملاء أو لا يمكن الرد عليه، أضف جملة واضحة في نهاية الرد: "هل ترغب في التواصل مع موظف خدمة العملاء؟ اضغط الزر بالأسفل."`
             : lang === "en"
-            ? `Answer this question professionally in English only: ${q}`
-            : `Réponds à cette question professionnellement uniquement en français: ${q}`;
+            ? `Answer this question professionally in English only: ${q}.
+               If you detect the client wants to contact a customer service agent, or the question can't be answered, add this sentence at the end: "Would you like to contact a customer service agent? Click the button below."`
+            : `Réponds à cette question professionnellement uniquement en français: ${q}.
+               Si tu vois que le client demande un agent du service client ou que tu ne peux pas répondre, ajoute à la fin : "Voulez-vous contacter un agent du service client ? Cliquez sur le bouton ci-dessous."`;
         const res = await fetch("/api/openai-gpt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -341,6 +359,16 @@ export default function ChatWidgetFull({
         const data = await res.json();
         await sendMessage("bot", { text: data.text });
         setNoBotHelpCount(0);
+
+        if (
+          data.text?.includes("هل ترغب في التواصل مع موظف خدمة العملاء؟") ||
+          data.text?.includes("Would you like to contact a customer service agent?") ||
+          data.text?.includes("Voulez-vous contacter un agent du service client ?")
+        ) {
+          setShowAgentButton(true);
+        } else {
+          setShowAgentButton(false);
+        }
       } catch (err) {
         setNoBotHelpCount((c) => c + 1);
         await sendMessage("bot", {
@@ -351,6 +379,7 @@ export default function ChatWidgetFull({
               ? "Sorry, I couldn't find an answer to your question. Click the 'Contact Agent' button for assistance."
               : "Désolé, je n'ai pas trouvé de réponse à votre question. Cliquez sur le bouton pour contacter un agent.",
         });
+        setShowAgentButton(false);
       }
     }
   };
@@ -366,6 +395,7 @@ export default function ChatWidgetFull({
       status: "open",
     });
     setNoBotHelpCount(0);
+    setShowAgentButton(false);
   };
 
   const closeChat = () => {
@@ -535,13 +565,13 @@ export default function ChatWidgetFull({
       ) : (
         <div className={`fixed bottom-24 right-4 z-[1000] font-sans`} dir={dir} style={{ direction: dir, fontFamily }}>
           <div
-  className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-600 relative"
-  style={{
-    maxHeight: "540px",
-    boxShadow: "0 8px 32px 0 #10b98122",
-    overflow: "visible" // لو تحب تضيفها هنا مباشرة
-  }}
->
+            className="w-[94vw] max-w-[430px] h-[calc(62vh)] min-h-[340px] flex flex-col bg-white rounded-3xl shadow-2xl border border-emerald-600 relative"
+            style={{
+              maxHeight: "540px",
+              boxShadow: "0 8px 32px 0 #10b98122",
+              overflow: "visible"
+            }}
+          >
             <div className="px-4 py-3 border-b border-emerald-600 text-blue-700 font-bold flex items-center gap-1 relative bg-gradient-to-l from-emerald-100 to-white" style={{ fontSize: "1.12rem" }}>
               <span className="text-lg">
                 {lang === "ar"
@@ -601,7 +631,7 @@ export default function ChatWidgetFull({
                             type: "bot",
                             senderName: "Bot",
                             createdAt: Date.now(),
-                            text: data?.text || "مرحبًا بك!",
+                            text: "مرحبًا بك!",
                           },
                         ]);
                       } catch (err) {
@@ -732,6 +762,43 @@ export default function ChatWidgetFull({
                 )}
               </form>
             )}
+            {/* زر التحويل للموظف بناءً على منطق الذكاء الصناعي */}
+            {!waitingForAgent && !agentAccepted && !showLangModal && showAgentButton && (
+              <div className="flex justify-center p-3">
+                <button
+                  type="button"
+                  onClick={requestAgent}
+                  className="bg-gradient-to-br from-yellow-400 to-blue-100 hover:from-yellow-500 hover:to-blue-200 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
+                  style={{ fontFamily }}
+                >
+                  {lang === "ar"
+                    ? "اتواصل مع موظف خدمة العملاء"
+                    : lang === "en"
+                    ? "Contact Customer Service"
+                    : "Contacter le service client"}
+                </button>
+              </div>
+            )}
+            {/* زر التحويل القديم (احتياطي في حال رغبتك بالإبقاء عليه بناءً على عداد فشل البوت) */}
+            {/* 
+            {!waitingForAgent && !agentAccepted && !showLangModal && noBotHelpCount >= 2 && (
+              <div className="flex justify-center p-3">
+                <button
+                  type="button"
+                  onClick={requestAgent}
+                  className="bg-gradient-to-br from-yellow-400 to-blue-100 hover:from-yellow-500 hover:to-blue-200 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
+                  title={lang === "ar" ? "اتواصل مع الموظف" : lang === "en" ? "Contact Agent" : "Contacter un agent"}
+                  style={{ fontFamily }}
+                >
+                  {lang === "ar"
+                    ? "اتواصل مع موظف خدمة العملاء"
+                    : lang === "en"
+                    ? "Contact Customer Service"
+                    : "Contacter le service client"}
+                </button>
+              </div>
+            )}
+            */}
             {waitingForAgent && !agentAccepted && !showLangModal && (
               <div className="flex justify-center p-3">
                 <div className="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 px-4 py-2 rounded-xl text-center font-semibold animate-pulse border border-blue-200 shadow" style={{ fontFamily }}>
@@ -755,23 +822,6 @@ export default function ChatWidgetFull({
                     {f.q[lang] || f.q.en}
                   </button>
                 ))}
-              </div>
-            )}
-            {!waitingForAgent && !agentAccepted && !showLangModal && noBotHelpCount >= 2 && (
-              <div className="flex justify-center p-3">
-                <button
-                  type="button"
-                  onClick={requestAgent}
-                  className="bg-gradient-to-br from-yellow-400 to-blue-100 hover:from-yellow-500 hover:to-blue-200 text-gray-900 rounded-full px-4 py-2 flex items-center justify-center font-bold text-sm chat-action-btn shadow border border-yellow-600"
-                  title={lang === "ar" ? "اتواصل مع الموظف" : lang === "en" ? "Contact Agent" : "Contacter un agent"}
-                  style={{ fontFamily }}
-                >
-                  {lang === "ar"
-                    ? "اتواصل مع موظف خدمة العملاء"
-                    : lang === "en"
-                    ? "Contact Customer Service"
-                    : "Contacter le service client"}
-                </button>
               </div>
             )}
           </div>

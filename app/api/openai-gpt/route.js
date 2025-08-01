@@ -4,82 +4,138 @@ import { NextResponse } from "next/server";
 import { findFaqAnswer } from "../../../components/ClientChat/faqSearch";
 
 // إعداد فايربيز (مرة واحدة فقط)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+const firebaseConfig = { /* نفس الإعدادات */ };
 if (!getApps().length) initializeApp(firebaseConfig);
 
-// خريطة البلد للغة
-const countryLangMap = {
-  "SA": "ar", "AE": "ar", "EG": "ar", "JO": "ar", "KW": "ar", "QA": "ar", "OM": "ar", "BH": "ar",
-  "DZ": "ar", "MA": "ar", "TN": "ar", "LB": "ar", "SY": "ar", "IQ": "ar", "PS": "ar", "SD": "ar",
-  "YE": "ar", "LY": "ar", "MR": "ar", "DJ": "ar", "SO": "ar", "FR": "fr", "BE": "fr", "CH": "fr",
-  "US": "en", "GB": "en", "CA": "en", "DE": "de", "ES": "es", "IT": "it"
-  // أضف باقي الدول حسب الحاجة
-};
+const countryLangMap = { /* نفس خريطة البلد للغة */ };
 
 export async function POST(req) {
-  // استقبال بيانات العميل من المودال/الشات
   let { prompt, lang, country, userName, isWelcome, userId } = await req.json();
 
-  // جلب بيانات العميل من Firestore لو فيه userId
+  // بيانات العميل الأساسية
   let realName = userName;
   let realLang = lang;
+  let realEmail = "";
+  let realRole = "";
+  let clientRequests = [];
+  let clientServices = [];
+
+  // جلب بيانات العميل + الطلبات + الخدمات من فايربيز
   if (userId) {
     try {
       const db = getFirestore();
-      const userDoc = doc(db, "users", userId);
-      const snap = await getDoc(userDoc);
+      const userRef = doc(db, "users", userId);
+      const snap = await getDoc(userRef);
+
       if (snap.exists()) {
         const data = snap.data();
-        // اسم العميل حسب اللغة المختارة حاليا
         realName = lang === "ar"
-          ? data.nameAr || data.firstName || data.lastName || realName
+          ? data.nameAr || data.name || data.firstName || realName
           : lang === "en"
-          ? data.nameEn || data.firstName || data.lastName || realName
-          : data.nameEn || data.nameAr || data.firstName || data.lastName || realName;
-        // لو فيه لغة مفضلة للعميل
+          ? data.nameEn || data.name || data.firstName || realName
+          : data.nameEn || data.nameAr || data.name || data.firstName || realName;
+        realEmail = data.email || "";
+        realRole = data.role || "";
         if (data.lang) realLang = data.lang;
       }
-    } catch (err) {
-      // تجاهل الخطأ واستعمل القيم المرسلة من المودال
-    }
+
+      // جلب الطلبات
+      const requestsCol = collection(db, "users", userId, "requests");
+      const requestsSnap = await getDocs(requestsCol);
+      requestsSnap.forEach(doc => {
+        const req = doc.data();
+        clientRequests.push({
+          id: doc.id,
+          type: req.type || "",
+          status: req.status || "",
+          date: req.date || req.createdAt || ""
+        });
+      });
+
+      // جلب الخدمات
+      const servicesCol = collection(db, "users", userId, "services");
+      const servicesSnap = await getDocs(servicesCol);
+      servicesSnap.forEach(doc => {
+        const svc = doc.data();
+        clientServices.push({
+          id: doc.id,
+          name: svc.name || "",
+          price: svc.price || "",
+          status: svc.status || "",
+          desc: svc.description || ""
+        });
+      });
+
+    } catch (err) { /* تجاهل الخطأ */ }
   }
 
-  // لو لم يتم تحديد لغة، خذها من الدولة المختارة
   if (!realLang && country) {
     const countryCode = country.length === 2 ? country.toUpperCase() : null;
     realLang = countryLangMap[countryCode] || "ar";
   }
-  // fallback نهائي للغة والاسم
   if (!realLang) realLang = "ar";
   if (!realName) realName = "زائر";
 
-  // ===== رسالة ترحيب تلقائية من OpenAI =====
+  // ===== رسالة ترحيب تلقائية من OpenAI مع بيانات العميل =====
   if (isWelcome || /welcome|ترحيب|bienvenue/i.test(prompt)) {
+    // تجهيز بيانات الطلبات والخدمات للنص
+    const requestsText = clientRequests.length
+      ? clientRequests.map(
+          r => `طلب رقم ${r.id}: النوع: ${r.type}, الحالة: ${r.status}, التاريخ: ${r.date}`
+        ).join("\n")
+      : "لا توجد طلبات مسجلة حتى الآن.";
+
+    const servicesText = clientServices.length
+      ? clientServices.map(
+          s => `خدمة: ${s.name}، السعر: ${s.price}، الحالة: ${s.status}${s.desc ? "، الوصف: " + s.desc : ""}`
+        ).join("\n")
+      : "لا توجد خدمات مفعلة حتى الآن.";
+
+    // معلومات الشركة (يمكنك تعديل النص كما تريد)
+    const companyInfo =
+      realLang === "ar"
+        ? "منصة تأهيل هي منصة إلكترونية متخصصة في تقديم حلول التدريب والتأهيل للأفراد والشركات في الوطن العربي. مقرنا الرئيسي في دبي، الإمارات العربية المتحدة، ونسعى لتقديم أفضل الخدمات الرقمية في مجال التطوير المهني والتعليم المستمر."
+        : realLang === "en"
+        ? "Taheel is a leading digital platform for training and qualification solutions for individuals and companies in the Arab world. Headquartered in Dubai, UAE, we strive to offer top-quality professional development and continuous learning services."
+        : "Taheel est une plateforme numérique leader dans le domaine de la formation et de la qualification pour les individus et les entreprises dans le monde arabe. Notre siège est à Dubaï, EAU."
+
+    // بناء البرومبت ليكون مخصص للعميل
     let welcomePrompt = "";
     switch (realLang) {
       case "ar":
-        welcomePrompt = `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName} في منصة تأهيل، واذكر الدولة ${country || ""} في الترحيب.`;
+        welcomePrompt =
+          `اكتب رسالة ترحيب احترافية وودية للعميل الجديد باسم ${realName}، البريد الإلكتروني: ${realEmail}, النوع: ${realRole} في منصة تأهيل (الدولة: ${country || ""}).\n\n` +
+          `نبذة عن الشركة: ${companyInfo}\n\n` +
+          `طلبات العميل:\n${requestsText}\n\n` +
+          `الخدمات المفعلة:\n${servicesText}\n\n` +
+          "اجعل الترحيب شخصي واذكر الخدمات أو الطلبات لو موجودة.";
         break;
       case "en":
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${realName} on Taheel platform. Mention the country ${country || ""} in the welcome.`;
+        welcomePrompt =
+          `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
+          `About the company: ${companyInfo}\n\n` +
+          `Client requests:\n${requestsText}\n\n` +
+          `Activated services:\n${servicesText}\n\n` +
+          "Make the welcome personal and mention any services or requests if available.";
         break;
       case "fr":
-        welcomePrompt = `Rédige un message de bienvenue professionnel et convivial pour un nouvel utilisateur nommé ${realName} sur la plateforme Taheel. Mentionne le pays ${country || ""} dans le message.`;
+        welcomePrompt =
+          `Rédige un message de bienvenue professionnel et convivial pour le nouvel utilisateur nommé ${realName}, email : ${realEmail}, rôle : ${realRole} sur la plateforme Taheel (pays : ${country || ""}).\n\n` +
+          `À propos de l'entreprise : ${companyInfo}\n\n` +
+          `Demandes du client :\n${requestsText}\n\n` +
+          `Services activés :\n${servicesText}\n\n` +
+          "Rends le message personnel et mentionne les services ou demandes s'ils existent.";
         break;
       default:
-        welcomePrompt = `Write a professional and friendly welcome message for a new user named ${realName} on Taheel platform. Country: ${country || ""}. Respond ONLY in language code: ${realLang}.`;
+        welcomePrompt =
+          `Write a professional and friendly welcome message for the new user named ${realName}, email: ${realEmail}, role: ${realRole} on Taheel platform (country: ${country || ""}).\n\n` +
+          `About the company: ${companyInfo}\n\n` +
+          `Client requests:\n${requestsText}\n\n` +
+          `Activated services:\n${servicesText}\n\n` +
+          "Make the welcome personal and mention any services or requests if available. Respond ONLY in language code: ${realLang}.";
         break;
     }
 
-    // رسالة النظام لتأكيد اللغة المختارة
     const systemMessage =
       realLang === "ar"
         ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
@@ -102,7 +158,7 @@ export async function POST(req) {
           { role: "system", content: systemMessage },
           { role: "user", content: welcomePrompt }
         ],
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.4,
       }),
     });
