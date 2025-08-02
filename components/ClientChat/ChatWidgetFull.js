@@ -77,10 +77,39 @@ export default function ChatWidgetFull({
   // --------- اللغات ذات الاتجاه من اليمين لليسار ----------
   const rtlLangs = ['ar', 'he', 'fa', 'ur'];
   const dir = rtlLangs.includes(lang) ? 'rtl' : 'ltr';
-  const fontFamily =
-    lang === 'ar' ? 'Tajawal, Segoe UI, sans-serif'
-    : lang === 'zh' ? 'Noto Sans SC, Segoe UI, sans-serif'
-    : 'Segoe UI, Tajawal, sans-serif';
+const fontFamily =
+  lang === 'ar' ? 'Tajawal, Cairo, Segoe UI, sans-serif'
+  : lang === 'he' ? 'Noto Sans Hebrew, Segoe UI, sans-serif'
+  : lang === 'fa' ? 'Vazirmatn, Segoe UI, sans-serif'
+  : lang === 'ur' ? 'Noto Nastaliq Urdu, Noto Sans Arabic, Segoe UI, sans-serif'
+  : lang === 'zh' ? 'Noto Sans SC, Segoe UI, sans-serif'                // صيني مبسط
+  : lang === 'zh-TW' ? 'Noto Sans TC, Segoe UI, sans-serif'              // صيني تقليدي
+  : lang === 'ja' ? 'Noto Sans JP, Segoe UI, sans-serif'                 // ياباني
+  : lang === 'ko' ? 'Noto Sans KR, Segoe UI, sans-serif'                 // كوري
+  : lang === 'th' ? 'Noto Sans Thai, Segoe UI, sans-serif'               // تايلاندي
+  : lang === 'hi' ? 'Noto Sans Devanagari, Segoe UI, sans-serif'         // هندي
+  : lang === 'bn' ? 'Noto Sans Bengali, Segoe UI, sans-serif'            // بنغالي
+  : lang === 'ru' ? 'Noto Sans, Segoe UI, sans-serif'                    // روسي/سلافي
+  : lang === 'uk' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'el' ? 'Noto Sans Greek, Segoe UI, sans-serif'
+  : lang === 'tr' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'vi' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'pl' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'cs' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'fr' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'de' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'es' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'it' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'pt' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'id' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'ms' ? 'Noto Sans, Segoe UI, sans-serif'
+  : lang === 'sv' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'da' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'no' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'fi' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'is' ? 'Segoe UI, Noto Sans, sans-serif'
+  : lang === 'en' ? 'Segoe UI, Noto Sans, sans-serif'
+  : 'Segoe UI, Tajawal, Noto Sans, sans-serif'; // الافتراضي
 
   // --------- أزرار الهيدر تتحرك حسب اللغة ---------
   const headerButtonsClass =
