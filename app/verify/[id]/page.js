@@ -6,7 +6,6 @@ import StyledQRCode from "@/components/StyledQRCode";
 import Link from "next/link";
 import { FaWhatsapp, FaMapMarkerAlt } from "react-icons/fa";
 
-// ترجمة النصوص
 const LANG = {
   en: {
     taheel: "TAHEEL",
@@ -17,7 +16,7 @@ const LANG = {
     desc: "Description",
     category: "Category",
     uploadedAt: "Uploaded At",
-    download: "Download File",
+    download: "Download Verified File",
     platformStamp: "Official verification by the Taheel government platform.",
     backHome: "Back to Home",
     contactSupport: "Contact Support",
@@ -33,6 +32,7 @@ const LANG = {
     home: "Home",
     platformDesc: "Certified Government Information & Clearance Platform",
     verifyStamp: "Officially certified by Taheel Platform",
+    securityNotice: "This document is officially verified. All data is encrypted and securely protected by Taheel.",
   },
   ar: {
     taheel: "تأهيل",
@@ -43,7 +43,7 @@ const LANG = {
     desc: "الوصف",
     category: "القسم",
     uploadedAt: "تاريخ الرفع",
-    download: "تحميل الملف",
+    download: "تحميل الملف الأصلي الموثق",
     platformStamp: "توثيق رسمي من منصة تأهيل الحكومية.",
     backHome: "العودة للرئيسية",
     contactSupport: "تواصل مع الدعم",
@@ -59,6 +59,7 @@ const LANG = {
     home: "الرئيسية",
     platformDesc: "منصة معتمدة لمتابعة المعلومات والمعاملات الحكومية",
     verifyStamp: "موثَّق رسميًا من منصة تأهيل",
+    securityNotice: "هذا المستند موثَّق رسميًا. جميع بياناتك محمية ومشفرة بالكامل عبر منصة تأهيل.",
   }
 };
 
@@ -86,21 +87,18 @@ function formatDate(date, lang) {
 }
 
 export default function VerifyFilePage() {
-  // لاحظ: استخدم useParams من next/navigation (app router)
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params?.id;
-  const lang = (searchParams?.get("lang") === "ar" || typeof window !== "undefined" && window.location.search.includes("lang=ar")) ? "ar" : "en";
+  const lang = (searchParams?.get("lang") === "ar" || (typeof window !== "undefined" && window.location.search.includes("lang=ar"))) ? "ar" : "en";
   const t = LANG[lang];
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // جلب بيانات المستند من فايربيز
   useEffect(() => {
     let ignore = false;
     async function fetchFile() {
       setLoading(true);
-      // ديناميك: عدل حسب مكتبة الفايربيز لديك
       try {
         const { doc, getDoc } = await import("firebase/firestore");
         const { firestore } = await import("@/lib/firebase.client");
@@ -118,7 +116,6 @@ export default function VerifyFilePage() {
     return () => { ignore = true; };
   }, [id]);
 
-  // تصميم عالمي
   const gradientBackground = "linear-gradient(180deg, #0b131e 0%, #22304a 30%, #122024 60%, #1d4d40 100%)";
 
   if (loading) {
@@ -151,9 +148,6 @@ export default function VerifyFilePage() {
     );
   }
 
-  // --------------------------------------
-  // VERIFIED DOCUMENT DESIGN
-  // --------------------------------------
   return (
     <div dir={lang === "ar" ? "rtl" : "ltr"} className="min-h-screen flex flex-col font-cairo" style={{ background: gradientBackground }}>
       {/* HEADER */}
@@ -197,9 +191,23 @@ export default function VerifyFilePage() {
               <span className="text-white">{formatDate(file.createdAt, lang)}</span>
             </div>
           </div>
+          {/* رسالة أمان */}
+          <div className="mt-4 mb-2 p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 text-center text-sm font-bold shadow">
+            {t.securityNotice}
+          </div>
           <div className="flex justify-center gap-4 mt-5">
-            <a href={file.link} target="_blank" rel="noopener noreferrer" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full font-bold shadow hover:scale-105 transition">{t.download}</a>
-            <button onClick={() => window.print()} className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow">{t.print}</button>
+            <a
+              href={file.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full font-bold shadow hover:scale-105 transition"
+            >
+              {t.download}
+            </a>
+            <button onClick={() => window.print()} className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded-full font-bold shadow">
+              {t.print}
+            </button>
           </div>
           {/* ختم المنصة */}
           <div className="mt-8 flex flex-col items-center">
