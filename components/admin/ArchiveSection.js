@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { collection, getDocs, query, where, orderBy, addDoc, Timestamp } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firestore } from "@/lib/firebase.client";
 import StyledQRCode from "@/components/StyledQRCode";
 
@@ -44,7 +43,7 @@ export default function ArchiveSection({ lang = "ar" }) {
     fetchFiles();
   }, [category, uploading]);
 
-  // رفع الملف على Google Storage ثم حفظ الرابط في Firestore
+  // رفع الملف على Google Storage عبر API Route ثم حفظ الرابط في Firestore
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file || !nameAr || !nameEn) {
@@ -54,12 +53,17 @@ export default function ArchiveSection({ lang = "ar" }) {
     setUploading(true);
     setMsg("");
     try {
-      // 1. ارفع الملف إلى Google Storage
-      const storage = getStorage();
-      const storagePath = `archive/${category}/${Date.now()}_${file.name}`;
-      const storageReference = storageRef(storage, storagePath);
-      await uploadBytes(storageReference, file);
-      const url = await getDownloadURL(storageReference);
+      // 1. ارفع الملف عبر API
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", category);
+
+      const uploadRes = await fetch("/api/upload-to-gcs", {
+        method: "POST",
+        body: formData,
+      });
+      const uploadJson = await uploadRes.json();
+      if (!uploadJson.url) throw new Error("Upload failed");
 
       // 2. احفظ بيانات الملف في Firestore
       const docRef = await addDoc(collection(firestore, "archiveFiles"), {
@@ -68,7 +72,7 @@ export default function ArchiveSection({ lang = "ar" }) {
         descAr,
         descEn,
         category,
-        link: url,
+        link: uploadJson.url,
         createdAt: Timestamp.now(),
       });
       setMsg(lang === "ar" ? "تم رفع الملف بنجاح ✅" : "File uploaded successfully ✅");
