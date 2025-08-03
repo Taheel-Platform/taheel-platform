@@ -11,17 +11,14 @@ const CATEGORY_LABELS = {
   other: { ar: "أخرى", en: "Other" },
 };
 
-// رابط صفحة التحقق (غير الدومين لو تستخدم بيئة مختلفة)
 const getVerifyUrl = (id) => `https://www.taheel.ae/verify/${id}`;
 
 export default function ArchivePage({ lang = "ar" }) {
-  // حالات الواجهة
   const [category, setCategory] = useState("translation");
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
   const [qrVisible, setQrVisible] = useState({});
-  // رفع ملف جديد
   const [file, setFile] = useState(null);
   const [nameAr, setNameAr] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -30,7 +27,6 @@ export default function ArchivePage({ lang = "ar" }) {
   const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
 
-  // جلب الملفات حسب القسم
   useEffect(() => {
     setLoading(true);
     async function fetchFiles() {
@@ -47,7 +43,6 @@ export default function ArchivePage({ lang = "ar" }) {
     fetchFiles();
   }, [category, uploading]);
 
-  // رفع الملف
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) return setMsg(lang === "ar" ? "اختر ملفًا!" : "Choose a file!");
@@ -96,7 +91,7 @@ export default function ArchivePage({ lang = "ar" }) {
 
   return (
     <div className="max-w-4xl mx-auto p-4 font-cairo">
-      {/* قسم رفع ملف جديد */}
+      {/* نموذج رفع ملف جديد */}
       <div className="bg-[#171f26] rounded-xl shadow-lg p-5 mb-8 border border-emerald-800">
         <h2 className="font-extrabold text-2xl mb-6 text-emerald-400 text-center drop-shadow">
           {lang === "ar" ? "إضافة ملف جديد للأرشيف" : "Add New Archive File"}
@@ -287,7 +282,6 @@ export default function ArchivePage({ lang = "ar" }) {
             : "Print or share this QR so anyone can verify the document directly via Taheel platform."}
         </div>
       </div>
-      {/* ستايل خط كايرو افتراضي (يمكنك تغييره لأي خط عربي تفضله) */}
       <style jsx global>{`
         body, .font-cairo { font-family: 'Cairo', 'Tajawal', Arial, sans-serif !important; }
         button, select, input[type="file"], a { cursor:pointer !important; }
