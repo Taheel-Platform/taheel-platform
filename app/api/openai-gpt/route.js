@@ -5,13 +5,11 @@ import { getFirestore } from "firebase-admin/firestore";
 
 // إعداد فايربيز أدمن لمرة واحدة فقط
 const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-
 if (!getApps().length) {
   initializeApp({
     credential: cert(serviceAccount),
   });
 }
-
 const db = getFirestore();
 
 const countryLangMap = {
@@ -19,13 +17,12 @@ const countryLangMap = {
   FR: "fr", US: "en", GB: "en", CA: "en", DE: "de", IT: "it", ES: "es", PT: "pt", IN: "hi", CN: "zh", JP: "ja", KR: "ko", RU: "ru",
   BR: "pt", AU: "en", ZA: "en", TR: "tr", ID: "id"
 };
-
 const STATES_LIST = [
   "الإمارات", "مصر", "السعودية", "قطر", "الكويت", "عمان", "الأردن", "المغرب", "الجزائر", "تونس", "لبنان", "العراق", "فلسطين",
   "france", "usa", "uk", "canada", "germany", "italy", "spain", "portugal", "india", "china", "japan", "korea", "russia", "brazil", "australia", "south africa", "turkey", "indonesia"
 ];
 
-// helper: اسم عميل صالح
+// دالة للحصول على اسم عميل صالح
 function getValidClientName({ userName, userData = {}, country = "", lang = "ar" }) {
   let name = (userName || "").trim();
   if (!name || name.length < 2 || STATES_LIST.includes(name.toLowerCase()) || name.toLowerCase() === country?.toLowerCase() || /^\d+$/.test(name)) {
@@ -43,6 +40,89 @@ function getValidClientName({ userName, userData = {}, country = "", lang = "ar"
       : "Cher client";
   }
   return name;
+}
+
+// دالة لبناء system prompt حسب اللغة
+function getSystemPrompt(lang = "ar") {
+  switch (lang) {
+    case "ar":
+      return `أنت مساعد افتراضي ودود واحترافي لمنصة "تأهيل".
+- رحب بالعميل في أول محادثة فقط.
+- لو العميل سأل عن الشركة، قدم له نبذة مختصرة عن "تأهيل".
+- لو سأل عن خدمة أو سعر أو تفاصيل خدمات: استخدم فقط البيانات التي يتم تزويدك بها من قاعدة البيانات (ستصلك في البرومبت)، ولا تخترع خدمات.
+- لو سأل عن شيء عام: أجب بمعلومة مبسطة، ولو لا تعرف اعتذر له ووجهه للدعم البشري.
+- استخدم اسم العميل في الرد لو متاح.
+- التزم دائمًا باللغة العربية.`;
+    case "en":
+      return `You are a friendly and professional virtual assistant for the Taheel platform.
+- Greet the client only in the first conversation.
+- If asked about the company, reply with a brief about "Taheel".
+- If asked about a service, price, or details, use ONLY the provided service data (from the database; it will be in the prompt). Do not invent services.
+- If asked a general question, reply with a simple relevant fact, and if you don't know, politely apologize and direct the client to human support.
+- Always use the client's name if available.
+- Always reply in English.`;
+    case "fr":
+      return `Vous êtes un assistant virtuel amical et professionnel pour la plateforme Taheel.
+- Saluez le client uniquement lors de la première conversation.
+- Si le client demande des informations sur l'entreprise, répondez par une brève présentation de "Taheel".
+- Si le client demande un service, un prix ou des détails, utilisez UNIQUEMENT les données de service fournies (dans l'invite). N'inventez pas de services.
+- Pour une question générale, répondez par un fait simple pertinent, et si vous ne savez pas, excusez-vous poliment et dirigez-le vers le support humain.
+- Utilisez toujours le nom du client si disponible.
+- Répondez toujours en français.`;
+    default:
+      return `You are a smart assistant. Respond ONLY in language code: ${lang}.`;
+  }
+}
+
+// دالة لبناء user prompt حسب نوع السؤال
+function getUserPrompt({ type, realName, prompt, dataString, lang }) {
+  if (type === "welcome") {
+    switch (lang) {
+      case "ar":
+        return `رحب بالعميل ${realName} ترحيبًا احترافيًا على منصة تأهيل.`;
+      case "en":
+        return `Welcome the client ${realName} professionally on the Taheel platform.`;
+      case "fr":
+        return `Souhaitez la bienvenue au client ${realName} sur la plateforme Taheel de manière professionnelle.`;
+      default:
+        return `Welcome the client ${realName} professionally on the Taheel platform. Respond ONLY in language code: ${lang}.`;
+    }
+  }
+  if (type === "service" && dataString) {
+    switch (lang) {
+      case "ar":
+        return `هذه هي بيانات الخدمات من قاعدة البيانات:\n${dataString}\n\nسؤال المستخدم: ${prompt}\nجاوب فقط من البيانات السابقة ولا تخترع خدمات جديدة، ووجه الرد للعميل باسم ${realName}.`;
+      case "en":
+        return `Here are the services data from the database:\n${dataString}\n\nUser question: ${prompt}\nAnswer ONLY using the provided data, and address the client as ${realName}.`;
+      case "fr":
+        return `Voici les données des services de la base de données :\n${dataString}\n\nQuestion utilisateur : ${prompt}\nRépondez UNIQUEMENT à partir des données fournies, et adressez-vous au client ${realName}.`;
+      default:
+        return `Here are the services data from the database:\n${dataString}\n\nUser question: ${prompt}\nAnswer ONLY using the provided data. Respond ONLY in language code: ${lang}.`;
+    }
+  }
+  if (type === "company") {
+    switch (lang) {
+      case "ar":
+        return `عرف العميل باختصار عن منصة تأهيل والخدمات الرئيسية.`;
+      case "en":
+        return `Briefly introduce the Taheel platform and its main services to the client.`;
+      case "fr":
+        return `Présentez brièvement la plateforme Taheel et ses services principaux au client.`;
+      default:
+        return `Briefly introduce the Taheel platform and its main services to the client. Respond ONLY in language code: ${lang}.`;
+    }
+  }
+  // سؤال عام
+  switch (lang) {
+    case "ar":
+      return `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}`;
+    case "en":
+      return `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}`;
+    case "fr":
+      return `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}`;
+    default:
+      return `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${lang}.`;
+  }
 }
 
 export async function POST(req) {
@@ -108,35 +188,36 @@ export async function POST(req) {
   if (!realLang) realLang = "ar";
 
   // --- رسالة الترحيب (مرة واحدة) ---
-if (isWelcome) {
-  const welcomePrompt = `Write a professional welcome message for ${realName} on Taheel platform. Reply ONLY in this language: ${realLang}.`;
-  const apiKey = process.env.OPENAI_API_KEY;
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful personal assistant." },
-        { role: "user", content: welcomePrompt }
-      ],
-      max_tokens: 300,
-      temperature: 0.2,
-    }),
-  });
-  const data = await response.json();
-  return NextResponse.json({
-    text: data?.choices?.[0]?.message?.content?.trim() || "",
-    isWelcome: true,
-    showTransferButton: false,
-    suggestAgent: false,
-    aiSilenced: false,
-    customerServiceRequestCount
-  });
-}
+  if (isWelcome) {
+    const systemMessage = getSystemPrompt(realLang);
+    const userPrompt = getUserPrompt({ type: "welcome", realName, prompt, lang: realLang });
+    const apiKey = process.env.OPENAI_API_KEY;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: 300,
+        temperature: 0.2,
+      }),
+    });
+    const data = await response.json();
+    return NextResponse.json({
+      text: data?.choices?.[0]?.message?.content?.trim() || "",
+      isWelcome: true,
+      showTransferButton: false,
+      suggestAgent: false,
+      aiSilenced: false,
+      customerServiceRequestCount
+    });
+  }
 
   // --- البحث في الأسئلة الشائعة ---
   const faqAnswer = findFaqAnswer(prompt, realLang);
@@ -215,31 +296,8 @@ if (isWelcome) {
       })
       .join('\n');
 
-    let systemPrompt = "";
-    switch (realLang) {
-      case "ar":
-        systemPrompt = `استخدم فقط بيانات الخدمات التالية للإجابة على سؤال المستخدم باللغة العربية، ووجه الإجابة للعميل باسم ${realName}:\n${dataString}\n\nسؤال المستخدم: ${prompt}`;
-        break;
-      case "en":
-        systemPrompt = `Use ONLY the following services data to answer the user's question in English, addressing the client named ${realName}:\n${dataString}\n\nUser question: ${prompt}`;
-        break;
-      case "fr":
-        systemPrompt = `Utilise UNIQUEMENT les données de services suivantes pour répondre à la question de l'utilisateur en français, en s'adressant au client nommé ${realName}:\n${dataString}\n\nQuestion utilisateur: ${prompt}`;
-        break;
-      default:
-        systemPrompt = `Use ONLY the following services data to answer the user's question, addressing the client named ${realName}:\n${dataString}\n\nUser question: ${prompt}. Respond ONLY in language code: ${realLang}.`;
-        break;
-    }
-
-    const systemMessage =
-      realLang === "ar"
-        ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
-        : realLang === "en"
-        ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-        : realLang === "fr"
-        ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-        : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
-
+    const systemMessage = getSystemPrompt(realLang);
+    const userPrompt = getUserPrompt({ type: "service", realName, prompt, dataString, lang: realLang });
     const apiKey = process.env.OPENAI_API_KEY;
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -251,7 +309,7 @@ if (isWelcome) {
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemMessage },
-          { role: "user", content: systemPrompt }
+          { role: "user", content: userPrompt }
         ],
         max_tokens: 700,
         temperature: 0.4,
@@ -337,12 +395,34 @@ if (isWelcome) {
 
   // --- أسئلة عن الشركة ---
   if (/منصة|taheel|تأهيل|about\s+company|about\s+taheel|الشركة|company\s+info/i.test(prompt)) {
+    const systemMessage = getSystemPrompt(realLang);
+    const userPrompt = getUserPrompt({ type: "company", realName, prompt, lang: realLang });
+    const apiKey = process.env.OPENAI_API_KEY;
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userPrompt }
+        ],
+        max_tokens: 400,
+        temperature: 0.3,
+      }),
+    });
+    const data = await response.json();
     return NextResponse.json({
-      text: realLang === "ar"
-        ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
-        : realLang === "en"
-        ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
-        : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis.",
+      text: data?.choices?.[0]?.message?.content?.trim() || (
+        realLang === "ar"
+          ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
+          : realLang === "en"
+          ? "Taheel Platform: Integrated e-solutions for residents, non-residents, business owners, and companies inside the UAE."
+          : "Plateforme Taheel : solutions électroniques intégrées pour les résidents, non-résidents, entrepreneurs et entreprises aux Émirats arabes unis."
+      ),
       showTransferButton: false,
       suggestAgent: false,
       aiSilenced: false,
@@ -411,31 +491,8 @@ if (isWelcome) {
   }
 
   // --- الرد العام من OpenAI لأي سؤال آخر ---
-  let userPrompt = "";
-  switch (realLang) {
-    case "ar":
-      userPrompt = `اكتب رد احترافي ودود للعميل باسم ${realName} باللغة العربية فقط: ${prompt}.`;
-      break;
-    case "en":
-      userPrompt = `Write a professional and friendly reply in English only to the client${realName ? ` named ${realName}` : ""}: ${prompt}.`;
-      break;
-    case "fr":
-      userPrompt = `Rédige une réponse professionnelle et conviviale en français uniquement pour le client${realName ? ` nommé ${realName}` : ""}: ${prompt}.`;
-      break;
-    default:
-      userPrompt = `Write a professional and friendly reply for the client${realName ? ` named ${realName}` : ""}: ${prompt}. Respond ONLY in language code: ${realLang}.`;
-      break;
-  }
-
-  const systemMessage =
-    realLang === "ar"
-      ? "أنت مساعد ذكي، يجب أن ترد فقط باللغة العربية مهما كان السؤال أو البرومبت."
-      : realLang === "en"
-      ? "You are a smart assistant. You must respond ONLY in English, no matter what the user prompt is."
-      : realLang === "fr"
-      ? "Tu es un assistant intelligent. Tu dois répondre UNIQUEMENT en français, quel que soit le prompt de l'utilisateur."
-      : `You are a smart assistant. Respond ONLY in language code: ${realLang}.`;
-
+  const systemMessage = getSystemPrompt(realLang);
+  const userPrompt = getUserPrompt({ type: "general", realName, prompt, lang: realLang });
   const apiKey = process.env.OPENAI_API_KEY;
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
