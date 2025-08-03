@@ -11,6 +11,7 @@ const CATEGORY_LABELS = {
   other: { ar: "أخرى", en: "Other" },
 };
 
+// رابط صفحة التحقق (غير الدومين لو تستخدم بيئة مختلفة)
 const getVerifyUrl = (id) => `https://www.taheel.ae/verify/${id}`;
 
 export default function ArchivePage({ lang = "ar" }) {
@@ -95,7 +96,7 @@ export default function ArchivePage({ lang = "ar" }) {
 
   return (
     <div className="max-w-4xl mx-auto p-4 font-cairo">
-      {/* نموذج رفع ملف جديد */}
+      {/* قسم رفع ملف جديد */}
       <div className="bg-[#171f26] rounded-xl shadow-lg p-5 mb-8 border border-emerald-800">
         <h2 className="font-extrabold text-2xl mb-6 text-emerald-400 text-center drop-shadow">
           {lang === "ar" ? "إضافة ملف جديد للأرشيف" : "Add New Archive File"}
@@ -282,7 +283,7 @@ export default function ArchivePage({ lang = "ar" }) {
         )}
         <div className="text-xs text-center text-emerald-300 mt-8 font-bold">
           {lang === "ar"
-            ? "اطبع هذا الكيو آر أو شاركه ليتمكن أي شخص من التحقق من صحة المستند مباشرة عبر منصة تأهيل."
+            ? "اطبع أو شارك هذا الكيو آر ليتمكن أي شخص من التحقق من صحة المستند مباشرة عبر منصة تأهيل."
             : "Print or share this QR so anyone can verify the document directly via Taheel platform."}
         </div>
       </div>
