@@ -8,7 +8,10 @@ const CATEGORY_LABELS = {
   translation: { ar: "الترجمة", en: "Translation" },
   hr: { ar: "الموارد البشرية", en: "HR" },
   report: { ar: "التقارير", en: "Reports" },
+  other: { ar: "أخرى", en: "Other" },
 };
+
+const getVerifyUrl = (id) => `https://www.taheel.ae/verify/${id}`;
 
 export default function ArchivePage({ lang = "ar" }) {
   // حالات الواجهة
@@ -24,7 +27,7 @@ export default function ArchivePage({ lang = "ar" }) {
   const [descAr, setDescAr] = useState("");
   const [descEn, setDescEn] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadedFileUrl, setUploadedFileUrl] = useState("");
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   // جلب الملفات حسب القسم
   useEffect(() => {
@@ -46,10 +49,10 @@ export default function ArchivePage({ lang = "ar" }) {
   // رفع الملف
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return setMsg("اختر ملفًا!");
+    if (!file) return setMsg(lang === "ar" ? "اختر ملفًا!" : "Choose a file!");
     setUploading(true);
     setMsg("");
-    setUploadedFileUrl("");
+    setUploadedFile(null);
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", category);
@@ -63,19 +66,26 @@ export default function ArchivePage({ lang = "ar" }) {
         body: formData,
       });
       const data = await res.json();
-      if (data.success) {
-        setMsg("تم الرفع بنجاح ✅");
-        setUploadedFileUrl(data.fileUrl || "");
+      if (data.success && data.id) {
+        setMsg(lang === "ar" ? "تم الرفع بنجاح ✅" : "Uploaded successfully ✅");
+        setUploadedFile({
+          id: data.id,
+          link: data.fileUrl,
+          nameAr,
+          nameEn,
+          descAr,
+          descEn,
+        });
         setFile(null);
         setNameAr("");
         setNameEn("");
         setDescAr("");
         setDescEn("");
       } else {
-        setMsg(data.error || "حدث خطأ!");
+        setMsg(data.error || (lang === "ar" ? "حدث خطأ!" : "An error occurred!"));
       }
     } catch (err) {
-      setMsg("حدث خطأ في الاتصال!");
+      setMsg(lang === "ar" ? "حدث خطأ في الاتصال!" : "Connection error!");
     }
     setUploading(false);
   };
@@ -148,20 +158,30 @@ export default function ArchivePage({ lang = "ar" }) {
         </form>
         {msg && <div className="text-center text-emerald-300 mt-3 font-bold">{msg}</div>}
 
-        {/* معاينة الملف المرفوع مباشرة */}
-        {uploadedFileUrl && (
+        {/* معاينة الملف المرفوع مباشرة مع QR */}
+        {uploadedFile && (
           <div className="bg-emerald-50 dark:bg-[#101b15] rounded mt-4 p-3 text-center border border-emerald-300">
-            <div className="mb-1 font-bold text-emerald-600">{lang === "ar" ? "رابط الملف المرفوع:" : "Uploaded file link:"}</div>
-            <a href={uploadedFileUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline break-all font-bold">{uploadedFileUrl}</a>
-            <div className="flex flex-col items-center mt-2">
-              <StyledQRCode value={uploadedFileUrl} size={100} />
-              <button
-                className="mt-2 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
+            <div className="mb-1 font-bold text-emerald-600">{lang === "ar" ? "تم رفع الملف بنجاح!" : "Uploaded successfully!"}</div>
+            <div className="font-bold">{lang === "ar" ? "اسم الملف:" : "File name:"} <span className="text-emerald-700">{lang === "ar" ? uploadedFile.nameAr : uploadedFile.nameEn}</span></div>
+            <div className="mb-2">{lang === "ar" ? "رابط التحقق:" : "Verification link:"}
+              <a href={getVerifyUrl(uploadedFile.id)} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline break-all font-bold ml-2">{getVerifyUrl(uploadedFile.id)}</a>
+            </div>
+            <div className="flex flex-col items-center mt-2 gap-2">
+              <StyledQRCode value={getVerifyUrl(uploadedFile.id)} size={100} />
+              <a
+                href={uploadedFile.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
                 style={{ cursor: "pointer" }}
-                onClick={() => window.open(uploadedFileUrl, "_blank")}
               >
-                {lang === "ar" ? "فتح الملف" : "Open File"}
-              </button>
+                {lang === "ar" ? "تحميل الملف" : "Download File"}
+              </a>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              {lang === "ar"
+                ? "اطبع هذا الكيو آر أو شاركه مع أي جهة للتحقق من صحة المستند مباشرة."
+                : "Print or share this QR so anyone can verify the document directly."}
             </div>
           </div>
         )}
@@ -206,7 +226,7 @@ export default function ArchivePage({ lang = "ar" }) {
                   <th className="p-3">{lang === "ar" ? "الاسم" : "Name"}</th>
                   <th className="p-3">{lang === "ar" ? "الوصف" : "Description"}</th>
                   <th className="p-3">{lang === "ar" ? "الرابط" : "Link"}</th>
-                  <th className="p-3">{lang === "ar" ? "QR" : "QR"}</th>
+                  <th className="p-3">{lang === "ar" ? "QR التحقق" : "Verify QR"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -222,7 +242,7 @@ export default function ArchivePage({ lang = "ar" }) {
                         className="text-emerald-400 underline break-all font-bold hover:text-emerald-200 transition"
                         style={{ cursor: "pointer" }}
                       >
-                        {lang === "ar" ? "فتح المستند" : "Open"}
+                        {lang === "ar" ? "تحميل" : "Download"}
                       </a>
                     </td>
                     <td className="p-3 text-center">
@@ -235,7 +255,15 @@ export default function ArchivePage({ lang = "ar" }) {
                       </button>
                       {qrVisible[file.id] && (
                         <div className="mt-3 flex flex-col items-center">
-                          <StyledQRCode value={file.link} size={80} />
+                          <StyledQRCode value={getVerifyUrl(file.id)} size={80} />
+                          <a
+                            href={getVerifyUrl(file.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
+                          >
+                            {lang === "ar" ? "رابط التحقق" : "Verify link"}
+                          </a>
                           <button
                             className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
                             style={{ cursor: "pointer" }}
@@ -254,8 +282,8 @@ export default function ArchivePage({ lang = "ar" }) {
         )}
         <div className="text-xs text-center text-emerald-300 mt-8 font-bold">
           {lang === "ar"
-            ? "اطبع هذا الكيو آر على المستند ليتمكن أي شخص من الوصول إليه مباشرة."
-            : "Print this QR on the document for instant access from any device."}
+            ? "اطبع هذا الكيو آر أو شاركه ليتمكن أي شخص من التحقق من صحة المستند مباشرة عبر منصة تأهيل."
+            : "Print or share this QR so anyone can verify the document directly via Taheel platform."}
         </div>
       </div>
       {/* ستايل خط كايرو افتراضي (يمكنك تغييره لأي خط عربي تفضله) */}
