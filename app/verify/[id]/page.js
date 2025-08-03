@@ -133,12 +133,16 @@ export default function VerifyFilePage() {
           <Image src="/logo-transparent-large.png" alt="Taheel Logo" width={80} height={80} className="mb-4 rounded-full bg-white shadow-lg" />
           <h1 className="text-2xl md:text-3xl font-extrabold text-rose-300 mb-2">{t.docVerify}</h1>
           <p className="text-red-200 font-bold mb-3 text-lg">{t.invalidDoc}</p>
-          <p className="text-gray-300 text-sm mb-5">{lang === "ar" ? "لم نجد مستند بهذا الرقم أو الرابط. تأكد من صحة الكود أو تواصل مع الدعم." : "No document found for this code or link. Please check the code or contact support."}</p>
+          <p className="text-gray-300 text-sm mb-5">
+            {lang === "ar"
+              ? "لم نجد مستند بهذا الرقم أو الرابط. تأكد من صحة الكود أو تواصل مع الدعم."
+              : "No document found for this code or link. Please check the code or contact support."}
+          </p>
           <div className="flex gap-3">
             <Link href={`/?lang=${lang}`}>
               <button className="bg-emerald-700 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-emerald-800 transition">{t.backHome}</button>
             </Link>
-            <a href="https://wa.me/971555555555" target="_blank" rel="noopener noreferrer" className="bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-green-700 transition flex items-center gap-2">
+            <a href="https://wa.me/+971567858017" target="_blank" rel="noopener noreferrer" className="bg-green-600 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-green-700 transition flex items-center gap-2">
               <FaWhatsapp size={18} />
               {t.contactSupport}
             </a>
@@ -246,7 +250,7 @@ export default function VerifyFilePage() {
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span>📞</span>
-              <a href="tel:+971555555555" className="underline hover:text-emerald-400">+971 55 555 5555</a>
+              <a href="tel:+971-567-858-017" className="underline hover:text-emerald-400">+971 56 785 8017</a>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <span>✉️</span>
@@ -258,7 +262,7 @@ export default function VerifyFilePage() {
           © {new Date().getFullYear()} {t.taheel}. {t.allRights} - {t.dubai}
         </div>
         <a
-          href="https://wa.me/971555555555"
+          href="https://wa.me/+971-567-858-017"
           target="_blank"
           rel="noopener noreferrer"
           className="fixed bottom-4 right-4 z-50 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg p-4 text-xl transition"
