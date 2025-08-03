@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { useEffect, useState, useRef } from "react";
+import { collection, getDocs, query, where, orderBy, addDoc, Timestamp } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firestore } from "@/lib/firebase.client";
 import StyledQRCode from "@/components/StyledQRCode";
 
@@ -13,20 +14,20 @@ const CATEGORY_LABELS = {
 
 const getVerifyUrl = (id) => `https://www.taheel.ae/verify/${id}`;
 
-export default function ArchivePage({ lang = "ar" }) {
+export default function ArchiveSection({ lang = "ar" }) {
   const [category, setCategory] = useState("translation");
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
-  const [qrVisible, setQrVisible] = useState({});
   const [file, setFile] = useState(null);
   const [nameAr, setNameAr] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [descAr, setDescAr] = useState("");
   const [descEn, setDescEn] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(null);
+  const [qrFor, setQrFor] = useState(null); // id of file to show QR for
 
+  // تحميل الملفات من فايرستور
   useEffect(() => {
     setLoading(true);
     async function fetchFiles() {
@@ -43,51 +44,58 @@ export default function ArchivePage({ lang = "ar" }) {
     fetchFiles();
   }, [category, uploading]);
 
+  // رفع الملف على Google Storage ثم حفظ الرابط في Firestore
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file) return setMsg(lang === "ar" ? "اختر ملفًا!" : "Choose a file!");
+    if (!file || !nameAr || !nameEn) {
+      setMsg(lang === "ar" ? "كل الحقول مطلوبة!" : "All fields are required!");
+      return;
+    }
     setUploading(true);
     setMsg("");
-    setUploadedFile(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", category);
-    formData.append("nameAr", nameAr);
-    formData.append("nameEn", nameEn);
-    formData.append("descAr", descAr);
-    formData.append("descEn", descEn);
     try {
-      const res = await fetch("/api/upload-archive", {
-        method: "POST",
-        body: formData,
+      // 1. ارفع الملف إلى Google Storage
+      const storage = getStorage();
+      const storagePath = `archive/${category}/${Date.now()}_${file.name}`;
+      const storageReference = storageRef(storage, storagePath);
+      await uploadBytes(storageReference, file);
+      const url = await getDownloadURL(storageReference);
+
+      // 2. احفظ بيانات الملف في Firestore
+      const docRef = await addDoc(collection(firestore, "archiveFiles"), {
+        nameAr,
+        nameEn,
+        descAr,
+        descEn,
+        category,
+        link: url,
+        createdAt: Timestamp.now(),
       });
-      const data = await res.json();
-      if (data.success && data.id) {
-        setMsg(lang === "ar" ? "تم الرفع بنجاح ✅" : "Uploaded successfully ✅");
-        setUploadedFile({
-          id: data.id,
-          link: data.fileUrl,
-          nameAr,
-          nameEn,
-          descAr,
-          descEn,
-        });
-        setFile(null);
-        setNameAr("");
-        setNameEn("");
-        setDescAr("");
-        setDescEn("");
-      } else {
-        setMsg(data.error || (lang === "ar" ? "حدث خطأ!" : "An error occurred!"));
-      }
+      setMsg(lang === "ar" ? "تم رفع الملف بنجاح ✅" : "File uploaded successfully ✅");
+      setQrFor(docRef.id);
+      setFile(null);
+      setNameAr("");
+      setNameEn("");
+      setDescAr("");
+      setDescEn("");
+      setUploading(false);
     } catch (err) {
-      setMsg(lang === "ar" ? "حدث خطأ في الاتصال!" : "Connection error!");
+      setMsg(lang === "ar" ? "خطأ أثناء الرفع!" : "Upload error!");
+      setUploading(false);
     }
-    setUploading(false);
   };
 
-  const toggleQR = (id) =>
-    setQrVisible((prev) => ({ ...prev, [id]: !prev[id] }));
+  // تحميل صورة الكيو آر كـ PNG
+  const qrRef = useRef(null);
+  const handleDownloadQR = (id) => {
+    const canvas = qrRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const url = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `taheel-qr-${id}.png`;
+    link.click();
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-4 font-cairo">
@@ -96,9 +104,9 @@ export default function ArchivePage({ lang = "ar" }) {
         <h2 className="font-extrabold text-2xl mb-6 text-emerald-400 text-center drop-shadow">
           {lang === "ar" ? "إضافة ملف جديد للأرشيف" : "Add New Archive File"}
         </h2>
-        <form onSubmit={handleUpload} className="flex flex-col md:flex-row gap-4 items-end">
+        <form onSubmit={handleUpload} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <select
-            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-emerald-200 font-bold focus:outline-emerald-500 cursor-pointer"
+            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-emerald-200 font-bold focus:outline-emerald-500 cursor-pointer col-span-2"
             value={category}
             onChange={e => setCategory(e.target.value)}
           >
@@ -108,7 +116,7 @@ export default function ArchivePage({ lang = "ar" }) {
           </select>
           <input
             type="text"
-            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-white font-bold placeholder:text-emerald-300 focus:outline-emerald-500"
+            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-white font-bold placeholder:text-emerald-300"
             placeholder={lang === "ar" ? "اسم الملف بالعربية" : "Arabic name"}
             value={nameAr}
             onChange={e => setNameAr(e.target.value)}
@@ -116,7 +124,7 @@ export default function ArchivePage({ lang = "ar" }) {
           />
           <input
             type="text"
-            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-white font-bold placeholder:text-emerald-300 focus:outline-emerald-500"
+            className="p-3 rounded-lg border-2 border-emerald-400 bg-[#1a272f] text-white font-bold placeholder:text-emerald-300"
             placeholder={lang === "ar" ? "اسم الملف بالإنجليزية" : "English name"}
             value={nameEn}
             onChange={e => setNameEn(e.target.value)}
@@ -138,7 +146,7 @@ export default function ArchivePage({ lang = "ar" }) {
           />
           <input
             type="file"
-            className="flex-1 file:rounded-lg file:bg-emerald-600 file:text-white file:font-bold file:px-3 file:py-2 file:border-0 file:cursor-pointer"
+            className="file:rounded-lg file:bg-emerald-600 file:text-white file:font-bold file:px-3 file:py-2 file:border-0 file:cursor-pointer col-span-2"
             accept="application/pdf,image/*"
             onChange={e => setFile(e.target.files[0])}
             required
@@ -146,39 +154,22 @@ export default function ArchivePage({ lang = "ar" }) {
           <button
             type="submit"
             disabled={uploading}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3 rounded-lg font-extrabold shadow-lg transition cursor-pointer"
-            style={{ cursor: "pointer" }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3 rounded-lg font-extrabold shadow-lg transition col-span-2"
           >
-            {uploading ? (lang === "ar" ? "جاري الرفع..." : "Uploading...") : (lang === "ar" ? "رفع" : "Upload")}
+            {uploading ? (lang === "ar" ? "جاري الرفع..." : "Uploading...") : (lang === "ar" ? "رفع الملف" : "Upload")}
           </button>
         </form>
         {msg && <div className="text-center text-emerald-300 mt-3 font-bold">{msg}</div>}
 
-        {/* معاينة الملف المرفوع مباشرة مع QR */}
-        {uploadedFile && (
-          <div className="bg-emerald-50 dark:bg-[#101b15] rounded mt-4 p-3 text-center border border-emerald-300">
-            <div className="mb-1 font-bold text-emerald-600">{lang === "ar" ? "تم رفع الملف بنجاح!" : "Uploaded successfully!"}</div>
-            <div className="font-bold">{lang === "ar" ? "اسم الملف:" : "File name:"} <span className="text-emerald-700">{lang === "ar" ? uploadedFile.nameAr : uploadedFile.nameEn}</span></div>
-            <div className="mb-2">{lang === "ar" ? "رابط التحقق:" : "Verification link:"}
-              <a href={getVerifyUrl(uploadedFile.id)} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline break-all font-bold ml-2">{getVerifyUrl(uploadedFile.id)}</a>
-            </div>
-            <div className="flex flex-col items-center mt-2 gap-2">
-              <StyledQRCode value={getVerifyUrl(uploadedFile.id)} size={100} />
-              <a
-                href={uploadedFile.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
-                style={{ cursor: "pointer" }}
-              >
-                {lang === "ar" ? "تحميل الملف" : "Download File"}
-              </a>
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              {lang === "ar"
-                ? "اطبع هذا الكيو آر أو شاركه مع أي جهة للتحقق من صحة المستند مباشرة."
-                : "Print or share this QR so anyone can verify the document directly."}
-            </div>
+        {/* مكان مخصص لعرض الكيو آر بعد الرفع */}
+        {qrFor && (
+          <div ref={qrRef} className="mt-5 flex flex-col items-center justify-center gap-2 bg-[#101b15] border border-emerald-400 rounded-xl p-5">
+            <div className="font-bold mb-1 text-emerald-600">{lang === "ar" ? "كود التحقق" : "Verification QR"}</div>
+            <StyledQRCode value={getVerifyUrl(qrFor)} size={140} />
+            <a href={getVerifyUrl(qrFor)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline break-all font-bold mt-2">{getVerifyUrl(qrFor)}</a>
+            <button onClick={() => handleDownloadQR(qrFor)} className="mt-2 bg-white text-emerald-700 border-2 border-emerald-700 font-bold rounded-lg px-5 py-2 hover:bg-emerald-50">
+              {lang === "ar" ? "تحميل الكود كصورة" : "Download QR as image"}
+            </button>
           </div>
         )}
       </div>
@@ -193,7 +184,6 @@ export default function ArchivePage({ lang = "ar" }) {
                 ? "bg-emerald-500 text-white border-emerald-700"
                 : "bg-[#1a272f] text-emerald-300 border-emerald-700 hover:bg-emerald-600 hover:text-white"
             }`}
-            style={{ cursor: "pointer" }}
             onClick={() => setCategory(cat)}
           >
             {lang === "ar" ? CATEGORY_LABELS[cat].ar : CATEGORY_LABELS[cat].en}
@@ -236,39 +226,18 @@ export default function ArchivePage({ lang = "ar" }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-emerald-400 underline break-all font-bold hover:text-emerald-200 transition"
-                        style={{ cursor: "pointer" }}
                       >
                         {lang === "ar" ? "تحميل" : "Download"}
                       </a>
                     </td>
                     <td className="p-3 text-center">
                       <button
-                        className="bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-800 focus:outline-none shadow cursor-pointer"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => toggleQR(file.id)}
+                        className="bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold hover:bg-emerald-800 focus:outline-none shadow"
+                        onClick={() => setQrFor(file.id === qrFor ? null : file.id)}
                       >
-                        {qrVisible[file.id] ? (lang === "ar" ? "إخفاء" : "Hide") : (lang === "ar" ? "عرض" : "Show")}
+                        {qrFor === file.id ? (lang === "ar" ? "إخفاء" : "Hide") : (lang === "ar" ? "عرض" : "Show")}
                       </button>
-                      {qrVisible[file.id] && (
-                        <div className="mt-3 flex flex-col items-center">
-                          <StyledQRCode value={getVerifyUrl(file.id)} size={80} />
-                          <a
-                            href={getVerifyUrl(file.id)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
-                          >
-                            {lang === "ar" ? "رابط التحقق" : "Verify link"}
-                          </a>
-                          <button
-                            className="mt-1 px-3 py-1 border-2 border-emerald-600 rounded-lg text-xs font-bold text-emerald-600 bg-white hover:bg-emerald-50 transition cursor-pointer"
-                            style={{ cursor: "pointer" }}
-                            onClick={() => window.print()}
-                          >
-                            {lang === "ar" ? "طباعة" : "Print"}
-                          </button>
-                        </div>
-                      )}
+                      {/* عرض الكيو آر في مكان منفصل أسفل الجدول */}
                     </td>
                   </tr>
                 ))}
@@ -276,11 +245,18 @@ export default function ArchivePage({ lang = "ar" }) {
             </table>
           </div>
         )}
-        <div className="text-xs text-center text-emerald-300 mt-8 font-bold">
-          {lang === "ar"
-            ? "اطبع أو شارك هذا الكيو آر ليتمكن أي شخص من التحقق من صحة المستند مباشرة عبر منصة تأهيل."
-            : "Print or share this QR so anyone can verify the document directly via Taheel platform."}
-        </div>
+
+        {/* مكان عرض كود تحقق الملف المختار من الجدول */}
+        {qrFor && files.find(f => f.id === qrFor) && (
+          <div ref={qrRef} className="mt-7 flex flex-col items-center justify-center gap-2 bg-[#101b15] border border-emerald-400 rounded-xl p-5 w-fit mx-auto">
+            <div className="font-bold mb-1 text-emerald-600">{lang === "ar" ? "كود التحقق" : "Verification QR"}</div>
+            <StyledQRCode value={getVerifyUrl(qrFor)} size={140} />
+            <a href={getVerifyUrl(qrFor)} target="_blank" rel="noopener noreferrer" className="text-emerald-400 underline break-all font-bold mt-2">{getVerifyUrl(qrFor)}</a>
+            <button onClick={() => handleDownloadQR(qrFor)} className="mt-2 bg-white text-emerald-700 border-2 border-emerald-700 font-bold rounded-lg px-5 py-2 hover:bg-emerald-50">
+              {lang === "ar" ? "تحميل الكود كصورة" : "Download QR as image"}
+            </button>
+          </div>
+        )}
       </div>
       <style jsx global>{`
         body, .font-cairo { font-family: 'Cairo', 'Tajawal', Arial, sans-serif !important; }
