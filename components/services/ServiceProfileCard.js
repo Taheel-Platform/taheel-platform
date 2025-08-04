@@ -138,10 +138,17 @@ export default function ServiceProfileCard({
   // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
-  const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
+const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
   const printingTotal = (Number(printingFee) || 0) * basePaperCount;
-  const taxTotal = +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
-  const totalServicePrice = servicePriceTotal + printingTotal + taxTotal;
+  // جلب الضريبة من props (tax) أو fallback على حسابها من رسوم الطباعة
+  const taxTotal = typeof props.tax !== "undefined"
+    ? Number(props.tax) * basePaperCount
+    : +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
+
+  const totalServicePrice =
+    typeof props.clientPrice !== "undefined"
+      ? Number(props.clientPrice) * baseServiceCount
+      : servicePriceTotal + printingTotal + taxTotal;
 
   // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
