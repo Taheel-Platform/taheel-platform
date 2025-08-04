@@ -52,7 +52,6 @@ export default function ServicesSection({ lang = "ar" }) {
     price: "",
     printingFee: "",
     coins: "",
-    profit: "",
     documents: [],
     duration: "",
     requireUpload: false,
@@ -125,7 +124,7 @@ export default function ServicesSection({ lang = "ar" }) {
       price: Number(newService.price),
       printingFee: Number(newService.printingFee),
       coins: Number(newService.coins),
-      profit: Number(newService.profit),
+      profit: Number(newService.printingFee), // الربح = رسوم الطباعة دائماً
       tax: Number(tax),
       clientPrice: Number(clientPrice),
       documents: newService.requireUpload
@@ -144,7 +143,6 @@ export default function ServicesSection({ lang = "ar" }) {
       price: "",
       printingFee: "",
       coins: "",
-      profit: "",
       documents: [],
       duration: "",
       requireUpload: false,
@@ -184,7 +182,7 @@ export default function ServicesSection({ lang = "ar" }) {
       price: Number(editService.price),
       printingFee: Number(editService.printingFee),
       coins: Number(editService.coins),
-      profit: Number(editService.profit),
+      profit: Number(editService.printingFee), // الربح = رسوم الطباعة دائماً
       tax: Number(tax),
       clientPrice: Number(clientPrice),
       documents: editService.requireUpload
@@ -345,17 +343,6 @@ export default function ServicesSection({ lang = "ar" }) {
               placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
               value={newService.coins}
             />
-            {/* الربح (اختياري، أو احسبه تلقائي إذا أردت) */}
-            <input
-              type="number"
-              min="0"
-              className="p-2 rounded border text-gray-900 flex-1"
-              placeholder={lang === "ar" ? "الربح (اختياري)" : "Profit (optional)"}
-              value={newService.profit}
-              onChange={(e) =>
-                setNewService({ ...newService, profit: e.target.value })
-              }
-            />
             {/* وقت الإنجاز */}
             <input
               className="p-2 rounded border text-gray-900 flex-1"
@@ -496,7 +483,6 @@ export default function ServicesSection({ lang = "ar" }) {
               <th className="py-2 px-2">{lang === "ar" ? "ضريبة الطباعة (5%)" : "Printing Tax (5%)"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "الإجمالى للعميل" : "Client Total"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "كوينات" : "Coins"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "ربح" : "Profit"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "مدة" : "Duration"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "مستندات" : "Documents"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "رفع مستند؟" : "Upload?"}</th>
@@ -610,7 +596,8 @@ export default function ServicesSection({ lang = "ar" }) {
                     {calcAll(editService.price, editService.printingFee).tax}
                   </td>
                   <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
-                    {calcAll(editService.price, editService.printingFee).clientPrice}
+                    {calcAll(editService.price, editService.printingFee)
+                      .clientPrice}
                   </td>
                   <td className="py-2 px-2">
                     <input
@@ -621,19 +608,6 @@ export default function ServicesSection({ lang = "ar" }) {
                         setEditService({
                           ...editService,
                           coins: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="number"
-                      className="p-1 rounded border w-14 text-cyan-900"
-                      value={editService.profit}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          profit: e.target.value,
                         })
                       }
                     />
@@ -779,9 +753,6 @@ export default function ServicesSection({ lang = "ar" }) {
                   <td className="py-2 px-2 text-cyan-900">
                     {service.coins}
                   </td>
-                  <td className="py-2 px-2 text-green-800 font-bold">
-                    {service.profit}
-                  </td>
                   <td className="py-2 px-2 text-cyan-700">
                     {service.duration}
                   </td>
@@ -873,7 +844,7 @@ export default function ServicesSection({ lang = "ar" }) {
             )}
             {filteredServices.length === 0 && (
               <tr>
-                <td colSpan={17} className="py-6 text-gray-400">
+                <td colSpan={16} className="py-6 text-gray-400">
                   {lang === "ar"
                     ? "لا توجد خدمات"
                     : "No services found"}
