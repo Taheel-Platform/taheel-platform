@@ -7,6 +7,20 @@ import EditModal from "./EditModal";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
+// دالة لجمع اسم العميل من firstName, middleName, lastName
+function getFullName(client, lang = "ar") {
+  if (!client) return "";
+  if (lang === "ar") {
+    return [client.firstName, client.middleName, client.lastName]
+      .filter(Boolean)
+      .join(" ");
+  }
+  if (client.nameEn) return client.nameEn;
+  return [client.firstName, client.middleName, client.lastName]
+    .filter(Boolean)
+    .join(" ");
+}
+
 function ResidentCard({
   client = {},
   lang = "ar",
@@ -22,6 +36,10 @@ function ResidentCard({
     type,
     idNumber,
     showExpiryAlert,
+    firstName,
+    middleName,
+    lastName,
+    nameEn,
   } = client;
 
   const [showModal, setShowModal] = useState(false);
@@ -213,8 +231,8 @@ function ResidentCard({
 
       {/* بيانات العميل */}
       <div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
-        <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={name}>
-          {name || "-"}
+        <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={getFullName(client, lang)}>
+          {getFullName(client, lang) || "-"}
         </span>
         <span className="text-sm text-gray-500 mt-2 text-center w-full">
           {t.nationality}: <span className="font-bold text-emerald-800">{nationality || "-"}</span>

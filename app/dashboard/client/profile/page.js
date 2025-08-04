@@ -27,7 +27,6 @@ import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
-
 // استدعاء مكونات المحفظة والكوينز
 import WalletWidget from "@/components/WalletWidget";
 import CoinsWidget from "@/components/CoinsWidget";
@@ -44,6 +43,20 @@ function getDayGreeting(lang = "ar") {
     if (hour >= 12 && hour < 18) return "Good afternoon";
     return "Good evening";
   }
+}
+
+// استخدم اسم العميل من فير-بيز (firstName + middleName + lastName)
+function getFullName(client, lang = "ar") {
+  if (!client) return "";
+  if (lang === "ar") {
+    return [client.firstName, client.middleName, client.lastName]
+      .filter(Boolean)
+      .join(" ");
+  }
+  if (client.nameEn) return client.nameEn;
+  return [client.firstName, client.middleName, client.lastName]
+    .filter(Boolean)
+    .join(" ");
 }
 function getWelcome(name, lang = "ar") {
   return lang === "ar" ? `مرحباً ${name || ""}` : `Welcome, ${name || ""}`;
@@ -356,8 +369,8 @@ function ClientProfilePageInner({ userId }) {
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
             <span className="text-white text-base sm:text-lg font-bold whitespace-nowrap">
-              {/* صباح الخير، مرحباً محمد */}
-              {`${getDayGreeting(lang)}, ${getWelcome(client?.name, lang)}`}
+              {/* صباح الخير، مرحباً محمد عيد */}
+              {`${getDayGreeting(lang)}, مرحباً ${getFullName(client, lang)}`}
             </span>
           </div>
           {/* Action icons */}
