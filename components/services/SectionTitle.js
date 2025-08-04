@@ -32,11 +32,13 @@ export default function ServiceSection({
   key={srv.name + i}
   category={srv.category}
   name={srv.name}
+  name_en={srv.name_en}
   description={srv.description}
+  description_en={srv.description_en}
   price={srv.price}
   printingFee={srv.printingFee || 0}
   duration={srv.duration}
-  requiredDocs={srv.documents || []}
+  requiredDocs={srv.requiredDocuments || []}  
   requireUpload={srv.requireUpload}
   coins={srv.coins || 0}
   repeatable={srv.repeatable || false}
