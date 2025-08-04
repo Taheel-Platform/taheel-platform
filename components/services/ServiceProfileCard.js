@@ -10,6 +10,7 @@ import {
   FaTag,
   FaCoins,
   FaCheck,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
@@ -65,11 +66,21 @@ const CATEGORY_STYLES = {
   },
 };
 
+// دالة حساب الضريبة والسعر النهائي
+function calcAll(price, printingFee) {
+  const p = Number(price) || 0;
+  const print = Number(printingFee) || 0;
+  const tax = +(print * 0.05).toFixed(2);
+  const clientPrice = +(p + print + tax).toFixed(2);
+  return { tax, clientPrice, print };
+}
+
 export default function ServiceProfileCard({
   category = "resident",
   name,
   description,
   price,
+  printingFee = 0,
   duration,
   requiredDocs = [],
   coins = 0,
@@ -83,8 +94,8 @@ export default function ServiceProfileCard({
   onPaid,
   allowPaperCount = false,
   pricePerPage,
-  userEmail, // يجب تمرير إيميل المستخدم (تحتاج تمريره من الأعلى)
-  longDescription, // وصف مطول للخدمة (مرره من الأعلى إذا كان عندك)
+  userEmail,
+  longDescription, // وصف مطول للخدمة لجدول التفاصيل
 }) {
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
@@ -102,8 +113,8 @@ export default function ServiceProfileCard({
   // ---- عدد الأوراق ----
   const [paperCount, setPaperCount] = useState(1);
 
-  // --- عرض الوصف المطول عند الوقوف أو لمس الكارت ---
-  const [showDesc, setShowDesc] = useState(false);
+  // --- لعرض جدول التفاصيل عند الوقوف/الضغط ---
+  const [showDetailTable, setShowDetailTable] = useState(false);
 
   // جلب بيانات المستخدم
   useEffect(() => {
@@ -117,22 +128,27 @@ export default function ServiceProfileCard({
           setWallet(Number(data.walletBalance ?? 0));
           setCoinsBalance(Number(data.coins ?? 0));
         }
-      } catch (err) {
-        // log error if needed
-      }
+      } catch (err) {}
     };
     fetchUser();
   }, [userId]);
 
-  // حساب السعر النهائي
-  const totalServicePrice = pricePerPage
-    ? pricePerPage * paperCount
-    : price * (repeatable ? quantity : 1);
+  // الحسابات المالية
+  const { tax, clientPrice, print } = calcAll(price, printingFee);
+
+  // السعر النهائي للخدمة (في حالة التكرار أو الأوراق)
+  const baseServiceCount = repeatable ? quantity : 1;
+  const basePaperCount = allowPaperCount ? paperCount : 1;
+  // الإجمالي = (سعر الخدمة × العدد) + (رسوم الطباعة × عدد الأوراق) + الضريبة
+  const totalServicePrice =
+    (Number(price) || 0) * baseServiceCount +
+    (Number(printingFee) || 0) * basePaperCount +
+    +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
 
   // تحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
     !requireUpload ||
-    (uploadedDocs["main"] && uploadedDocs["main"].type === "application/pdf");
+    requiredDocs.every((doc) => uploadedDocs[doc]);
 
   // تحقق من تحديد عدد الأوراق
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
@@ -168,19 +184,20 @@ export default function ServiceProfileCard({
   async function sendNotification({ userId, orderNumber, orderName }) {
     try {
       await addDoc(collection(firestore, "notifications"), {
-        body: `تم تقديم طلبك بنجاح. رقم الطلب: ${orderNumber}`,
+        body:
+          lang === "ar"
+            ? `تم تقديم طلبك بنجاح. رقم الطلب: ${orderNumber}`
+            : `Your order was submitted successfully. Order Number: ${orderNumber}`,
         isRead: false,
         notificationId: `notif-${Date.now()}`,
         relatedRequest: orderNumber,
         targetId: userId,
         timestamp: new Date().toISOString(),
-        title: "تحديث حالة الطلب",
+        title: lang === "ar" ? "تحديث حالة الطلب" : "Order Status Update",
         type: "status",
         orderName: orderName,
       });
-    } catch (err) {
-      // log notification error if needed
-    }
+    } catch (err) {}
   }
 
   // إرسال إيميل (استدعاء API backend أو cloud function)
@@ -196,9 +213,7 @@ export default function ServiceProfileCard({
           price,
         }),
       });
-    } catch (err) {
-      // log email error if needed
-    }
+    } catch (err) {}
   }
 
   async function handlePayment(method, withCoinDiscount = false) {
@@ -207,8 +222,7 @@ export default function ServiceProfileCard({
     try {
       let currentCoins = Number(coinsBalance) || 0;
       let currentWallet = Number(wallet) || 0;
-      let totalPrice = totalServicePrice;
-      let amountToPay = totalPrice;
+      let amountToPay = totalServicePrice;
       let discount = 0;
       const userRef = doc(firestore, "users", userId);
 
@@ -230,10 +244,10 @@ export default function ServiceProfileCard({
         currentCoins = currentCoins - 100;
       } else {
         await updateDoc(userRef, {
-          coins: currentCoins + coins * (repeatable ? quantity : 1),
+          coins: currentCoins + coins * baseServiceCount,
         });
-        setCoinsBalance(currentCoins + coins * (repeatable ? quantity : 1));
-        currentCoins = currentCoins + coins * (repeatable ? quantity : 1);
+        setCoinsBalance(currentCoins + coins * baseServiceCount);
+        currentCoins = currentCoins + coins * baseServiceCount;
       }
 
       if (method === "wallet") {
@@ -266,17 +280,16 @@ export default function ServiceProfileCard({
       // Gateway code here if needed
 
       // === إنشاء الطلب بعد الدفع الناجح ===
-      // رقم الطلب هو نفسه رقم التتبع
       const orderNumber = generateOrderNumber();
 
       // إضافة الطلب في Collection "requests"
       await addDoc(collection(firestore, "requests"), {
-        trackingNumber: orderNumber, // رقم التتبع = رقم الطلب
+        trackingNumber: orderNumber,
         orderNumber: orderNumber,
         clientId: userId,
         orderName: name,
         serviceId: serviceId,
-        quantity: repeatable ? quantity : 1,
+        quantity: baseServiceCount,
         price: totalServicePrice,
         statusHistory: [
           {
@@ -293,14 +306,12 @@ export default function ServiceProfileCard({
         lang: lang,
       });
 
-      // إرسال إشعار للعميل (Firestore notifications)
       await sendNotification({
         userId,
         orderNumber,
         orderName: name,
       });
 
-      // إرسال إيميل للعميل (تحتاج ضبط endpoint)
       if (userEmail) {
         await sendOrderEmail({
           to: userEmail,
@@ -319,7 +330,7 @@ export default function ServiceProfileCard({
       );
 
       if (onPaid)
-        onPaid(method, repeatable ? quantity : 1, uploadedDocs, paperCount);
+        onPaid(method, baseServiceCount, uploadedDocs, paperCount);
       setIsPaying(false);
 
       setTimeout(() => {
@@ -344,6 +355,96 @@ export default function ServiceProfileCard({
 
   const canUseCoinDiscount = Number(coinsBalance) >= 100;
 
+  // ترجمة عناوين تفاصيل السعر
+  const labels = {
+    total: lang === "ar" ? "الإجمالي النهائي للعميل" : "Client Total",
+    service: lang === "ar" ? "سعر الخدمة" : "Service price",
+    printing: lang === "ar" ? "رسوم الطباعة" : "Printing Fee",
+    tax: lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing",
+    perPaper: lang === "ar" ? "لكل ورقة" : "per page",
+    quantity: lang === "ar" ? "عدد مرات الخدمة" : "Quantity",
+    papers: lang === "ar" ? "عدد الأوراق" : "Pages",
+    documents: lang === "ar" ? "المستندات المطلوبة" : "Required Documents",
+    cashback: cashbackText,
+    showDetails: lang === "ar" ? "تفاصيل الخدمة" : "Service Details",
+    hideDetails: lang === "ar" ? "إغلاق التفاصيل" : "Hide Details",
+    more: lang === "ar" ? "تفاصيل أكثر" : "More Details",
+  };
+
+  // تفاصيل السعر في جدول
+  function renderDetailsTable() {
+    return (
+      <div
+        className="absolute z-40 left-1/2 -translate-x-1/2 top-2 bg-white rounded-xl shadow-2xl border border-emerald-200 w-[98vw] max-w-md p-4"
+        style={{ minWidth: 240 }}
+        tabIndex={0}
+        onMouseLeave={() => setShowDetailTable(false)}
+        onClick={() => setShowDetailTable(false)}
+      >
+        <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
+          <tbody>
+            <tr>
+              <td>{labels.service}</td>
+              <td>
+                {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                {repeatable ? ` × ${quantity}` : ""}
+              </td>
+            </tr>
+            <tr>
+              <td>
+                {labels.printing}
+                {allowPaperCount ? ` (${labels.perPaper})` : ""}
+              </td>
+              <td>
+                {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                {allowPaperCount ? ` × ${paperCount}` : ""}
+              </td>
+            </tr>
+            <tr>
+              <td>{labels.tax}</td>
+              <td>
+                {(Number(printingFee) * 0.05 * (allowPaperCount ? paperCount : 1)).toFixed(2)}{" "}
+                {lang === "ar" ? "د.إ" : "AED"}
+              </td>
+            </tr>
+            <tr>
+              <td className="font-extrabold text-emerald-900">{labels.total}</td>
+              <td className="font-extrabold text-emerald-900">
+                {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="text-gray-700 text-xs whitespace-pre-line mb-1">
+          {longDescription || description}
+        </div>
+        {requiredDocs.length > 0 && (
+          <div className="mt-2">
+            <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
+              <FaFileAlt /> {labels.documents}
+            </div>
+            <ul className="list-inside list-disc text-gray-700 text-[12px] pl-2 space-y-0.5 max-w-full mb-2">
+              {requiredDocs.map((doc, i) => (
+                <li key={i}>{doc}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <button
+          onClick={() => setShowDetailTable(false)}
+          className="w-full py-1.5 mt-2 rounded-full font-bold shadow text-base transition
+                bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+                hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+                hover:scale-105 duration-150
+                focus:outline-none focus:ring-2 focus:ring-emerald-400
+                cursor-pointer"
+        >
+          {labels.hideDetails}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`
@@ -364,10 +465,10 @@ export default function ServiceProfileCard({
       }}
       tabIndex={0}
       role="button"
-      onMouseEnter={() => setShowDesc(true)}
-      onMouseLeave={() => setShowDesc(false)}
-      onTouchStart={() => setShowDesc(true)}
-      onTouchEnd={() => setShowDesc(false)}
+      onMouseEnter={() => setShowDetailTable(true)}
+      onMouseLeave={() => setShowDetailTable(false)}
+      onTouchStart={() => setShowDetailTable(true)}
+      onTouchEnd={() => setShowDetailTable(false)}
     >
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
@@ -376,7 +477,7 @@ export default function ServiceProfileCard({
           <span className="text-yellow-700 font-bold text-xs">{coins}</span>
         </div>
         <div className="absolute z-20 left-1/2 -translate-x-1/2 top-7 whitespace-nowrap bg-yellow-200 text-yellow-900 text-xs font-bold px-3 py-1 rounded shadow-lg opacity-0 group-hover/coins:opacity-100 transition pointer-events-none">
-          {cashbackText}
+          {labels.cashback}
         </div>
       </div>
       {/* التصنيف */}
@@ -395,63 +496,98 @@ export default function ServiceProfileCard({
         <h3 className="text-lg font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate">
           {name}
         </h3>
-        {/* وصف الخدمة مع إظهار المزيد عند الوقوف */}
+        {/* وصف الخدمة */}
         <div className="relative w-full" style={{ minHeight: 38 }}>
           <p
-            className={`text-gray-600 text-center text-sm mb-2 font-medium flex-0 max-w-full transition-all duration-200
-            `}
+            className={`text-gray-600 text-center text-sm mb-2 font-medium flex-0 max-w-full transition-all duration-200`}
             style={{
-              display: showDesc ? "block" : "-webkit-box",
-              WebkitLineClamp: showDesc ? undefined : 2,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
-              overflow: showDesc ? "visible" : "hidden",
-              zIndex: showDesc ? 30 : 1,
+              overflow: "hidden",
+              zIndex: 1,
               fontSize: "15px",
               minHeight: 36,
               maxWidth: "100%",
-              background: showDesc
-                ? "rgba(255,255,255,0.96)"
-                : "transparent",
-              borderRadius: showDesc ? 12 : 0,
-              position: showDesc ? "absolute" : "static",
-              left: showDesc ? "50%" : "auto",
-              transform: showDesc ? "translateX(-50%)" : "none",
-              top: showDesc ? 0 : "auto",
-              padding: showDesc ? 12 : 0,
-              boxShadow: showDesc
-                ? "0 8px 32px 0 rgba(0,0,0,0.12)"
-                : "none",
-              border: showDesc ? "1px solid #d1fae5" : "none",
-              width: showDesc ? "96vw" : "100%",
-              maxWidth: showDesc ? 340 : "100%",
+              width: "100%",
             }}
           >
-            {showDesc && longDescription
-              ? longDescription
-              : description || <span>&nbsp;</span>}
+            {description || <span>&nbsp;</span>}
           </p>
+          {((description && description.length > 50) ||
+            (longDescription && longDescription.length > 50)) && (
+            <button
+              className="absolute top-0 right-0 z-10 flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white/70 rounded-full px-2 py-0.5 shadow"
+              style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDetailTable((v) => !v);
+              }}
+              tabIndex={0}
+              type="button"
+            >
+              <FaInfoCircle /> {labels.more}
+            </button>
+          )}
         </div>
-        {/* السعر */}
-        <div className="flex items-center justify-center gap-2 my-2 w-full">
-          <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
-            {totalServicePrice}
-          </span>
-          <span className="text-base text-gray-500 font-bold">
-            {lang === "ar" ? "درهم" : "AED"}
-          </span>
-          <Image
-            src="/aed-logo.png"
-            alt="درهم إماراتي"
-            width={34}
-            height={34}
-            className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
-          />
+        {/* تفاصيل السعر النهائى */}
+        <div className="w-full mt-2 mb-2">
+          <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
+                {totalServicePrice}
+              </span>
+              <span className="text-base text-gray-500 font-bold">
+                {lang === "ar" ? "درهم" : "AED"}
+              </span>
+              <Image
+                src="/aed-logo.png"
+                alt={lang === "ar" ? "درهم إماراتي" : "AED"}
+                width={34}
+                height={34}
+                className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
+              />
+            </div>
+            <table className="w-full text-xs text-gray-700 mb-1">
+              <tbody>
+                <tr>
+                  <td>{labels.service}</td>
+                  <td className="text-right">
+                    {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                    {repeatable ? ` × ${quantity}` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    {labels.printing}
+                    {allowPaperCount ? ` (${labels.perPaper})` : ""}
+                  </td>
+                  <td className="text-right">
+                    {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                    {allowPaperCount ? ` × ${paperCount}` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td>{labels.tax}</td>
+                  <td className="text-right">
+                    {(Number(printingFee) * 0.05 * (allowPaperCount ? paperCount : 1)).toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-extrabold text-emerald-900">{labels.total}</td>
+                  <td className="font-extrabold text-emerald-900 text-right">
+                    {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         {/* عدد مرات الخدمة */}
         {repeatable && (
           <div className="flex flex-col items-center mb-2 w-full">
             <label className="text-xs font-bold text-gray-600 mb-1">
-              {lang === "ar" ? "عدد مرات الخدمة" : "Quantity"}
+              {labels.quantity}
             </label>
             <input
               type="number"
@@ -470,7 +606,7 @@ export default function ServiceProfileCard({
         {allowPaperCount && (
           <div className="flex flex-col items-center mb-2 w-full">
             <label className="text-xs font-bold text-gray-600 mb-1">
-              {lang === "ar" ? "عدد الأوراق" : "Number of Pages"}
+              {labels.papers}
             </label>
             <input
               type="number"
@@ -491,8 +627,7 @@ export default function ServiceProfileCard({
         {requireUpload && (
           <div className="my-1 w-full flex flex-col max-w-full">
             <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
-              <FaFileAlt />{" "}
-              {lang === "ar" ? "المستندات المطلوبة" : "Documents"}
+              <FaFileAlt /> {labels.documents}
             </div>
             <ul className="list-inside list-disc text-gray-700 text-[12px] pl-2 space-y-0.5 max-w-full mb-2">
               {requiredDocs.map((doc, i) => (
@@ -584,6 +719,8 @@ export default function ServiceProfileCard({
           )}
         </div>
       </div>
+      {/* جدول التفاصيل إذا ضغط أو وقف */}
+      {showDetailTable && renderDetailsTable()}
       {/* نافذة الدفع العادية */}
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
@@ -594,7 +731,7 @@ export default function ServiceProfileCard({
                 setPayMsg("");
               }}
               className="absolute top-2 right-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-              title="إغلاق"
+              title={lang === "ar" ? "إغلاق" : "Close"}
               tabIndex={0}
               type="button"
               style={{ cursor: "pointer" }}
@@ -608,16 +745,12 @@ export default function ServiceProfileCard({
             </h2>
             {repeatable && (
               <div className="text-xs text-gray-700 font-bold mb-3">
-                {lang === "ar"
-                  ? `عدد مرات الخدمة: ${quantity}`
-                  : `Quantity: ${quantity}`}
+                {labels.quantity}: {quantity}
               </div>
             )}
             {allowPaperCount && (
               <div className="text-xs text-gray-700 font-bold mb-3">
-                {lang === "ar"
-                  ? `عدد الأوراق: ${paperCount}`
-                  : `Number of Pages: ${paperCount}`}
+                {labels.papers}: {paperCount}
               </div>
             )}
             {payMsg && (
@@ -662,7 +795,7 @@ export default function ServiceProfileCard({
                 setPayMsg("");
               }}
               className="absolute top-2 right-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-              title="إغلاق"
+              title={lang === "ar" ? "إغلاق" : "Close"}
               tabIndex={0}
               type="button"
               style={{ cursor: "pointer" }}
@@ -676,16 +809,12 @@ export default function ServiceProfileCard({
             </h2>
             {repeatable && (
               <div className="text-xs text-gray-700 font-bold mb-3">
-                {lang === "ar"
-                  ? `عدد مرات الخدمة: ${quantity}`
-                  : `Quantity: ${quantity}`}
+                {labels.quantity}: {quantity}
               </div>
             )}
             {allowPaperCount && (
               <div className="text-xs text-gray-700 font-bold mb-3">
-                {lang === "ar"
-                  ? `عدد الأوراق: ${paperCount}`
-                  : `Number of Pages: ${paperCount}`}
+                {labels.papers}: {paperCount}
               </div>
             )}
             {payMsg && (
