@@ -164,24 +164,27 @@ function ClientProfilePageInner({ userId }) {
       }
       setCompanies(relatedCompanies);
 
-      const servicesSnap = await getDocs(collection(firestore, "services"));
-      let arr = [];
-      servicesSnap.forEach(doc => arr.push({ ...doc.data(), id: doc.id }));
+// جلب الخدمات مباشرة من document الفئة
+const types = ["resident", "company", "nonresident", "other"];
+let servicesByType = {
+  resident: [],
+  nonresident: [],
+  company: [],
+  other: [],
+};
 
-      let servicesByType = {
-        resident: [],
-        nonresident: [],
-        company: [],
-        other: [],
-      };
-      arr.forEach(srv => {
-        if (srv.active === false) return;
-        if (srv.category === "resident") servicesByType.resident.push(srv);
-        else if (srv.category === "nonresident") servicesByType.nonresident.push(srv);
-        else if (srv.category === "company") servicesByType.company.push(srv);
-        else if (srv.category === "other") servicesByType.other.push(srv);
-      });
-      setServices(servicesByType);
+for (const type of types) {
+  const docRef = doc(firestore, "servicesByClientType", type);
+  const snap = await getDoc(docRef);
+  const data = snap.exists() ? snap.data() : {};
+  // فقط الحقول التي تبدأ بـ service
+  const arr = Object.entries(data)
+    .filter(([key]) => key.startsWith("service"))
+    .map(([key, val]) => ({ ...val, id: key }));
+  // يمكنك فلترة الخدمات غير المفعلة هنا إذا أردت
+  servicesByType[type] = arr.filter(srv => srv.active !== false);
+}
+setServices(servicesByType);
 
       const ordersSnap = await getDocs(
         query(
