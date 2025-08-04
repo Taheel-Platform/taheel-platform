@@ -21,8 +21,8 @@ import { GlobalLoader } from '@/components/GlobalLoader';
 const statusStepsList = [
   { key: "submitted", labelEn: "Submitted", labelAr: "تقديم الطلب", color: "#22c55e", icon: FaEnvelopeOpenText },
   { key: "under_review", labelEn: "Under Review", labelAr: "مراجعة", color: "#0ea5e9", icon: FaSearch },
-  { key: "government_processing", labelEn: "Government Processing", labelAr: "إجراء حكومي", color: "#a3a3a3", icon: FaCog },
-  { key: "completed", labelEn: "Completed", labelAr: "الإنجاز", color: "#10b981", icon: FaCheckCircle }
+  { key: "government_processing", labelEn: "Under Government Processing", labelAr: "قيد الإجراء الحكومي", color: "#a3a3a3", icon: FaCog },
+  { key: "completed", labelEn: "Completed", labelAr: "تم الإجراء بنجاح", color: "#10b981", icon: FaCheckCircle }
 ];
 
 // الحالات المخفية
