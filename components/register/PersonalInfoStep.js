@@ -64,6 +64,8 @@ export default function PersonalInfoStep({
         form.ownerBirthDate &&
         form.ownerNationality &&
         form.ownerGender &&
+        form.ownerPassportNumber &&
+        form.ownerPassportExpiry &&
         (!form.ownerBirthDate || calcAge(form.ownerBirthDate) >= 18)
       );
     } else {
@@ -89,6 +91,10 @@ export default function PersonalInfoStep({
     if (type === "company") {
       if (!form.ownerBirthDate || calcAge(form.ownerBirthDate) < 18) {
         alert(lang === "ar" ? "عمر المالك يجب ألا يقل عن 18 سنة" : "Owner must be at least 18 years old");
+        return;
+      }
+      if (!form.ownerPassportNumber || !form.ownerPassportExpiry) {
+        alert(lang === "ar" ? "يرجى إدخال رقم وتاريخ انتهاء جواز سفر المالك" : "Please enter owner's passport number and expiry date");
         return;
       }
     } else {
@@ -195,7 +201,6 @@ export default function PersonalInfoStep({
                 />
               </div>
               <div className="flex flex-col gap-3 sm:flex-row mt-4">
-                {/* تاريخ ميلاد المالك */}
                 <div className="relative w-full">
                   <label className="block text-xs font-bold text-gray-500 mb-1">
                     {lang === "ar" ? "تاريخ ميلاد المالك" : "Owner Birth Date"}
@@ -236,6 +241,56 @@ export default function PersonalInfoStep({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* بيانات وثائق المالك */}
+              <div className="flex flex-col gap-3 sm:flex-row mt-4">
+                <input
+                  className={inputClass}
+                  placeholder={lang === "ar" ? "رقم جواز السفر للمالك (إلزامي)" : "Owner's Passport Number (Required)"}
+                  value={form.ownerPassportNumber || ""}
+                  onChange={e => onChange({ ownerPassportNumber: e.target.value })}
+                  dir="ltr"
+                  required
+                />
+                <div className="relative w-full">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    {lang === "ar" ? "تاريخ انتهاء جواز السفر للمالك" : "Owner's Passport Expiry"}
+                  </label>
+                  <input
+                    className={inputClass + " pr-10"}
+                    type="date"
+                    value={form.ownerPassportExpiry || ""}
+                    onChange={e => onChange({ ownerPassportExpiry: e.target.value })}
+                    required
+                    style={{ WebkitAppearance: "none", appearance: "none" }}
+                  />
+                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row mt-2">
+                <input
+                  className={inputClass}
+                  placeholder={lang === "ar" ? "رقم الإقامة للمالك (اختياري)" : "Owner's Residence ID (Optional)"}
+                  value={form.ownerEidNumber || ""}
+                  onChange={e => onChange({ ownerEidNumber: formatEIDNumber(e.target.value) })}
+                  dir="ltr"
+                  maxLength={19}
+                />
+                <div className="relative w-full">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    {lang === "ar" ? "تاريخ انتهاء الإقامة للمالك (اختياري)" : "Owner's Residence Expiry (Optional)"}
+                  </label>
+                  <input
+                    className={inputClass + " pr-10"}
+                    type="date"
+                    value={form.ownerEidExpiry || ""}
+                    onChange={e => onChange({ ownerEidExpiry: e.target.value })}
+                    style={{ WebkitAppearance: "none", appearance: "none" }}
+                  />
+                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                </div>
               </div>
             </div>
           </>
