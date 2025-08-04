@@ -55,7 +55,7 @@ export default function ServicesSection({ lang = "ar" }) {
     price: "",
     printingFee: "",
     coins: "",
-    documents: [],
+    requiredDocuments: [],
     duration: "",
     requireUpload: false,
     repeatable: false,
@@ -88,22 +88,22 @@ export default function ServicesSection({ lang = "ar" }) {
     setDocumentsFields(
       Array.from(
         { length: documentsCount },
-        (_, i) => newService.documents[i] || ""
+        (_, i) => newService.requiredDocuments[i] || ""
       )
     );
-  }, [documentsCount, newService.documents]);
+  }, [documentsCount, newService.requiredDocuments]);
 
   // تحديث الحقول عند تغيير عدد المستندات المطلوبة (لتعديل خدمة)
   useEffect(() => {
     if (editingId && editService.requireUpload) {
       setEditDocumentsFields(
         Array.from(
-          { length: editService.documents ? editService.documents.length : 1 },
-          (_, i) => editService.documents[i] || ""
+          { length: editService.requiredDocuments ? editService.requiredDocuments.length : 1 },
+          (_, i) => editService.requiredDocuments[i] || ""
         )
       );
     }
-  }, [editService.documents, editingId, editService.requireUpload]);
+  }, [editService.requiredDocuments, editingId, editService.requireUpload]);
 
   // تحديث الكوينات فقط عند تغير السعر
   useEffect(() => {
@@ -153,7 +153,7 @@ export default function ServicesSection({ lang = "ar" }) {
       price: "",
       printingFee: "",
       coins: "",
-      documents: [],
+      requiredDocuments: [],
       duration: "",
       requireUpload: false,
       repeatable: false,
@@ -197,7 +197,7 @@ export default function ServicesSection({ lang = "ar" }) {
         profit: Number(editService.printingFee), // الربح = رسوم الطباعة دائماً
         tax: Number(tax),
         clientPrice: Number(clientPrice),
-        documents: editService.requireUpload
+        requiredDocuments: editService.requireUpload
           ? editDocumentsFields.map((s) => s.trim()).filter(Boolean)
           : [],
       }
@@ -469,7 +469,7 @@ export default function ServicesSection({ lang = "ar" }) {
                     setDocumentsFields(docs);
                     setNewService((ns) => ({
                       ...ns,
-                      documents: docs,
+                      requiredDocuments: docs,
                     }));
                   }}
                 />
@@ -669,7 +669,7 @@ export default function ServicesSection({ lang = "ar" }) {
                             setEditDocumentsFields(docs);
                             setEditService((es) => ({
                               ...es,
-                              documents: docs,
+                              requiredDocuments: docs,
                             }));
                           }}
                         />
@@ -705,7 +705,7 @@ export default function ServicesSection({ lang = "ar" }) {
                           );
                           setEditService((es) => ({
                             ...es,
-                            documents: Array.from(
+                            requiredDocuments: Array.from(
                               { length: count },
                               (v, i) => editDocumentsFields[i] || ""
                             ),
@@ -789,9 +789,8 @@ export default function ServicesSection({ lang = "ar" }) {
                     {service.duration}
                   </td>
                   <td className="py-2 px-2 text-xs text-cyan-800">
-                    {Array.isArray(service.documents) &&
-                    service.documents.length > 0
-                      ? service.documents.map((d, i) => <div key={i}>{d}</div>)
+                    {Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
+                      ? service.requiredDocuments.map((d, i) => <div key={i}>{d}</div>)
                       : "-"}
                   </td>
                   <td className="py-2 px-2">
@@ -850,13 +849,13 @@ export default function ServicesSection({ lang = "ar" }) {
                         setEditingId(service.id);
                         setEditService({
                           ...service,
-                          documents: Array.isArray(service.documents)
-                            ? service.documents
+                          requiredDocuments: Array.isArray(service.requiredDocuments)
+                            ? service.requiredDocuments
                             : [],
                         });
                         setEditDocumentsFields(
-                          Array.isArray(service.documents)
-                            ? service.documents
+                          Array.isArray(service.requiredDocuments)
+                            ? service.requiredDocuments
                             : [""]
                         );
                       }}
