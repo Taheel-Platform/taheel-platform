@@ -19,11 +19,17 @@ const categories = [
   { key: "other", label_ar: "أخرى", label_en: "Other" },
 ];
 
-// رقم خدمة فريد
-function generateServiceId() {
+// رقم خدمة فريد مع بادئة نوع العميل
+function generateServiceId(clientType) {
+  const prefix = {
+    resident: "RES",
+    nonresident: "NON",
+    company: "COM",
+    other: "OTH",
+  }[clientType] || "SRV";
   const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
   const num = Math.floor(1000 + Math.random() * 9000);
-  return `SER-000-${num}${rand}`;
+  return `${prefix}-000-${num}${rand}`;
 }
 
 // حساب الضريبة 5% على رسوم الطباعة فقط + السعر النهائي للعميل
@@ -64,12 +70,12 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editService, setEditService] = useState({});
   const [editDocumentsFields, setEditDocumentsFields] = useState([]);
 
-  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل
+  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل الجديد
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
       const snap = await getDocs(
-        collection(db, `servicesByClientType/${clientType}/services`)
+        collection(db, `services/${clientType}`)
       );
       const arr = [];
       snap.forEach((doc) => arr.push({ ...doc.data(), id: doc.id }));
@@ -121,12 +127,12 @@ export default function ServicesSection({ lang = "ar" }) {
     newService.printingFee
   );
 
-  // إضافة خدمة جديدة لمسار نوع العميل الصحيح
+  // إضافة خدمة جديدة لمسار نوع العميل الصحيح (البنية الجديدة)
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
     await addDoc(
-      collection(db, `servicesByClientType/${clientType}/services`),
+      collection(db, `services/${clientType}`),
       {
         ...newService,
         category: clientType, // تأكيد تخزين نوع العميل الصحيح
@@ -139,7 +145,7 @@ export default function ServicesSection({ lang = "ar" }) {
         requiredDocuments: newService.requireUpload
           ? documentsFields.map((s) => s.trim()).filter(Boolean)
           : [],
-        serviceId: generateServiceId(),
+        serviceId: generateServiceId(clientType),
         createdAt: serverTimestamp(),
         active: true,
       }
@@ -175,7 +181,7 @@ export default function ServicesSection({ lang = "ar" }) {
     )
       return;
     setLoading(true);
-    await deleteDoc(doc(db, `servicesByClientType/${clientType}/services`, id));
+    await deleteDoc(doc(db, `services/${clientType}/${id}`));
     setLoading(false);
   }
 
@@ -188,7 +194,7 @@ export default function ServicesSection({ lang = "ar" }) {
       editService.printingFee
     );
     await updateDoc(
-      doc(db, `servicesByClientType/${clientType}/services`, editingId),
+      doc(db, `services/${clientType}/${editingId}`),
       {
         ...editService,
         price: Number(editService.price),

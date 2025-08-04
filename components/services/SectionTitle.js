@@ -12,6 +12,7 @@ export default function ServiceSection({
   onPaid,
   addNotification,
 }) {
+  // فلترة الخدمات على حسب الفلتر المطلوب
   const filteredServices = services.filter(filterService);
 
   if (!filteredServices.length)
@@ -38,7 +39,7 @@ export default function ServiceSection({
             price={srv.price}
             printingFee={srv.printingFee || 0}
             duration={srv.duration}
-            requiredDocs={srv.requiredDocuments || []}
+            requiredDocs={srv.requiredDocuments || []}  
             requireUpload={srv.requireUpload}
             coins={srv.coins || 0}
             repeatable={srv.repeatable || false}

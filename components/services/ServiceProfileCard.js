@@ -74,7 +74,7 @@ export default function ServiceProfileCard({
   price,
   printingFee = 0,
   duration,
-  requiredDocs = [],
+  requiredDocs = [], // يستقبل من ServiceSection
   coins = 0,
   userId,
   userWallet = 0,
