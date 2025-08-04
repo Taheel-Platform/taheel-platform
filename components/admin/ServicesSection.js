@@ -18,12 +18,14 @@ function generateServiceId() {
   return `SER-000-${num}${rand}`;
 }
 
-// حاسبة الضريبة والربح النهائي
-function calcServiceProfit(price, profit) {
-  const profitNum = Number(profit) || 0;
-  const tax = (profitNum * 0.05).toFixed(2);
-  const total = (profitNum + Number(tax)).toFixed(2);
-  return { tax, total };
+// حاسبة الضريبة والربح النهائي والسعر للعميل
+function calcAll(price, profit) {
+  const p = Number(price) || 0;
+  const pr = Number(profit) || 0;
+  const tax = +(pr * 0.05).toFixed(2);
+  const totalProfit = +(pr + tax).toFixed(2);
+  const clientPrice = +(p + tax).toFixed(2); // سعر الخدمة + الضريبة فقط
+  return { tax, totalProfit, clientPrice };
 }
 
 export default function ServicesSection({ lang = "ar" }) {
@@ -31,10 +33,7 @@ export default function ServicesSection({ lang = "ar" }) {
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
-  // عدد المستندات المطلوبة
   const [documentsCount, setDocumentsCount] = useState(1);
-
-  // حقول المستندات الديناميكية
   const [documentsFields, setDocumentsFields] = useState([""]);
 
   const [newService, setNewService] = useState({
@@ -83,21 +82,18 @@ export default function ServicesSection({ lang = "ar" }) {
     }
   }, [editService.documents, editingId, editService.requireUpload]);
 
-  // تحديث الأرباح والكوينات تلقائياً عند تغيير السعر
+  // تحديث الكوينات فقط عند تغير السعر
   useEffect(() => {
-    // كل درهم = 1 كوين
-    // الربح = السعر - 5% من السعر (مثلاً، أو الربح تدخل يدوي ويظهر معه الضريبة)
     if (newService.price !== "" && !isNaN(newService.price)) {
       setNewService(ns => ({
         ...ns,
         coins: Number(ns.price) || "",
-        profit: ns.profit !== "" ? ns.profit : Math.round(Number(ns.price) * 0.2), // افتراضي 20% ممكن تغيره
       }));
     }
   }, [newService.price]);
 
-  // عند تغيير الربح أو السعر احسب الضريبة والربح الكلي تلقائياً
-  const { tax: addTax, total: totalProfit } = calcServiceProfit(newService.price, newService.profit);
+  // حسابات الأسعار والضريبة
+  const { tax, totalProfit, clientPrice } = calcAll(newService.price, newService.profit);
 
   // إضافة خدمة جديدة
   async function handleAddService(e) {
@@ -108,8 +104,9 @@ export default function ServicesSection({ lang = "ar" }) {
       price: Number(newService.price),
       coins: Number(newService.coins),
       profit: Number(newService.profit),
-      tax: Number(addTax),
+      tax: Number(tax),
       totalProfit: Number(totalProfit),
+      clientPrice: Number(clientPrice),
       documents: newService.requireUpload ? documentsFields.map(s => s.trim()).filter(Boolean) : [],
       serviceId: generateServiceId(),
       createdAt: serverTimestamp(),
@@ -138,15 +135,15 @@ export default function ServicesSection({ lang = "ar" }) {
   async function handleEditService(e) {
     e.preventDefault();
     setLoading(true);
-    // إعادة الحساب للضريبة والربح الكلي
-    const { tax, total } = calcServiceProfit(editService.price, editService.profit);
+    const { tax, totalProfit, clientPrice } = calcAll(editService.price, editService.profit);
     await updateDoc(doc(db, "services", editingId), {
       ...editService,
       price: Number(editService.price),
       coins: Number(editService.coins),
       profit: Number(editService.profit),
       tax: Number(tax),
-      totalProfit: Number(total),
+      totalProfit: Number(totalProfit),
+      clientPrice: Number(clientPrice),
       documents: editService.requireUpload ? editDocumentsFields.map(s => s.trim()).filter(Boolean) : [],
     });
     setEditingId(null);
@@ -216,21 +213,65 @@ export default function ServicesSection({ lang = "ar" }) {
               value={newService.provider} onChange={e => setNewService({ ...newService, provider: e.target.value })} />
           </div>
           <div className="flex flex-col md:flex-row gap-2">
-            <input required type="number" min="0" className="p-2 rounded border text-gray-900 flex-1" placeholder={lang === "ar" ? "سعر الخدمة" : "Price"}
-              value={newService.price} onChange={e => setNewService({ ...newService, price: e.target.value })} />
-            <input required type="number" min="0" readOnly className="p-2 rounded border text-gray-900 flex-1 bg-gray-100" placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
-              value={newService.coins} />
-            <input required type="number" min="0" className="p-2 rounded border text-gray-900 flex-1" placeholder={lang === "ar" ? "الربح (للإدارة)" : "Profit (admin)"}
-              value={newService.profit} onChange={e => setNewService({ ...newService, profit: e.target.value })} />
-            <input className="p-2 rounded border text-gray-900 flex-1" placeholder={lang === "ar" ? "وقت الإنجاز" : "Estimated Duration"}
-              value={newService.duration} onChange={e => setNewService({ ...newService, duration: e.target.value })} />
+            {/* سعر الخدمة */}
+            <input
+              required
+              type="number"
+              min="0"
+              className="p-2 rounded border text-gray-900 flex-1"
+              placeholder={lang === "ar" ? "سعر الخدمة (بدون ضريبة)" : "Service Price"}
+              value={newService.price}
+              onChange={e => setNewService({ ...newService, price: e.target.value })}
+            />
+            {/* الكوينات */}
+            <input
+              required
+              type="number"
+              min="0"
+              readOnly
+              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100"
+              placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
+              value={newService.coins}
+            />
+            {/* الربح */}
+            <input
+              required
+              type="number"
+              min="0"
+              className="p-2 rounded border text-gray-900 flex-1"
+              placeholder={lang === "ar" ? "الربح" : "Profit"}
+              value={newService.profit}
+              onChange={e => setNewService({ ...newService, profit: e.target.value })}
+            />
+            {/* وقت الإنجاز */}
+            <input
+              className="p-2 rounded border text-gray-900 flex-1"
+              placeholder={lang === "ar" ? "وقت الإنجاز" : "Estimated Duration"}
+              value={newService.duration}
+              onChange={e => setNewService({ ...newService, duration: e.target.value })}
+            />
           </div>
-          {/* الضريبة والربح الكلي */}
+          {/* الضريبة والربح النهائي والسعر شامل الضريبة */}
           <div className="flex flex-col md:flex-row gap-2">
-            <input className="p-2 rounded border text-gray-900 flex-1 bg-gray-100" readOnly
-              value={lang === "ar" ? `ضريبة 5%: ${addTax} د.إ` : `5% Tax: ${addTax} AED`} />
-            <input className="p-2 rounded border text-gray-900 flex-1 bg-gray-100" readOnly
-              value={lang === "ar" ? `إجمالي الربح: ${totalProfit} د.إ` : `Total Profit: ${totalProfit} AED`} />
+            <input
+              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100"
+              readOnly
+              value={lang === "ar" ? `ضريبة 5% على الربح: ${tax} د.إ` : `5% Tax on profit: ${tax} AED`}
+            />
+            <input
+              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100"
+              readOnly
+              value={lang === "ar" ? `إجمالي الربح: ${totalProfit} د.إ` : `Total Profit: ${totalProfit} AED`}
+            />
+            <input
+              className="p-2 rounded border text-gray-900 flex-1 bg-gray-200 font-bold"
+              readOnly
+              value={
+                lang === "ar"
+                  ? `إجمالي السعر للعميل (شامل الضريبة): ${clientPrice} د.إ`
+                  : `Total client price (with tax): ${clientPrice} AED`
+              }
+            />
           </div>
           {/* Checkbox لطلب رفع مستند */}
           <label className="flex items-center gap-2 mt-2 select-none cursor-pointer text-cyan-800 font-semibold">
@@ -250,7 +291,6 @@ export default function ServicesSection({ lang = "ar" }) {
               ? "تفعيل رفع مستند (يجب على العميل رفع مستند)"
               : "Require document upload (Client must upload documents)"}
           </label>
-          {/* اختيار عدد المستندات وتعبئة الحقول */}
           {newService.requireUpload && (
             <div className="flex flex-col gap-2 mb-2">
               <div className="flex items-center gap-2">
@@ -320,6 +360,7 @@ export default function ServicesSection({ lang = "ar" }) {
               <th className="py-2 px-2">{lang === "ar" ? "ربح" : "Profit"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "ضريبة" : "Tax"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "إجمالي ربح" : "Total Profit"}</th>
+              <th className="py-2 px-2">{lang === "ar" ? "السعر للعميل" : "Client Price"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "رفع مستند؟" : "Upload?"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "متعددة؟" : "Repeatable?"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "تحكم" : "Actions"}</th>
@@ -400,12 +441,14 @@ export default function ServicesSection({ lang = "ar" }) {
                       onChange={e => setEditService({ ...editService, profit: e.target.value })} />
                   </td>
                   <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
-                    {calcServiceProfit(editService.price, editService.profit).tax}
+                    {calcAll(editService.price, editService.profit).tax}
                   </td>
                   <td className="py-2 px-2 text-green-800 bg-gray-100 font-bold">
-                    {calcServiceProfit(editService.price, editService.profit).total}
+                    {calcAll(editService.price, editService.profit).totalProfit}
                   </td>
-                  {/* Checkbox لتعديل requireUpload */}
+                  <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
+                    {calcAll(editService.price, editService.profit).clientPrice}
+                  </td>
                   <td className="py-2 px-2">
                     <input
                       type="checkbox"
@@ -416,7 +459,6 @@ export default function ServicesSection({ lang = "ar" }) {
                       }}
                       className="accent-cyan-700 w-5 h-5 cursor-pointer"
                     />
-                    {/* اختيار عدد المستندات عند التعديل */}
                     {editService.requireUpload && (
                       <input
                         type="number"
@@ -437,7 +479,6 @@ export default function ServicesSection({ lang = "ar" }) {
                       />
                     )}
                   </td>
-                  {/* Checkbox لتعديل repeatable */}
                   <td className="py-2 px-2">
                     <input
                       type="checkbox"
@@ -470,6 +511,7 @@ export default function ServicesSection({ lang = "ar" }) {
                   <td className="py-2 px-2 text-green-800 font-bold">{service.profit}</td>
                   <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">{service.tax ?? "-"}</td>
                   <td className="py-2 px-2 text-green-800 bg-gray-100 font-bold">{service.totalProfit ?? "-"}</td>
+                  <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">{service.clientPrice ?? "-"}</td>
                   <td className="py-2 px-2">
                     {service.requireUpload
                       ? <span title={lang === "ar" ? "يتطلب رفع مستند" : "Requires document upload"} className="inline-block w-5 h-5 bg-cyan-700 rounded text-white font-bold text-center leading-5">✓</span>
@@ -506,7 +548,7 @@ export default function ServicesSection({ lang = "ar" }) {
             )}
             {filteredServices.length === 0 && (
               <tr>
-                <td colSpan={16} className="py-6 text-gray-400">{lang === "ar" ? "لا توجد خدمات" : "No services found"}</td>
+                <td colSpan={17} className="py-6 text-gray-400">{lang === "ar" ? "لا توجد خدمات" : "No services found"}</td>
               </tr>
             )}
           </tbody>
