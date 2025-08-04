@@ -42,7 +42,7 @@ function calcAll(price, printingFee) {
 }
 
 export default function ServicesSection({ lang = "ar" }) {
-  // نوع العميل الافتراضي (يمكنك تغييره حسب الحاجة أو حسب تسجيل دخول المستخدم)
+  // نوع العميل الافتراضي
   const [clientType, setClientType] = useState("resident");
 
   const [services, setServices] = useState([]);
@@ -70,12 +70,12 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editService, setEditService] = useState({});
   const [editDocumentsFields, setEditDocumentsFields] = useState([]);
 
-  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل الجديد
+  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل (بنية Firestore الصحيحة)
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
       const snap = await getDocs(
-        collection(db, "services")
+        collection(db, `servicesByClientType/${clientType}/services`)
       );
       const arr = [];
       snap.forEach((doc) => arr.push({ ...doc.data(), id: doc.id }));
@@ -127,19 +127,19 @@ export default function ServicesSection({ lang = "ar" }) {
     newService.printingFee
   );
 
-  // إضافة خدمة جديدة لمسار نوع العميل الصحيح (البنية الجديدة)
+  // إضافة خدمة جديدة لمسار نوع العميل الصحيح (بنية Firestore الصحيحة)
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
     await addDoc(
-      collection(db, `services/${clientType}`),
+      collection(db, `servicesByClientType/${clientType}/services`),
       {
         ...newService,
-        category: clientType, // تأكيد تخزين نوع العميل الصحيح
+        category: clientType,
         price: Number(newService.price),
         printingFee: Number(newService.printingFee),
         coins: Number(newService.coins),
-        profit: Number(newService.printingFee), // الربح = رسوم الطباعة دائماً
+        profit: Number(newService.printingFee),
         tax: Number(tax),
         clientPrice: Number(clientPrice),
         requiredDocuments: newService.requireUpload
@@ -181,7 +181,7 @@ export default function ServicesSection({ lang = "ar" }) {
     )
       return;
     setLoading(true);
-    await deleteDoc(doc(db, `services/${clientType}/${id}`));
+    await deleteDoc(doc(db, `servicesByClientType/${clientType}/services`, id));
     setLoading(false);
   }
 
@@ -194,13 +194,13 @@ export default function ServicesSection({ lang = "ar" }) {
       editService.printingFee
     );
     await updateDoc(
-      doc(db, `services/${clientType}/${editingId}`),
+      doc(db, `servicesByClientType/${clientType}/services`, editingId),
       {
         ...editService,
         price: Number(editService.price),
         printingFee: Number(editService.printingFee),
         coins: Number(editService.coins),
-        profit: Number(editService.printingFee), // الربح = رسوم الطباعة دائماً
+        profit: Number(editService.printingFee),
         tax: Number(tax),
         clientPrice: Number(clientPrice),
         requiredDocuments: editService.requireUpload
