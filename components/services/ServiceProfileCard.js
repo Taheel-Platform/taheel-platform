@@ -68,7 +68,9 @@ const CATEGORY_STYLES = {
 export default function ServiceProfileCard({
   category = "resident",
   name,
+  name_en,
   description,
+  description_en,
   price,
   printingFee = 0,
   duration,
@@ -86,6 +88,7 @@ export default function ServiceProfileCard({
   pricePerPage,
   userEmail,
   longDescription,
+  longDescription_en,
 }) {
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
@@ -276,7 +279,9 @@ export default function ServiceProfileCard({
         trackingNumber: orderNumber,
         orderNumber: orderNumber,
         clientId: userId,
-        orderName: name,
+        orderName: lang === "ar"
+          ? (name || "")
+          : (name_en || name || ""),
         serviceId: serviceId,
         quantity: baseServiceCount,
         price: totalServicePrice,
@@ -298,14 +303,18 @@ export default function ServiceProfileCard({
       await sendNotification({
         userId,
         orderNumber,
-        orderName: name,
+        orderName: lang === "ar"
+          ? (name || "")
+          : (name_en || name || ""),
       });
 
       if (userEmail) {
         await sendOrderEmail({
           to: userEmail,
           orderNumber,
-          serviceName: name,
+          serviceName: lang === "ar"
+            ? (name || "")
+            : (name_en || name || ""),
           price: totalServicePrice,
         });
       }
@@ -360,6 +369,17 @@ export default function ServiceProfileCard({
     more: lang === "ar" ? "تفاصيل أكثر" : "More Details",
   };
 
+  // اسم الخدمة والوصف حسب اللغة
+  const displayName = lang === "ar"
+    ? (name || "")
+    : (name_en || name || "");
+  const displayDescription = lang === "ar"
+    ? (description || "")
+    : (description_en || description || "");
+  const displayLongDescription = lang === "ar"
+    ? (longDescription || "")
+    : (longDescription_en || longDescription || "");
+
   // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
   function renderDetailsTable() {
     return (
@@ -404,7 +424,7 @@ export default function ServiceProfileCard({
           </tbody>
         </table>
         <div className="text-gray-700 text-xs whitespace-pre-line mb-1">
-          {longDescription || description}
+          {displayLongDescription || displayDescription}
         </div>
         {requiredDocs.length > 0 && (
           <div className="mt-2">
@@ -448,7 +468,7 @@ export default function ServiceProfileCard({
   }
 
   // الوصف المطول Popover
-  const descText = longDescription || description || "";
+  const descText = displayLongDescription || displayDescription || "";
 
   return (
     <div
@@ -499,7 +519,7 @@ export default function ServiceProfileCard({
       {/* محتوى الكارت */}
       <div className="flex flex-col items-center px-3 pt-1 pb-3 flex-1 w-full min-h-0">
         <h3 className="text-lg font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate">
-          {name}
+          {displayName}
         </h3>
         {/* وصف الخدمة */}
         <div className="relative w-full" style={{ minHeight: 38 }}>
@@ -547,7 +567,7 @@ export default function ServiceProfileCard({
                   title={lang === "ar" ? "إغلاق" : "Close"}
                   style={{ cursor: "pointer" }}
                 >×</button>
-                <div className="text-lg font-bold text-emerald-700 mb-2">{name}</div>
+                <div className="text-lg font-bold text-emerald-700 mb-2">{displayName}</div>
                 <div className="text-gray-700 whitespace-pre-line text-sm">{descText}</div>
               </div>
             </div>
@@ -689,7 +709,7 @@ export default function ServiceProfileCard({
           setUploadedDocs={handleDocsUploaded}
           userId={userId}
           lang={lang}
-          service={{ serviceId, name }}
+          service={{ serviceId, name: displayName }}
         />
 
         {/* أزرار الدفع */}
