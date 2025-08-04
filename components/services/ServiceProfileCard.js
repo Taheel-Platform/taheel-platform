@@ -15,7 +15,6 @@ import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import ServiceUploadModal from "./ServiceUploadModal";
 
-
 // رقم الطلب الفريد
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
@@ -85,6 +84,7 @@ export default function ServiceProfileCard({
   allowPaperCount = false,
   pricePerPage,
   userEmail, // يجب تمرير إيميل المستخدم (تحتاج تمريره من الأعلى)
+  longDescription, // وصف مطول للخدمة (مرره من الأعلى إذا كان عندك)
 }) {
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
@@ -101,6 +101,9 @@ export default function ServiceProfileCard({
 
   // ---- عدد الأوراق ----
   const [paperCount, setPaperCount] = useState(1);
+
+  // --- عرض الوصف المطول عند الوقوف أو لمس الكارت ---
+  const [showDesc, setShowDesc] = useState(false);
 
   // جلب بيانات المستخدم
   useEffect(() => {
@@ -355,9 +358,16 @@ export default function ServiceProfileCard({
       style={{
         border: "none",
         backdropFilter: "blur(6px)",
+        width: "100%",
+        maxWidth: 370,
+        minWidth: 220,
       }}
       tabIndex={0}
       role="button"
+      onMouseEnter={() => setShowDesc(true)}
+      onMouseLeave={() => setShowDesc(false)}
+      onTouchStart={() => setShowDesc(true)}
+      onTouchEnd={() => setShowDesc(false)}
     >
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
@@ -385,17 +395,42 @@ export default function ServiceProfileCard({
         <h3 className="text-lg font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate">
           {name}
         </h3>
-        <p
-          className="text-gray-600 text-center text-sm mb-2 font-medium flex-0 max-w-full"
-          style={{
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {description || <span>&nbsp;</span>}
-        </p>
+        {/* وصف الخدمة مع إظهار المزيد عند الوقوف */}
+        <div className="relative w-full" style={{ minHeight: 38 }}>
+          <p
+            className={`text-gray-600 text-center text-sm mb-2 font-medium flex-0 max-w-full transition-all duration-200
+            `}
+            style={{
+              display: showDesc ? "block" : "-webkit-box",
+              WebkitLineClamp: showDesc ? undefined : 2,
+              WebkitBoxOrient: "vertical",
+              overflow: showDesc ? "visible" : "hidden",
+              zIndex: showDesc ? 30 : 1,
+              fontSize: "15px",
+              minHeight: 36,
+              maxWidth: "100%",
+              background: showDesc
+                ? "rgba(255,255,255,0.96)"
+                : "transparent",
+              borderRadius: showDesc ? 12 : 0,
+              position: showDesc ? "absolute" : "static",
+              left: showDesc ? "50%" : "auto",
+              transform: showDesc ? "translateX(-50%)" : "none",
+              top: showDesc ? 0 : "auto",
+              padding: showDesc ? 12 : 0,
+              boxShadow: showDesc
+                ? "0 8px 32px 0 rgba(0,0,0,0.12)"
+                : "none",
+              border: showDesc ? "1px solid #d1fae5" : "none",
+              width: showDesc ? "96vw" : "100%",
+              maxWidth: showDesc ? 340 : "100%",
+            }}
+          >
+            {showDesc && longDescription
+              ? longDescription
+              : description || <span>&nbsp;</span>}
+          </p>
+        </div>
         {/* السعر */}
         <div className="flex items-center justify-center gap-2 my-2 w-full">
           <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
