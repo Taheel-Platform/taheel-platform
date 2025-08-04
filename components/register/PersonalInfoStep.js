@@ -1,8 +1,32 @@
 'use client';
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaRegCalendarAlt } from "react-icons/fa";
 import NationalitySelect from "@/components/NationalitySelect";
+
+// حاسبة العمر
+function calcAge(birthDate) {
+  if (!birthDate) return null;
+  const today = new Date();
+  const dob = new Date(birthDate);
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+// تنسيق رقم الإقامة: 784-0000-0000000-0
+function formatEIDNumber(value) {
+  // فقط أرقام
+  let digits = value.replace(/[^\d]/g, '').slice(0, 15);
+  let parts = [];
+  parts.push(digits.slice(0, 3));
+  if (digits.length > 3) parts.push(digits.slice(3, 7));
+  if (digits.length > 7) parts.push(digits.slice(7, 14));
+  if (digits.length > 14) parts.push(digits.slice(14, 15));
+  return parts.filter(Boolean).join('-');
+}
 
 export default function PersonalInfoStep({
   form,
@@ -24,17 +48,60 @@ export default function PersonalInfoStep({
     { value: "other", label: t?.other ?? (lang === "ar" ? "أخرى" : "Other") }
   ];
 
-  // التعديل هنا: لا يوجد حفظ نهائي، فقط تحقق وانتقال للخطوة التالية
+  // العمر الحالي
+  const age = calcAge(type === "company" ? form.ownerBirthDate : form.birthDate);
+
+  // التحقق من كل الحقول
+  function validateAllRequired() {
+    if (type === "company") {
+      return (
+        form.companyNameAr &&
+        form.companyNameEn &&
+        form.companyLicenseNumber &&
+        form.companyRegistrationDate &&
+        form.ownerFirstName &&
+        form.ownerMiddleName &&
+        form.ownerLastName &&
+        form.ownerBirthDate &&
+        form.ownerNationality &&
+        form.ownerGender &&
+        (!form.ownerBirthDate || calcAge(form.ownerBirthDate) >= 18)
+      );
+    } else {
+      const isResident = type === "resident";
+      return (
+        form.firstName &&
+        form.lastName &&
+        form.middleName &&
+        form.nameEn &&
+        form.birthDate &&
+        form.nationality &&
+        form.gender &&
+        (!form.birthDate || calcAge(form.birthDate) >= 18) &&
+        (!isResident || (form.eidNumber && form.eidExpiry)) &&
+        form.passportNumber &&
+        form.passportExpiry
+      );
+    }
+  }
+
   function handleNext() {
-    if (type === "company" && !form.ownerGender) {
-      alert(lang === "ar" ? "يرجى اختيار الجنس للمالك" : "Please select owner gender");
+    // تحقق من السن
+    if (type === "company") {
+      if (!form.ownerBirthDate || calcAge(form.ownerBirthDate) < 18) {
+        alert(lang === "ar" ? "عمر المالك يجب ألا يقل عن 18 سنة" : "Owner must be at least 18 years old");
+        return;
+      }
+    } else {
+      if (!form.birthDate || calcAge(form.birthDate) < 18) {
+        alert(lang === "ar" ? "العمر يجب ألا يقل عن 18 سنة" : "You must be at least 18 years old");
+        return;
+      }
+    }
+    if (!validateAllRequired()) {
+      alert(lang === "ar" ? "يرجى تعبئة جميع الحقول الإلزامية" : "Please fill in all required fields");
       return;
     }
-    if (!form.gender && (type !== "company")) {
-      alert(lang === "ar" ? "يرجى اختيار الجنس" : "Please select a gender");
-      return;
-    }
-    // لا حفظ في قاعدة البيانات هنا
     onNext();
   }
 
@@ -62,7 +129,6 @@ export default function PersonalInfoStep({
                 placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
                 value={form.companyNameAr || ""}
                 onChange={e => onChange({ companyNameAr: e.target.value })}
-                autoComplete="organization"
                 required
               />
               <input
@@ -71,7 +137,6 @@ export default function PersonalInfoStep({
                 value={form.companyNameEn || ""}
                 onChange={e => onChange({ companyNameEn: e.target.value })}
                 dir="ltr"
-                autoComplete="organization"
                 required
               />
               <input
@@ -141,6 +206,14 @@ export default function PersonalInfoStep({
                     style={{ WebkitAppearance: "none", appearance: "none" }}
                   />
                   <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                  {/* عرض العمر */}
+                  {form.ownerBirthDate && (
+                    <span className="text-xs text-emerald-700 font-bold mt-2 block">
+                      {lang === "ar"
+                        ? `العمر الحالي: ${calcAge(form.ownerBirthDate) || "--"} سنة`
+                        : `Current age: ${calcAge(form.ownerBirthDate) || "--"} years`}
+                    </span>
+                  )}
                 </div>
                 {/* الجنسية والجنس في صف واحد منسق */}
                 <NationalitySelect
@@ -207,7 +280,7 @@ export default function PersonalInfoStep({
               required
             />
 
-            {/* حقل تاريخ الميلاد مع label واضح */}
+            {/* حقل تاريخ الميلاد مع label واضح + حساب العمر */}
             <div className="relative w-full">
               <label className="block text-xs font-bold text-gray-500 mb-1">
                 {lang === "ar" ? "تاريخ الميلاد" : "Birth Date"}
@@ -222,19 +295,43 @@ export default function PersonalInfoStep({
                 style={{ WebkitAppearance: "none", appearance: "none" }}
               />
               <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+              {/* عرض العمر */}
+              {form.birthDate && (
+                <span className="text-xs text-emerald-700 font-bold mt-2 block">
+                  {lang === "ar"
+                    ? `العمر الحالي: ${age || "--"} سنة`
+                    : `Current age: ${age || "--"} years`}
+                </span>
+              )}
             </div>
 
+            {/* رقم الإقامة وتاريخ انتهائها (للمقيم فقط) */}
             {type === "resident" && (
-              <input
-                className={inputClass}
-                placeholder={lang === "ar" ? "رقم الإقامة - 784-0000-0000000-0" : "Residence ID Number - 784-0000-0000000-0"}
-                value={form.eidNumber || ""}
-                onChange={e => onChange({ eidNumber: e.target.value })}
-                dir="ltr"
-                maxLength={19}
-                autoComplete="off"
-                required
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <input
+                  className={inputClass}
+                  placeholder="784-0000-0000000-0"
+                  value={form.eidNumber || ""}
+                  onChange={e => onChange({ eidNumber: formatEIDNumber(e.target.value) })}
+                  dir="ltr"
+                  maxLength={19}
+                  required
+                />
+                <div className="relative w-full">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    {lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
+                  </label>
+                  <input
+                    className={inputClass + " pr-10"}
+                    type="date"
+                    value={form.eidExpiry || ""}
+                    onChange={e => onChange({ eidExpiry: e.target.value })}
+                    required
+                    style={{ WebkitAppearance: "none", appearance: "none" }}
+                  />
+                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                </div>
+              </div>
             )}
 
             <NationalitySelect
@@ -257,6 +354,32 @@ export default function PersonalInfoStep({
                 </option>
               ))}
             </select>
+
+            {/* رقم الباسبور وتاريخ انتهائه */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <input
+                className={inputClass}
+                placeholder={lang === "ar" ? "رقم جواز السفر" : "Passport Number"}
+                value={form.passportNumber || ""}
+                onChange={e => onChange({ passportNumber: e.target.value })}
+                dir="ltr"
+                required
+              />
+              <div className="relative w-full">
+                <label className="block text-xs font-bold text-gray-500 mb-1">
+                  {lang === "ar" ? "تاريخ انتهاء جواز السفر" : "Passport Expiry Date"}
+                </label>
+                <input
+                  className={inputClass + " pr-10"}
+                  type="date"
+                  value={form.passportExpiry || ""}
+                  onChange={e => onChange({ passportExpiry: e.target.value })}
+                  required
+                  style={{ WebkitAppearance: "none", appearance: "none" }}
+                />
+                <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+              </div>
+            </div>
           </>
         )}
         {/* الأزرار تحت بعض في عمود */}
