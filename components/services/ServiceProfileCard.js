@@ -66,6 +66,8 @@ const CATEGORY_STYLES = {
 };
 
 export default function ServiceProfileCard({
+  // كل البيانات يجب أن تصل هنا مباشرة من ServiceSection بعد جلب الخدمة من الفايرستور كحقل
+  // props:
   category = "resident",
   name,
   name_en,
@@ -74,7 +76,7 @@ export default function ServiceProfileCard({
   price,
   printingFee = 0,
   duration,
-  requiredDocs = [], // يستقبل من ServiceSection
+  requiredDocuments = [], // لاحظ تعديل الاسم هنا حتى يتوافق مع ما يحفظ في الفايرستور
   coins = 0,
   userId,
   userWallet = 0,
@@ -90,6 +92,9 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
+  // دعم الاسم الجديد للحقل: requiredDocuments
+  const requiredDocs = requiredDocuments || [];
+
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
