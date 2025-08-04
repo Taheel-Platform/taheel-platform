@@ -3,12 +3,17 @@ import { FaCoins } from "react-icons/fa";
 
 export default function CoinsWidget({ coins = 0, lang = "ar" }) {
   return (
-    <div className="flex items-center gap-2 p-3 bg-white rounded-xl shadow border border-yellow-100">
-      <FaCoins className="text-yellow-400 text-xl" />
-      <span className="font-bold text-yellow-700">
-        {lang === "ar" ? "رصيد الكوينات:" : "Coins:"}
+    <button
+      type="button"
+      className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none"
+      title={lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}
+      style={{ minWidth: 42, minHeight: 42 }}
+      tabIndex={0}
+    >
+      <FaCoins className="text-yellow-400 text-2xl" />
+      <span className="absolute -top-2 -right-2 bg-gray-800 text-yellow-300 text-xs font-bold rounded-full px-1 shadow">
+        {coins}
       </span>
-      <span className="font-extrabold">{coins}</span>
-    </div>
+    </button>
   );
 }

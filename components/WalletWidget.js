@@ -1,23 +1,20 @@
 "use client";
-import { useState, useEffect } from "react";
 import { FaWallet } from "react-icons/fa";
 
 export default function WalletWidget({ balance = 0, onCharge, lang = "ar" }) {
   return (
-    <div className="flex items-center gap-2 p-3 bg-white rounded-xl shadow border border-emerald-100">
-      <FaWallet className="text-emerald-500 text-xl" />
-      <span className="font-bold text-emerald-700">
-        {lang === "ar" ? "المحفظة:" : "Wallet:"}
+    <button
+      type="button"
+      className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none"
+      title={lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}
+      style={{ minWidth: 42, minHeight: 42 }}
+      tabIndex={0}
+      onClick={typeof onCharge === "function" ? () => onCharge(100) : undefined}
+    >
+      <FaWallet className="text-emerald-500 text-2xl" />
+      <span className="absolute -top-2 -right-2 bg-emerald-700 text-white text-xs font-bold rounded-full px-1 shadow">
+        {balance}
       </span>
-      <span className="font-extrabold">{balance} AED</span>
-      {typeof onCharge === "function" && (
-        <button
-          className="ml-4 px-4 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition"
-          onClick={() => onCharge(100)}
-        >
-          {lang === "ar" ? "شحن" : "Charge"}
-        </button>
-      )}
-    </div>
+    </button>
   );
 }
