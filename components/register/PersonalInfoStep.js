@@ -18,7 +18,6 @@ function calcAge(birthDate) {
 
 // تنسيق رقم الإقامة: 784-0000-0000000-0
 function formatEIDNumber(value) {
-  // فقط أرقام
   let digits = value.replace(/[^\d]/g, '').slice(0, 15);
   let parts = [];
   parts.push(digits.slice(0, 3));
@@ -124,7 +123,7 @@ export default function PersonalInfoStep({
         {type === "company" && (
           <>
             <div className="flex flex-col gap-4 mb-2">
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   className={inputClass}
                   placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
@@ -141,7 +140,7 @@ export default function PersonalInfoStep({
                   required
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   className={inputClass}
                   placeholder={lang === "ar" ? "رقم الرخصة التجارية أو الصناعية" : "Trade/Industrial License Number"}
@@ -172,7 +171,7 @@ export default function PersonalInfoStep({
               <h3 className="font-bold text-emerald-700 mb-3 text-lg text-center">
                 {lang === "ar" ? "بيانات المالك" : "Owner Information"}
               </h3>
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   className={inputClass}
                   placeholder={lang === "ar" ? "الاسم الأول" : "First Name"}
@@ -195,7 +194,7 @@ export default function PersonalInfoStep({
                   required
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <div className="flex flex-col gap-3 sm:flex-row mt-4">
                 {/* تاريخ ميلاد المالك */}
                 <div className="relative w-full">
                   <label className="block text-xs font-bold text-gray-500 mb-1">
@@ -210,7 +209,6 @@ export default function PersonalInfoStep({
                     style={{ WebkitAppearance: "none", appearance: "none" }}
                   />
                   <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
-                  {/* عرض العمر */}
                   {form.ownerBirthDate && (
                     <span className="text-xs text-emerald-700 font-bold mt-2 block">
                       {lang === "ar"
@@ -246,7 +244,7 @@ export default function PersonalInfoStep({
         {/* بيانات فردية (مقيم/غير مقيم) */}
         {(type === "resident" || type === "nonresident") && (
           <>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <input
                 className={inputClass}
                 placeholder={lang === "ar" ? "الاسم الأول (إلزامي)" : "First Name (Required)"}
@@ -257,19 +255,19 @@ export default function PersonalInfoStep({
               />
               <input
                 className={inputClass}
-                placeholder={lang === "ar" ? "الاسم الأخير (إلزامي)" : "Last Name (Required)"}
-                value={form.lastName || ""}
-                onChange={e => onChange({ lastName: e.target.value })}
-                required
-                autoComplete="family-name"
-              />
-              <input
-                className={inputClass}
                 placeholder={lang === "ar" ? "الاسم الأوسط (إلزامي)" : "Middle Name (Required)"}
                 value={form.middleName || ""}
                 onChange={e => onChange({ middleName: e.target.value })}
                 required
                 autoComplete="additional-name"
+              />
+              <input
+                className={inputClass}
+                placeholder={lang === "ar" ? "الاسم الأخير (إلزامي)" : "Last Name (Required)"}
+                value={form.lastName || ""}
+                onChange={e => onChange({ lastName: e.target.value })}
+                required
+                autoComplete="family-name"
               />
             </div>
 
@@ -283,7 +281,7 @@ export default function PersonalInfoStep({
               required
             />
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <div className="relative w-full">
                 <label className="block text-xs font-bold text-gray-500 mb-1">
                   {lang === "ar" ? "تاريخ الميلاد" : "Birth Date"}
@@ -336,28 +334,30 @@ export default function PersonalInfoStep({
               )}
             </div>
 
-            <NationalitySelect
-              label={lang === "ar" ? "الجنسية" : "Nationality"}
-              placeholder={lang === "ar" ? "الجنسية (إلزامي)" : "Nationality (Required)"}
-              value={form.nationality || ""}
-              onChange={opt => onChange({ nationality: opt?.value })}
-              required
-            />
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <NationalitySelect
+                label={lang === "ar" ? "الجنسية" : "Nationality"}
+                placeholder={lang === "ar" ? "الجنسية (إلزامي)" : "Nationality (Required)"}
+                value={form.nationality || ""}
+                onChange={opt => onChange({ nationality: opt?.value })}
+                required
+              />
 
-            <select
-              className={inputClass}
-              value={form.gender ?? ""}
-              onChange={e => onChange({ gender: e.target.value })}
-              required
-            >
-              {genderOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <select
+                className={inputClass}
+                value={form.gender ?? ""}
+                onChange={e => onChange({ gender: e.target.value })}
+                required
+              >
+                {genderOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <input
                 className={inputClass}
                 placeholder={lang === "ar" ? "رقم جواز السفر" : "Passport Number"}
