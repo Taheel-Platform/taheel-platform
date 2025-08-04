@@ -36,6 +36,9 @@ function calcAll(price, printingFee) {
 }
 
 export default function ServicesSection({ lang = "ar" }) {
+  // نوع العميل الافتراضي (يمكنك تغييره حسب الحاجة أو حسب تسجيل دخول المستخدم)
+  const [clientType, setClientType] = useState("resident");
+
   const [services, setServices] = useState([]);
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
@@ -46,7 +49,7 @@ export default function ServicesSection({ lang = "ar" }) {
   const [newService, setNewService] = useState({
     name: "",
     description: "",
-    category: "resident",
+    category: clientType,
     subcategory: "",
     provider: "",
     price: "",
@@ -61,10 +64,13 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editService, setEditService] = useState({});
   const [editDocumentsFields, setEditDocumentsFields] = useState([]);
 
-  // جلب كل الخدمات من Firestore
+  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل
   useEffect(() => {
     async function fetchData() {
-      const snap = await getDocs(collection(db, "services"));
+      if (!clientType) return;
+      const snap = await getDocs(
+        collection(db, `servicesByClientType/${clientType}/services`)
+      );
       const arr = [];
       snap.forEach((doc) => arr.push({ ...doc.data(), id: doc.id }));
       setServices(
@@ -74,7 +80,7 @@ export default function ServicesSection({ lang = "ar" }) {
       );
     }
     fetchData();
-  }, [loading, lang]);
+  }, [loading, lang, clientType]);
 
   // تحديث الحقول عند تغيير عدد المستندات المطلوبة (لإضافة خدمة)
   useEffect(() => {
@@ -115,29 +121,33 @@ export default function ServicesSection({ lang = "ar" }) {
     newService.printingFee
   );
 
-  // إضافة خدمة جديدة
+  // إضافة خدمة جديدة لمسار نوع العميل الصحيح
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
-    await addDoc(collection(db, "services"), {
-      ...newService,
-      price: Number(newService.price),
-      printingFee: Number(newService.printingFee),
-      coins: Number(newService.coins),
-      profit: Number(newService.printingFee), // الربح = رسوم الطباعة دائماً
-      tax: Number(tax),
-      clientPrice: Number(clientPrice),
-      documents: newService.requireUpload
-        ? documentsFields.map((s) => s.trim()).filter(Boolean)
-        : [],
-      serviceId: generateServiceId(),
-      createdAt: serverTimestamp(),
-      active: true,
-    });
+    await addDoc(
+      collection(db, `servicesByClientType/${clientType}/services`),
+      {
+        ...newService,
+        category: clientType, // تأكيد تخزين نوع العميل الصحيح
+        price: Number(newService.price),
+        printingFee: Number(newService.printingFee),
+        coins: Number(newService.coins),
+        profit: Number(newService.printingFee), // الربح = رسوم الطباعة دائماً
+        tax: Number(tax),
+        clientPrice: Number(clientPrice),
+        documents: newService.requireUpload
+          ? documentsFields.map((s) => s.trim()).filter(Boolean)
+          : [],
+        serviceId: generateServiceId(),
+        createdAt: serverTimestamp(),
+        active: true,
+      }
+    );
     setNewService({
       name: "",
       description: "",
-      category: "resident",
+      category: clientType,
       subcategory: "",
       provider: "",
       price: "",
@@ -165,7 +175,7 @@ export default function ServicesSection({ lang = "ar" }) {
     )
       return;
     setLoading(true);
-    await deleteDoc(doc(db, "services", id));
+    await deleteDoc(doc(db, `servicesByClientType/${clientType}/services`, id));
     setLoading(false);
   }
 
@@ -177,18 +187,21 @@ export default function ServicesSection({ lang = "ar" }) {
       editService.price,
       editService.printingFee
     );
-    await updateDoc(doc(db, "services", editingId), {
-      ...editService,
-      price: Number(editService.price),
-      printingFee: Number(editService.printingFee),
-      coins: Number(editService.coins),
-      profit: Number(editService.printingFee), // الربح = رسوم الطباعة دائماً
-      tax: Number(tax),
-      clientPrice: Number(clientPrice),
-      documents: editService.requireUpload
-        ? editDocumentsFields.map((s) => s.trim()).filter(Boolean)
-        : [],
-    });
+    await updateDoc(
+      doc(db, `servicesByClientType/${clientType}/services`, editingId),
+      {
+        ...editService,
+        price: Number(editService.price),
+        printingFee: Number(editService.printingFee),
+        coins: Number(editService.coins),
+        profit: Number(editService.printingFee), // الربح = رسوم الطباعة دائماً
+        tax: Number(tax),
+        clientPrice: Number(clientPrice),
+        documents: editService.requireUpload
+          ? editDocumentsFields.map((s) => s.trim()).filter(Boolean)
+          : [],
+      }
+    );
     setEditingId(null);
     setLoading(false);
   }
@@ -205,18 +218,41 @@ export default function ServicesSection({ lang = "ar" }) {
         <span className="text-2xl font-bold text-cyan-900">
           {lang === "ar" ? "إدارة الخدمات" : "Services Management"}
         </span>
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer"
-        >
-          {lang === "ar"
-            ? showAdd
-              ? "إغلاق"
-              : "إضافة خدمة جديدة"
-            : showAdd
-            ? "Close"
-            : "Add Service"}
-        </button>
+        <div className="flex gap-2">
+          {/* اختيار نوع العميل */}
+          <select
+            value={clientType}
+            onChange={(e) => {
+              setClientType(e.target.value);
+              setFilter("all");
+              setNewService((ns) => ({
+                ...ns,
+                category: e.target.value,
+              }));
+            }}
+            className="p-2 rounded border text-cyan-800 font-bold bg-cyan-50"
+          >
+            {categories
+              .filter((c) => c.key !== "all")
+              .map((cat) => (
+                <option value={cat.key} key={cat.key}>
+                  {lang === "ar" ? cat.label_ar : cat.label_en}
+                </option>
+              ))}
+          </select>
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer"
+          >
+            {lang === "ar"
+              ? showAdd
+                ? "إغلاق"
+                : "إضافة خدمة جديدة"
+              : showAdd
+              ? "Close"
+              : "Add Service"}
+          </button>
+        </div>
       </div>
 
       {/* فلاتر الفئات */}
@@ -266,17 +302,13 @@ export default function ServicesSection({ lang = "ar" }) {
             <select
               className="p-2 rounded border text-gray-900 font-semibold flex-1"
               value={newService.category}
-              onChange={(e) =>
-                setNewService({ ...newService, category: e.target.value })
-              }
+              disabled // النوع يتبع اختيار نوع العميل الرئيسي
             >
-              {categories
-                .filter((c) => c.key !== "all")
-                .map((cat) => (
-                  <option value={cat.key} key={cat.key}>
-                    {lang === "ar" ? cat.label_ar : cat.label_en}
-                  </option>
-                ))}
+              <option value={clientType}>
+                {lang === "ar"
+                  ? categories.find((c) => c.key === clientType)?.label_ar
+                  : categories.find((c) => c.key === clientType)?.label_en}
+              </option>
             </select>
             <input
               className="p-2 rounded border text-gray-900 flex-1"
