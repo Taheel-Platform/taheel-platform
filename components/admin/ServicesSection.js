@@ -40,16 +40,13 @@ function calcAll(price, printingFee) {
 }
 
 export default function ServicesSection({ lang = "ar" }) {
-  // نوع العميل الافتراضي
   const [clientType, setClientType] = useState("resident");
-
   const [services, setServices] = useState([]);
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [documentsCount, setDocumentsCount] = useState(1);
   const [documentsFields, setDocumentsFields] = useState([""]);
-
   const [newService, setNewService] = useState({
     name: "",
     description: "",
@@ -78,7 +75,12 @@ export default function ServicesSection({ lang = "ar" }) {
       // فقط الحقول التي تبدأ بـ service (لو عندك حقول أخرى تجاهلها)
       const arr = Object.entries(data)
         .filter(([key]) => key.startsWith("service"))
-        .map(([key, val]) => ({ ...val, id: key }));
+        .map(([key, val]) => ({
+          ...val,
+          id: key,
+          tax: val.tax !== undefined ? val.tax : calcAll(val.price, val.printingFee).tax,
+          clientPrice: val.clientPrice !== undefined ? val.clientPrice : calcAll(val.price, val.printingFee).clientPrice,
+        }));
       setServices(
         arr.sort((a, b) =>
           a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en")
@@ -131,8 +133,7 @@ export default function ServicesSection({ lang = "ar" }) {
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
-    // توليد اسم فريد للخدمة (مثلاً: service1، service2 ...)
-    const serviceFieldName = `service${Date.now()}`; // أو استخدم عداد لو تريد تسلسل رقمي
+    const serviceFieldName = `service${Date.now()}`;
     await updateDoc(
       doc(db, "servicesByClientType", clientType),
       {
@@ -230,7 +231,6 @@ export default function ServicesSection({ lang = "ar" }) {
           {lang === "ar" ? "إدارة الخدمات" : "Services Management"}
         </span>
         <div className="flex gap-2">
-          {/* اختيار نوع العميل */}
           <select
             value={clientType}
             onChange={(e) => {
@@ -313,7 +313,7 @@ export default function ServicesSection({ lang = "ar" }) {
             <select
               className="p-2 rounded border text-gray-900 font-semibold flex-1"
               value={newService.category}
-              disabled // النوع يتبع اختيار نوع العميل الرئيسي
+              disabled
             >
               <option value={clientType}>
                 {lang === "ar"
@@ -347,7 +347,6 @@ export default function ServicesSection({ lang = "ar" }) {
             />
           </div>
           <div className="flex flex-col md:flex-row gap-2">
-            {/* سعر الخدمة */}
             <input
               required
               type="number"
@@ -363,7 +362,6 @@ export default function ServicesSection({ lang = "ar" }) {
                 setNewService({ ...newService, price: e.target.value })
               }
             />
-            {/* رسوم الطباعة */}
             <input
               type="number"
               min="0"
@@ -376,7 +374,6 @@ export default function ServicesSection({ lang = "ar" }) {
                 setNewService({ ...newService, printingFee: e.target.value })
               }
             />
-            {/* الكوينات */}
             <input
               required
               type="number"
@@ -386,7 +383,6 @@ export default function ServicesSection({ lang = "ar" }) {
               placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
               value={newService.coins}
             />
-            {/* وقت الإنجاز */}
             <input
               className="p-2 rounded border text-gray-900 flex-1"
               placeholder={lang === "ar" ? "وقت الإنجاز" : "Estimated Duration"}
@@ -396,7 +392,6 @@ export default function ServicesSection({ lang = "ar" }) {
               }
             />
           </div>
-          {/* مخرجات السعر النهائى للعميل */}
           <div className="flex flex-col md:flex-row gap-2">
             <div className="flex-1 flex flex-col gap-1 bg-gray-50 p-2 rounded border border-gray-200 text-gray-900">
               <span className="font-bold text-cyan-800">
@@ -424,7 +419,6 @@ export default function ServicesSection({ lang = "ar" }) {
               </span>
             </div>
           </div>
-          {/* Checkbox لطلب رفع مستند */}
           <label className="flex items-center gap-2 mt-2 select-none cursor-pointer text-cyan-800 font-semibold">
             <input
               type="checkbox"
@@ -487,7 +481,6 @@ export default function ServicesSection({ lang = "ar" }) {
               ))}
             </div>
           )}
-          {/* Checkbox هل الخدمة قابلة للتكرار */}
           <label className="flex items-center gap-2 mt-1 select-none cursor-pointer text-cyan-800 font-semibold">
             <input
               type="checkbox"
@@ -524,7 +517,7 @@ export default function ServicesSection({ lang = "ar" }) {
               <th className="py-2 px-2">{lang === "ar" ? "سعر الخدمة" : "Service Price"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "ضريبة الطباعة (5%)" : "Printing Tax (5%)"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "الإجمالى للعميل" : "Client Total"}</th>
+              <th className="py-2 px-2 font-bold text-emerald-700">{lang === "ar" ? "الإجمالى للعميل" : "Client Total"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "كوينات" : "Coins"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "مدة" : "Duration"}</th>
               <th className="py-2 px-2">{lang === "ar" ? "مستندات" : "Documents"}</th>
@@ -788,10 +781,10 @@ export default function ServicesSection({ lang = "ar" }) {
                     {service.printingFee || 0} د.إ
                   </td>
                   <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
-                    {service.tax ?? "-"}
+                    {service.tax}
                   </td>
                   <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
-                    {service.clientPrice ?? "-"}
+                    {service.clientPrice}
                   </td>
                   <td className="py-2 px-2 text-cyan-900">
                     {service.coins}
