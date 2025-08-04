@@ -123,43 +123,47 @@ export default function PersonalInfoStep({
         {/* بيانات الشركة لو النوع شركة */}
         {type === "company" && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-2">
-              <input
-                className={inputClass}
-                placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
-                value={form.companyNameAr || ""}
-                onChange={e => onChange({ companyNameAr: e.target.value })}
-                required
-              />
-              <input
-                className={inputClass}
-                placeholder={lang === "ar" ? "اسم الشركة بالإنجليزية (إلزامي)" : "Company Name (English) (Required)"}
-                value={form.companyNameEn || ""}
-                onChange={e => onChange({ companyNameEn: e.target.value })}
-                dir="ltr"
-                required
-              />
-              <input
-                className={inputClass}
-                placeholder={lang === "ar" ? "رقم الرخصة التجارية أو الصناعية" : "Trade/Industrial License Number"}
-                value={form.companyLicenseNumber || ""}
-                onChange={e => onChange({ companyLicenseNumber: e.target.value })}
-                dir="ltr"
-                required
-              />
-              <div className="relative w-full">
-                <label className="block text-xs font-bold text-gray-500 mb-1">
-                  {lang === "ar" ? "تاريخ تسجيل الشركة" : "Company Registration Date"}
-                </label>
+            <div className="flex flex-col gap-4 mb-2">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <input
-                  className={inputClass + " pr-10"}
-                  type="date"
-                  value={form.companyRegistrationDate || ""}
-                  onChange={e => onChange({ companyRegistrationDate: e.target.value })}
+                  className={inputClass}
+                  placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
+                  value={form.companyNameAr || ""}
+                  onChange={e => onChange({ companyNameAr: e.target.value })}
                   required
-                  style={{ WebkitAppearance: "none", appearance: "none" }}
                 />
-                <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                <input
+                  className={inputClass}
+                  placeholder={lang === "ar" ? "اسم الشركة بالإنجليزية (إلزامي)" : "Company Name (English) (Required)"}
+                  value={form.companyNameEn || ""}
+                  onChange={e => onChange({ companyNameEn: e.target.value })}
+                  dir="ltr"
+                  required
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <input
+                  className={inputClass}
+                  placeholder={lang === "ar" ? "رقم الرخصة التجارية أو الصناعية" : "Trade/Industrial License Number"}
+                  value={form.companyLicenseNumber || ""}
+                  onChange={e => onChange({ companyLicenseNumber: e.target.value })}
+                  dir="ltr"
+                  required
+                />
+                <div className="relative w-full">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">
+                    {lang === "ar" ? "تاريخ تسجيل الشركة" : "Company Registration Date"}
+                  </label>
+                  <input
+                    className={inputClass + " pr-10"}
+                    type="date"
+                    value={form.companyRegistrationDate || ""}
+                    onChange={e => onChange({ companyRegistrationDate: e.target.value })}
+                    required
+                    style={{ WebkitAppearance: "none", appearance: "none" }}
+                  />
+                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                </div>
               </div>
             </div>
 
@@ -168,7 +172,7 @@ export default function PersonalInfoStep({
               <h3 className="font-bold text-emerald-700 mb-3 text-lg text-center">
                 {lang === "ar" ? "بيانات المالك" : "Owner Information"}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <input
                   className={inputClass}
                   placeholder={lang === "ar" ? "الاسم الأول" : "First Name"}
@@ -191,7 +195,7 @@ export default function PersonalInfoStep({
                   required
                 />
               </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 {/* تاريخ ميلاد المالك */}
                 <div className="relative w-full">
                   <label className="block text-xs font-bold text-gray-500 mb-1">
@@ -215,7 +219,6 @@ export default function PersonalInfoStep({
                     </span>
                   )}
                 </div>
-                {/* الجنسية والجنس في صف واحد منسق */}
                 <NationalitySelect
                   label={lang === "ar" ? "الجنسية" : "Nationality"}
                   placeholder={lang === "ar" ? "الجنسية (إلزامي)" : "Nationality (Required)"}
@@ -243,7 +246,7 @@ export default function PersonalInfoStep({
         {/* بيانات فردية (مقيم/غير مقيم) */}
         {(type === "resident" || type === "nonresident") && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div className="flex flex-col sm:flex-row gap-4">
               <input
                 className={inputClass}
                 placeholder={lang === "ar" ? "الاسم الأول (إلزامي)" : "First Name (Required)"}
@@ -280,59 +283,58 @@ export default function PersonalInfoStep({
               required
             />
 
-            {/* حقل تاريخ الميلاد مع label واضح + حساب العمر */}
-            <div className="relative w-full">
-              <label className="block text-xs font-bold text-gray-500 mb-1">
-                {lang === "ar" ? "تاريخ الميلاد" : "Birth Date"}
-              </label>
-              <input
-                className={inputClass + " pr-10"}
-                type="date"
-                value={form.birthDate || ""}
-                onChange={e => onChange({ birthDate: e.target.value })}
-                autoComplete="bday"
-                required
-                style={{ WebkitAppearance: "none", appearance: "none" }}
-              />
-              <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
-              {/* عرض العمر */}
-              {form.birthDate && (
-                <span className="text-xs text-emerald-700 font-bold mt-2 block">
-                  {lang === "ar"
-                    ? `العمر الحالي: ${age || "--"} سنة`
-                    : `Current age: ${age || "--"} years`}
-                </span>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative w-full">
+                <label className="block text-xs font-bold text-gray-500 mb-1">
+                  {lang === "ar" ? "تاريخ الميلاد" : "Birth Date"}
+                </label>
+                <input
+                  className={inputClass + " pr-10"}
+                  type="date"
+                  value={form.birthDate || ""}
+                  onChange={e => onChange({ birthDate: e.target.value })}
+                  autoComplete="bday"
+                  required
+                  style={{ WebkitAppearance: "none", appearance: "none" }}
+                />
+                <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                {form.birthDate && (
+                  <span className="text-xs text-emerald-700 font-bold mt-2 block">
+                    {lang === "ar"
+                      ? `العمر الحالي: ${age || "--"} سنة`
+                      : `Current age: ${age || "--"} years`}
+                  </span>
+                )}
+              </div>
+              {/* رقم الإقامة وتاريخ انتهائها (للمقيم فقط) */}
+              {type === "resident" && (
+                <>
+                  <input
+                    className={inputClass}
+                    placeholder="784-0000-0000000-0"
+                    value={form.eidNumber || ""}
+                    onChange={e => onChange({ eidNumber: formatEIDNumber(e.target.value) })}
+                    dir="ltr"
+                    maxLength={19}
+                    required
+                  />
+                  <div className="relative w-full">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">
+                      {lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
+                    </label>
+                    <input
+                      className={inputClass + " pr-10"}
+                      type="date"
+                      value={form.eidExpiry || ""}
+                      onChange={e => onChange({ eidExpiry: e.target.value })}
+                      required
+                      style={{ WebkitAppearance: "none", appearance: "none" }}
+                    />
+                    <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+                  </div>
+                </>
               )}
             </div>
-
-            {/* رقم الإقامة وتاريخ انتهائها (للمقيم فقط) */}
-            {type === "resident" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <input
-                  className={inputClass}
-                  placeholder="784-0000-0000000-0"
-                  value={form.eidNumber || ""}
-                  onChange={e => onChange({ eidNumber: formatEIDNumber(e.target.value) })}
-                  dir="ltr"
-                  maxLength={19}
-                  required
-                />
-                <div className="relative w-full">
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    {lang === "ar" ? "تاريخ انتهاء الإقامة" : "Residence Expiry Date"}
-                  </label>
-                  <input
-                    className={inputClass + " pr-10"}
-                    type="date"
-                    value={form.eidExpiry || ""}
-                    onChange={e => onChange({ eidExpiry: e.target.value })}
-                    required
-                    style={{ WebkitAppearance: "none", appearance: "none" }}
-                  />
-                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
-                </div>
-              </div>
-            )}
 
             <NationalitySelect
               label={lang === "ar" ? "الجنسية" : "Nationality"}
@@ -355,8 +357,7 @@ export default function PersonalInfoStep({
               ))}
             </select>
 
-            {/* رقم الباسبور وتاريخ انتهائه */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="flex flex-col sm:flex-row gap-4">
               <input
                 className={inputClass}
                 placeholder={lang === "ar" ? "رقم جواز السفر" : "Passport Number"}
@@ -382,6 +383,7 @@ export default function PersonalInfoStep({
             </div>
           </>
         )}
+
         {/* الأزرار تحت بعض في عمود */}
         <div className="flex flex-col gap-3 mt-7 justify-center items-center">
           <button
