@@ -28,6 +28,10 @@ import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
 
+// استدعاء مكونات المحفظة والكوينز
+import WalletWidget from "@/components/WalletWidget";
+import CoinsWidget from "@/components/CoinsWidget";
+
 export const dynamic = 'force-dynamic';
 
 // ========== Helper functions ==========
@@ -354,10 +358,8 @@ function ClientProfilePageInner({ userId }) {
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
             <span className="text-white text-base sm:text-lg font-bold whitespace-nowrap">
-              {getDayGreeting(lang)}
-            </span>
-            <span className="text-emerald-200 text-base sm:text-lg font-bold whitespace-nowrap mt-1">
-              {getWelcome(client?.name, lang)}
+              {/* صباح الخير، مرحباً محمد */}
+              {`${getDayGreeting(lang)}, ${getWelcome(client?.name, lang)}`}
             </span>
           </div>
           {/* Action icons */}
@@ -520,6 +522,12 @@ function ClientProfilePageInner({ userId }) {
             </button>
           </div>
         </header>
+
+        {/* ====== المحفظة والكوينز ====== */}
+        <div className="flex gap-4 justify-center items-center my-4">
+          <WalletWidget balance={client.walletBalance || 0} onCharge={handleWalletCharge} lang={lang} />
+          <CoinsWidget coins={client.coins || 0} lang={lang} />
+        </div>
 
         {/* Main Content */}
         <main className="flex-1 w-full max-w-4xl mx-auto p-4 z-10 relative flex flex-col items-center justify-center">
