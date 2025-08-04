@@ -65,15 +65,6 @@ const CATEGORY_STYLES = {
   },
 };
 
-// دالة حساب الضريبة والسعر النهائي
-function calcAll(price, printingFee) {
-  const p = Number(price) || 0;
-  const print = Number(printingFee) || 0;
-  const tax = +(print * 0.05).toFixed(2);
-  const total = +(p + print + tax).toFixed(2);
-  return { tax, total, print };
-}
-
 export default function ServiceProfileCard({
   category = "resident",
   name,
@@ -105,16 +96,19 @@ export default function ServiceProfileCard({
   const [payMsg, setPayMsg] = useState("");
   const [quantity, setQuantity] = useState(1);
 
-  // ---- رفع المستندات ----
+  // رفع المستندات
   const [uploadedDocs, setUploadedDocs] = useState({});
   const [showDocsModal, setShowDocsModal] = useState(false);
 
-  // ---- عدد الأوراق ----
+  // عدد الأوراق
   const [paperCount, setPaperCount] = useState(1);
 
-  // --- جدول التفاصيل يظهر عند الوقوف فترة طويلة ---
+  // جدول التفاصيل يظهر عند الوقوف فترة طويلة
   const [showDetailTable, setShowDetailTable] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+
+  // Popover للوصف المطول
+  const [showDescPopover, setShowDescPopover] = useState(false);
 
   // جلب بيانات المستخدم
   useEffect(() => {
@@ -136,17 +130,16 @@ export default function ServiceProfileCard({
   // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
-  // الإجمالي = (سعر الخدمة × العدد) + (رسوم الطباعة × عدد الأوراق) + الضريبة
-  const serviceTotal = (Number(price) || 0) * baseServiceCount;
+  const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
   const printingTotal = (Number(printingFee) || 0) * basePaperCount;
   const taxTotal = +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
-  const totalServicePrice = serviceTotal + printingTotal + taxTotal;
+  const totalServicePrice = servicePriceTotal + printingTotal + taxTotal;
 
-  // تحقق من رفع كل المستندات المطلوبة
+  // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
 
-  // تحقق من تحديد عدد الأوراق
+  // التحقق من تحديد عدد الأوراق
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
 
   // شرط تفعيل الدفع
@@ -367,7 +360,7 @@ export default function ServiceProfileCard({
     more: lang === "ar" ? "تفاصيل أكثر" : "More Details",
   };
 
-  // تفاصيل السعر في جدول
+  // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
   function renderDetailsTable() {
     return (
       <div
@@ -454,6 +447,9 @@ export default function ServiceProfileCard({
     setShowDetailTable(false);
   }
 
+  // الوصف المطول Popover
+  const descText = longDescription || description || "";
+
   return (
     <div
       className={`
@@ -521,22 +517,40 @@ export default function ServiceProfileCard({
               width: "100%",
             }}
           >
-            {description || <span>&nbsp;</span>}
+            {descText || <span>&nbsp;</span>}
           </p>
-          {((description && description.length > 50) ||
-            (longDescription && longDescription.length > 50)) && (
+          {descText.length > 60 && (
             <button
-              className="absolute top-0 right-0 z-10 flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white/70 rounded-full px-2 py-0.5 shadow"
+              className="absolute top-0 right-0 z-10 flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white/80 rounded-full px-2 py-0.5 shadow border border-emerald-100"
+              onClick={e => { e.stopPropagation(); setShowDescPopover(true); }}
               style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDetailTable((v) => !v);
-              }}
               tabIndex={0}
               type="button"
             >
               <FaInfoCircle /> {labels.more}
             </button>
+          )}
+          {/* Popover للوصف المطول */}
+          {showDescPopover && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
+              onClick={() => setShowDescPopover(false)}
+            >
+              <div
+                className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md p-6 text-center relative"
+                style={{ minWidth: 220, maxWidth: 380 }}
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setShowDescPopover(false)}
+                  className="absolute top-2 right-2 text-gray-400 hover:text-red-700 text-2xl px-2"
+                  title={lang === "ar" ? "إغلاق" : "Close"}
+                  style={{ cursor: "pointer" }}
+                >×</button>
+                <div className="text-lg font-bold text-emerald-700 mb-2">{name}</div>
+                <div className="text-gray-700 whitespace-pre-line text-sm">{descText}</div>
+              </div>
+            </div>
           )}
         </div>
         {/* تفاصيل السعر النهائى */}
@@ -563,7 +577,7 @@ export default function ServiceProfileCard({
                 <tr>
                   <td>{labels.service}</td>
                   <td className="text-right">
-                    {serviceTotal} {lang === "ar" ? "د.إ" : "AED"}
+                    {servicePriceTotal} {lang === "ar" ? "د.إ" : "AED"}
                   </td>
                 </tr>
                 <tr>
@@ -726,8 +740,6 @@ export default function ServiceProfileCard({
       </div>
       {/* جدول التفاصيل إذا ضغط أو وقف فترة طويلة */}
       {showDetailTable && renderDetailsTable()}
-      {/* نافذة الدفع العادية ... نفس الكود السابق ... */}
-      {/* نافذة خصم الكوينات ... نفس الكود السابق ... */}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
