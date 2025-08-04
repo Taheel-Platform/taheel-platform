@@ -28,6 +28,10 @@ import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
 
+// استدعاء مكونات المحفظة والكوينز
+import WalletWidget from "@/components/WalletWidget";
+import CoinsWidget from "@/components/CoinsWidget";
+
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
@@ -352,18 +356,15 @@ function ClientProfilePageInner({ userId }) {
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
             <span className="text-white text-base sm:text-lg font-bold whitespace-nowrap">
-              {getDayGreeting(lang)}
-            </span>
-            <span className="text-emerald-200 text-base sm:text-lg font-bold whitespace-nowrap mt-1">
-              {getWelcome(client?.name, lang)}
+              {/* صباح الخير، مرحباً محمد */}
+              {`${getDayGreeting(lang)}, ${getWelcome(client?.name, lang)}`}
             </span>
           </div>
           {/* Action icons */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Coins */}
             <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu(v => !v)}>
-              <FaCoins size={22} className="text-yellow-300 hover:text-yellow-400 transition" />
-              <span className="absolute -top-2 -right-1 bg-gray-800 text-yellow-300 text-[10px] font-bold rounded-full px-1 shadow">{client.coins || 0}</span>
+              <CoinsWidget coins={client.coins || 0} lang={lang} />
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
                 {lang === "ar" ? "الرصيد" : "Coins"}
               </span>
@@ -381,10 +382,7 @@ function ClientProfilePageInner({ userId }) {
             </div>
             {/* Wallet */}
             <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu(v => !v)}>
-              <FaWallet size={22} className="text-emerald-400 hover:text-emerald-600 transition" />
-              <span className="absolute -top-2 -right-1 bg-emerald-700 text-white text-[10px] font-bold rounded-full px-1 shadow">
-                {client.walletBalance || 0}
-              </span>
+              <WalletWidget balance={client.walletBalance || 0} onCharge={handleWalletCharge} lang={lang} />
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
                 {lang === "ar" ? "المحفظة" : "Wallet"}
               </span>
