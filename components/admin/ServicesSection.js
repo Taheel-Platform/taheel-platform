@@ -1,13 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
   doc,
+  getDoc,
+  updateDoc,
   serverTimestamp,
+  deleteField,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
@@ -70,15 +68,17 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editService, setEditService] = useState({});
   const [editDocumentsFields, setEditDocumentsFields] = useState([]);
 
-  // جلب كل الخدمات من Firestore من المسار الصحيح حسب نوع العميل (بنية Firestore الصحيحة)
+  // جلب كل الخدمات من Firestore كحقول داخل document الفئة
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
-      const snap = await getDocs(
-        collection(db, `servicesByClientType/${clientType}/services`)
-      );
-      const arr = [];
-      snap.forEach((doc) => arr.push({ ...doc.data(), id: doc.id }));
+      const docRef = doc(db, "servicesByClientType", clientType);
+      const snap = await getDoc(docRef);
+      const data = snap.exists() ? snap.data() : {};
+      // فقط الحقول التي تبدأ بـ service (لو عندك حقول أخرى تجاهلها)
+      const arr = Object.entries(data)
+        .filter(([key]) => key.startsWith("service"))
+        .map(([key, val]) => ({ ...val, id: key }));
       setServices(
         arr.sort((a, b) =>
           a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en")
@@ -127,27 +127,31 @@ export default function ServicesSection({ lang = "ar" }) {
     newService.printingFee
   );
 
-  // إضافة خدمة جديدة لمسار نوع العميل الصحيح (بنية Firestore الصحيحة)
+  // إضافة خدمة جديدة كـ field داخل document الفئة
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
-    await addDoc(
-      collection(db, `servicesByClientType/${clientType}/services`),
+    // توليد اسم فريد للخدمة (مثلاً: service1، service2 ...)
+    const serviceFieldName = `service${Date.now()}`; // أو استخدم عداد لو تريد تسلسل رقمي
+    await updateDoc(
+      doc(db, "servicesByClientType", clientType),
       {
-        ...newService,
-        category: clientType,
-        price: Number(newService.price),
-        printingFee: Number(newService.printingFee),
-        coins: Number(newService.coins),
-        profit: Number(newService.printingFee),
-        tax: Number(tax),
-        clientPrice: Number(clientPrice),
-        requiredDocuments: newService.requireUpload
-          ? documentsFields.map((s) => s.trim()).filter(Boolean)
-          : [],
-        serviceId: generateServiceId(clientType),
-        createdAt: serverTimestamp(),
-        active: true,
+        [serviceFieldName]: {
+          ...newService,
+          category: clientType,
+          price: Number(newService.price),
+          printingFee: Number(newService.printingFee),
+          coins: Number(newService.coins),
+          profit: Number(newService.printingFee),
+          tax: Number(tax),
+          clientPrice: Number(clientPrice),
+          requiredDocuments: newService.requireUpload
+            ? documentsFields.map((s) => s.trim()).filter(Boolean)
+            : [],
+          serviceId: generateServiceId(clientType),
+          createdAt: serverTimestamp(),
+          active: true,
+        },
       }
     );
     setNewService({
@@ -170,7 +174,7 @@ export default function ServicesSection({ lang = "ar" }) {
     setLoading(false);
   }
 
-  // حذف خدمة
+  // حذف خدمة (حذف الحقل من الدوكيومنت)
   async function handleDeleteService(id) {
     if (
       !confirm(
@@ -181,11 +185,13 @@ export default function ServicesSection({ lang = "ar" }) {
     )
       return;
     setLoading(true);
-    await deleteDoc(doc(db, `servicesByClientType/${clientType}/services`, id));
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      [id]: deleteField(),
+    });
     setLoading(false);
   }
 
-  // تعديل خدمة
+  // تعديل خدمة (تحديث الحقل داخل الدوكيومنت)
   async function handleEditService(e) {
     e.preventDefault();
     setLoading(true);
@@ -193,9 +199,8 @@ export default function ServicesSection({ lang = "ar" }) {
       editService.price,
       editService.printingFee
     );
-    await updateDoc(
-      doc(db, `servicesByClientType/${clientType}/services`, editingId),
-      {
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      [editingId]: {
         ...editService,
         price: Number(editService.price),
         printingFee: Number(editService.printingFee),
@@ -206,8 +211,8 @@ export default function ServicesSection({ lang = "ar" }) {
         requiredDocuments: editService.requireUpload
           ? editDocumentsFields.map((s) => s.trim()).filter(Boolean)
           : [],
-      }
-    );
+      },
+    });
     setEditingId(null);
     setLoading(false);
   }
