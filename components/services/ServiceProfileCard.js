@@ -66,8 +66,6 @@ const CATEGORY_STYLES = {
 };
 
 export default function ServiceProfileCard({
-  // كل البيانات يجب أن تصل هنا مباشرة من ServiceSection بعد جلب الخدمة من الفايرستور كحقل
-  // props:
   category = "resident",
   name,
   name_en,
@@ -75,8 +73,10 @@ export default function ServiceProfileCard({
   description_en,
   price,
   printingFee = 0,
+  tax, // الضريبة (يمكن أن تأتي من الداتا مباشرة)
+  clientPrice, // السعر النهائي للعميل (يمكن أن تأتي من الداتا مباشرة)
   duration,
-  requiredDocuments = [], // لاحظ تعديل الاسم هنا حتى يتوافق مع ما يحفظ في الفايرستور
+  requiredDocuments = [],
   coins = 0,
   userId,
   userWallet = 0,
@@ -92,7 +92,7 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
-  // دعم الاسم الجديد للحقل: requiredDocuments
+  // المستندات المطلوبة
   const requiredDocs = requiredDocuments || [];
 
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
@@ -138,16 +138,18 @@ export default function ServiceProfileCard({
   // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
-const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
+  // السعر الأصلي للخدمة مضروب في الكمية
+  const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
+  // رسوم الطباعة مضروبة في عدد الأوراق
   const printingTotal = (Number(printingFee) || 0) * basePaperCount;
-  // جلب الضريبة من props (tax) أو fallback على حسابها من رسوم الطباعة
-  const taxTotal = typeof props.tax !== "undefined"
-    ? Number(props.tax) * basePaperCount
+  // الضريبة: من الحقل tax إن وجد، أو احتسابها من رسوم الطباعة
+  const taxTotal = typeof tax !== "undefined"
+    ? Number(tax) * basePaperCount
     : +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
-
+  // السعر النهائي للعميل: من الحقل clientPrice إن وجد، أو الحساب اليدوي
   const totalServicePrice =
-    typeof props.clientPrice !== "undefined"
-      ? Number(props.clientPrice) * baseServiceCount
+    typeof clientPrice !== "undefined"
+      ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
   // التحقق من رفع كل المستندات المطلوبة
@@ -184,7 +186,7 @@ const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
     setPayMsg("");
   }
 
-  // إرسال إشعار (Firestore notifications)
+  // إرسال إشعار
   async function sendNotification({ userId, orderNumber, orderName }) {
     try {
       await addDoc(collection(firestore, "notifications"), {
@@ -204,7 +206,7 @@ const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
     } catch (err) {}
   }
 
-  // إرسال إيميل (استدعاء API backend أو cloud function)
+  // إرسال إيميل
   async function sendOrderEmail({ to, orderNumber, serviceName, price }) {
     try {
       await fetch("/api/sendOrderEmail", {
