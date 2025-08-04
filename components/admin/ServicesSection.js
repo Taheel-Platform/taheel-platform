@@ -136,7 +136,7 @@ export default function ServicesSection({ lang = "ar" }) {
         profit: Number(newService.printingFee), // الربح = رسوم الطباعة دائماً
         tax: Number(tax),
         clientPrice: Number(clientPrice),
-        documents: newService.requireUpload
+        requiredDocuments: newService.requireUpload
           ? documentsFields.map((s) => s.trim()).filter(Boolean)
           : [],
         serviceId: generateServiceId(),
