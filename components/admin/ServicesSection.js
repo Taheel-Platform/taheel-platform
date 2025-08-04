@@ -75,7 +75,7 @@ export default function ServicesSection({ lang = "ar" }) {
     async function fetchData() {
       if (!clientType) return;
       const snap = await getDocs(
-        collection(db, `services/${clientType}`)
+        collection(db, "services")
       );
       const arr = [];
       snap.forEach((doc) => arr.push({ ...doc.data(), id: doc.id }));
