@@ -18,7 +18,7 @@ export default function CoinsWidget({ coins = 0, lang = "ar" }) {
   return (
     <button
       type="button"
-      className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none"
+      className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
       title={valueText}
       style={{ minWidth: 42, minHeight: 42 }}
       tabIndex={0}
