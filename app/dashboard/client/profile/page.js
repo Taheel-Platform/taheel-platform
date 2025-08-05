@@ -24,6 +24,7 @@ import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
+import { motion } from "framer-motion";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
