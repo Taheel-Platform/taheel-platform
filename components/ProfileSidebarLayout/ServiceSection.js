@@ -33,28 +33,31 @@ export default function ServiceSection({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
               {arr.map((srv, i) => (
                 <ServiceProfileCard
-                  key={srv.name + i}
-                  category={srv.category}
-                  name={srv.name}
-                  description={srv.description}
-                  price={srv.price}
-                  duration={srv.duration}
-                  requiredDocs={srv.documents || []}
-                  requireUpload={srv.requireUpload}
-                  coins={srv.coins || 0}
-                  lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
-                  onPaid={onServicePaid}
-                  coinsPercent={0.1}
-                  addNotification={addNotification}
-                  serviceId={srv.serviceId}
-                  repeatable={srv.repeatable}
-                  allowPaperCount={srv.allowPaperCount}
-                  pricePerPage={srv.pricePerPage}
-                  userEmail={client.email}
-                />
+  key={srv.name + i}
+  category={srv.category}
+  name={srv.name}
+  description={srv.description}
+  price={srv.price} // ✅ السعر الأساسي
+  printingFee={srv.printingFee} // ✅ رسوم الطباعة
+  tax={srv.tax} // ✅ الضريبة
+  clientPrice={srv.clientPrice} // ✅ السعر النهائي (لو متوفر)
+  duration={srv.duration}
+  requiredDocuments={srv.requiredDocuments || srv.documents || []} // ✅ التصحيح هنا
+  requireUpload={srv.requireUpload}
+  coins={srv.coins || 0}
+  lang={lang}
+  userId={client.userId}
+  userWallet={client.walletBalance || 0}
+  userCoins={client.coins || 0}
+  onPaid={onServicePaid}
+  coinsPercent={0.1}
+  addNotification={addNotification}
+  serviceId={srv.serviceId}
+  repeatable={srv.repeatable}
+  allowPaperCount={srv.allowPaperCount}
+  pricePerPage={srv.pricePerPage}
+  userEmail={client.email}
+/>
               ))}
             </div>
           </div>
