@@ -101,20 +101,19 @@ useEffect(() => {
     setLoading(true);
     setFirebaseError("");
     try {
-      // جلب كل الخدمات من مجموعة services
-      const querySnapshot = await getDocs(collection(firestore, "services"));
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
-      querySnapshot.forEach(doc => {
-        const service = doc.data();
-        // تجاهل الخدمات غير المفعلة أو التي لا يوجد بها تصنيف
-        if ((service.active === false || service.isActive === false) || !service.category) return;
-        // ضع الخدمة في التصنيف المناسب
-        if (data[service.category]) {
-          // يمكنك حذف الحقول المالية هنا لو تحب (price, printingFee, ...etc)
+      for (const section of SECTIONS) {
+        const sectionCol = collection(firestore, "servicesByClientType", section, section);
+        const querySnapshot = await getDocs(sectionCol);
+        querySnapshot.forEach(doc => {
+          const service = doc.data();
+          const isActive = service.active !== false && service.isActive !== false;
+          if (!isActive) return;
+          // احذف الحقول المالية لو تحب
           const { price, printingFee, tax, clientPrice, ...servicePublic } = service;
-          data[service.category][doc.id] = servicePublic;
-        }
-      });
+          data[section][doc.id] = servicePublic;
+        });
+      }
       setServices(data);
     } catch (e) {
       setFirebaseError(e?.message || "خطأ غير معروف في جلب البيانات من Firestore");
