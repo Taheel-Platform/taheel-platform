@@ -438,15 +438,17 @@ if (method === "wallet") {
   };
 
   // اسم الخدمة والوصف حسب اللغة
-  const displayName = lang === "ar"
-    ? (name || "")
-    : (name_en || name || "");
-  const displayDescription = lang === "ar"
-    ? (description || "")
-    : (description_en || description || "");
-  const displayLongDescription = lang === "ar"
-    ? (longDescription || "")
-    : (longDescription_en || longDescription || "");
+  const displayName = lang === "en"
+  ? (name_en || translatedName || name || "")
+  : (name || name_en || "");
+
+const displayDescription = lang === "en"
+  ? (description_en || translatedDescription || description || "")
+  : (description || description_en || "");
+
+const displayLongDescription = lang === "en"
+  ? (longDescription_en || translatedLongDescription || longDescription || "")
+  : (longDescription || longDescription_en || "");
 
   // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
 function renderDetailsTable() {

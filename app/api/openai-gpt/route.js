@@ -12,6 +12,8 @@ if (!getApps().length) {
 }
 const db = getFirestore();
 
+const openaiCache = {}; // كاش في الذاكرة - مؤقت
+
 const countryLangMap = {
   EG: "ar", SA: "ar", AE: "ar", QA: "ar", KW: "ar", OM: "ar", JO: "ar", MA: "ar", DZ: "ar", TN: "ar", LB: "ar", IQ: "ar", PS: "ar",
   FR: "fr", US: "en", GB: "en", CA: "en", DE: "de", IT: "it", ES: "es", PT: "pt", IN: "hi", CN: "zh", JP: "ja", KR: "ko", RU: "ru",
@@ -125,6 +127,35 @@ function getUserPrompt({ type, realName, prompt, dataString, lang }) {
   }
 }
 
+// دالة OpenAI مع كاشينج
+async function openaiWithCache({ systemMessage, userPrompt, max_tokens, temperature }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  const cacheKey = `${systemMessage}::${userPrompt}::${max_tokens}::${temperature}`;
+  if (openaiCache[cacheKey]) {
+    return openaiCache[cacheKey];
+  }
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemMessage },
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens,
+      temperature,
+    }),
+  });
+  const data = await response.json();
+  const reply = data?.choices?.[0]?.message?.content?.trim() || "";
+  openaiCache[cacheKey] = reply;
+  return reply;
+}
+
 export async function POST(req) {
   let {
     prompt,
@@ -191,26 +222,14 @@ export async function POST(req) {
   if (isWelcome) {
     const systemMessage = getSystemPrompt(realLang);
     const userPrompt = getUserPrompt({ type: "welcome", realName, prompt, lang: realLang });
-    const apiKey = process.env.OPENAI_API_KEY;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 300,
-        temperature: 0.2,
-      }),
+    const reply = await openaiWithCache({
+      systemMessage,
+      userPrompt,
+      max_tokens: 300,
+      temperature: 0.2,
     });
-    const data = await response.json();
     return NextResponse.json({
-      text: data?.choices?.[0]?.message?.content?.trim() || "",
+      text: reply,
       isWelcome: true,
       showTransferButton: false,
       suggestAgent: false,
@@ -298,26 +317,14 @@ export async function POST(req) {
 
     const systemMessage = getSystemPrompt(realLang);
     const userPrompt = getUserPrompt({ type: "service", realName, prompt, dataString, lang: realLang });
-    const apiKey = process.env.OPENAI_API_KEY;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 700,
-        temperature: 0.4,
-      }),
+    const reply = await openaiWithCache({
+      systemMessage,
+      userPrompt,
+      max_tokens: 700,
+      temperature: 0.4,
     });
-    const data = await response.json();
     return NextResponse.json({
-      text: data?.choices?.[0]?.message?.content?.trim() || "",
+      text: reply,
       showTransferButton: false,
       suggestAgent: false,
       aiSilenced: false,
@@ -397,26 +404,14 @@ export async function POST(req) {
   if (/منصة|taheel|تأهيل|about\s+company|about\s+taheel|الشركة|company\s+info/i.test(prompt)) {
     const systemMessage = getSystemPrompt(realLang);
     const userPrompt = getUserPrompt({ type: "company", realName, prompt, lang: realLang });
-    const apiKey = process.env.OPENAI_API_KEY;
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemMessage },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 400,
-        temperature: 0.3,
-      }),
+    const reply = await openaiWithCache({
+      systemMessage,
+      userPrompt,
+      max_tokens: 400,
+      temperature: 0.3,
     });
-    const data = await response.json();
     return NextResponse.json({
-      text: data?.choices?.[0]?.message?.content?.trim() || (
+      text: reply || (
         realLang === "ar"
           ? "منصة تأهيل: حلول إلكترونية متكاملة للمقيمين والغير مقيمين وأصحاب الأعمال والشركات داخل الإمارات."
           : realLang === "en"
@@ -493,26 +488,14 @@ export async function POST(req) {
   // --- الرد العام من OpenAI لأي سؤال آخر ---
   const systemMessage = getSystemPrompt(realLang);
   const userPrompt = getUserPrompt({ type: "general", realName, prompt, lang: realLang });
-  const apiKey = process.env.OPENAI_API_KEY;
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemMessage },
-        { role: "user", content: userPrompt }
-      ],
-      max_tokens: 700,
-      temperature: 0.4,
-    }),
+  const reply = await openaiWithCache({
+    systemMessage,
+    userPrompt,
+    max_tokens: 700,
+    temperature: 0.4,
   });
-  const data = await response.json();
   return NextResponse.json({
-    text: data?.choices?.[0]?.message?.content?.trim() || "",
+    text: reply,
     showTransferButton: false,
     suggestAgent: false,
     aiSilenced: false,
