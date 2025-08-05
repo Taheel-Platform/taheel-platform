@@ -20,7 +20,7 @@ export default function WalletWidget({
   lang = "ar",
   onBalanceChange,
   onCoinsChange,
-  onPayGateway,
+  onPayGateway, // دالة تفتح بوابة الدفع وتستقبل (amount, coinsBonus)
 }) {
   const [showModal, setShowModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -35,6 +35,7 @@ export default function WalletWidget({
     if (typeof onCoinsChange === "function") onCoinsChange(newCoins);
   }
 
+  // استدعِها بعد نجاح الدفع فقط
   async function handleRecharge(amount, coinsBonus) {
     if (!userId) {
       setMsg(lang === "ar" ? "برجاء تسجيل الدخول" : "Please log in");
@@ -110,7 +111,7 @@ export default function WalletWidget({
         </span>
       </motion.button>
 
-      {/* مودال الشحن كما هو */}
+      {/* مودال الشحن */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -138,12 +139,12 @@ export default function WalletWidget({
             >
               <button
                 onClick={() => setShowModal(false)}
-                className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2 z-20"
+                className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2 z-20 cursor-pointer"
                 title={lang === "ar" ? "إغلاق" : "Close"}
-                style={{ cursor: "pointer" }}
                 disabled={isPaying}
               >×</button>
 
+              {/* الرصيد */}
               <motion.div
                 className="flex flex-col items-center gap-1 cursor-pointer select-none"
                 onClick={() => {
@@ -169,30 +170,40 @@ export default function WalletWidget({
                 </span>
               </motion.div>
 
+              {/* خيارات الشحن */}
               <div className="flex flex-col gap-3 mt-2">
                 {rechargeOptions.map(opt => (
                   <motion.button
                     key={opt.amount}
                     disabled={isPaying}
-                    onClick={() => handleRecharge(opt.amount, opt.coins)}
+                    onClick={() => {
+                      if (typeof onPayGateway === "function") {
+                        onPayGateway(opt.amount, opt.coins, async (success) => {
+                          if (success) {
+                            await handleRecharge(opt.amount, opt.coins);
+                          }
+                        });
+                      }
+                    }}
                     className={`
                       flex justify-between items-center px-4 py-2 rounded-xl font-bold text-[15px] border
                       bg-gradient-to-r ${opt.color}
                       border-emerald-100 shadow
                       hover:scale-[1.03] active:scale-95 transition
+                      cursor-pointer
                       ${isPaying ? "opacity-40 pointer-events-none" : ""}
                     `}
                     style={{ direction: "rtl", boxShadow: "0 4px 14px #05966910" }}
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <span>
+                    <span className="text-emerald-800 font-bold">
                       {lang === "ar" ? `شحن ${opt.amount} درهم` : `Recharge ${opt.amount} AED`}
                     </span>
-                    <span className="text-yellow-700">
-                      +{opt.coins} {lang === "ar" ? "كوين" : "coins"}
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({lang === "ar" ? "مجانا" : "free"})
+                    <span className="text-yellow-700 flex items-center gap-1">
+                      +{opt.coins}
+                      <span className="text-xs text-gray-500">
+                        {lang === "ar" ? "كوين مجانا" : "coins free"}
                       </span>
                     </span>
                   </motion.button>
