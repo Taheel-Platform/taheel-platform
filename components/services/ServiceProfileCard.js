@@ -14,6 +14,7 @@ import {
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import ServiceUploadModal from "./ServiceUploadModal";
+import { translateText } from "@/lib/translateText";
 
 // رقم الطلب الفريد
 function generateOrderNumber() {
@@ -110,6 +111,9 @@ export default function ServiceProfileCard({
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [quantity, setQuantity] = useState(1);
+  const [translatedName, setTranslatedName] = useState("");
+  const [translatedDescription, setTranslatedDescription] = useState("");
+  const [translatedLongDescription, setTranslatedLongDescription] = useState("");
 
   // رفع المستندات
   const [uploadedDocs, setUploadedDocs] = useState({});
@@ -124,7 +128,29 @@ export default function ServiceProfileCard({
 
   // Popover للوصف المطول
   const [showDescPopover, setShowDescPopover] = useState(false);
-
+  
+  useEffect(() => {
+  let ignore = false;
+  async function doTranslation() {
+    if (lang === "en") {
+      if (!name_en && name) {
+        const tname = await translateText(name, "en");
+        if (!ignore) setTranslatedName(tname);
+      }
+      if (!description_en && description) {
+        const tdesc = await translateText(description, "en");
+        if (!ignore) setTranslatedDescription(tdesc);
+      }
+      if (!longDescription_en && longDescription) {
+        const tlong = await translateText(longDescription, "en");
+        if (!ignore) setTranslatedLongDescription(tlong);
+      }
+    }
+    // لو عايز ترجمة لعربي أضف else if(lang === "ar") {...} بنفس الطريقة
+  }
+  doTranslation();
+  return () => { ignore = true; };
+}, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
   // جلب بيانات المستخدم
   useEffect(() => {
     if (!userId) return;
@@ -505,6 +531,7 @@ function renderDetailsTable() {
     </div>
   );
 }
+
 
   // ظهور جدول التفاصيل بعد الوقوف 1.5 ثانية
   function handleMouseEnter() {
