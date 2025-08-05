@@ -9,6 +9,7 @@ import { FaGlobe, FaWhatsapp } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import { doc, getDoc } from "firebase/firestore"; 
+import { collection, getDocs } from "firebase/firestore";
 
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
@@ -104,12 +105,13 @@ useEffect(() => {
     try {
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
       for (const section of SECTIONS) {
-        const sectionDocRef = doc(firestore, "servicesByClientType", section);
-        const sectionDocSnap = await getDoc(sectionDocRef);
-        if (sectionDocSnap.exists()) {
-          // استبدل اسم الحقل "services" إذا مختلف في الداتا عندك
-          data[section] = sectionDocSnap.data().services || {};
-        }
+        const sectionColRef = collection(firestore, "servicesByClientType", section);
+        const querySnapshot = await getDocs(sectionColRef);
+        querySnapshot.forEach(docSnap => {
+          const service = docSnap.data();
+          if (service.active === false || service.isActive === false) return;
+          data[section][docSnap.id] = service;
+        });
       }
       setServices(data);
     } catch (e) {
