@@ -103,7 +103,7 @@ useEffect(() => {
     try {
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
 for (const section of SECTIONS) {
-  const sectionCol = collection(firestore, "servicesByClientType", section);
+  const sectionCol = collection(firestore, `servicesByClientType/${section}`)
   const querySnapshot = await getDocs(sectionCol);
   querySnapshot.forEach(doc => {
     const service = doc.data();
