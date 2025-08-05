@@ -74,7 +74,7 @@ export default function ServicesPage() {
     SECTIONS.forEach(sec => {
       if (services[sec]) {
         const filtered = Object.entries(services[sec]).filter(([id, service]) => {
-          if (!service.isActive) return false;
+          if (service.active === false || service.isActive === false) return false;
           const q = normalize(searchTerm);
           const nameAr = normalize(service.name);
           const nameEn = normalize(service.name_en || "");
@@ -107,12 +107,12 @@ useEffect(() => {
       querySnapshot.forEach(doc => {
         const service = doc.data();
         // تجاهل الخدمات غير المفعلة أو التي لا يوجد بها تصنيف
-        if (service.active === false || !service.category) return;
+        if ((service.active === false || service.isActive === false) || !service.category) return;
         // ضع الخدمة في التصنيف المناسب
         if (data[service.category]) {
-          // احذف السعر لو تريد (أو تجاهله عند العرض)
-          const { price, ...serviceWithoutPrice } = service;
-          data[service.category][doc.id] = serviceWithoutPrice;
+          // يمكنك حذف الحقول المالية هنا لو تحب (price, printingFee, ...etc)
+          const { price, printingFee, tax, clientPrice, ...servicePublic } = service;
+          data[service.category][doc.id] = servicePublic;
         }
       });
       setServices(data);
@@ -316,7 +316,7 @@ useEffect(() => {
 
       {/* زر واتساب عائم احترافي مصغر */}
       <a
-        href="https://wa.me/971555555555"
+        href="https://wa.me/971-567858017"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-2xl p-2 text-xl flex items-center justify-center transition-all duration-200 border-2 border-white"
