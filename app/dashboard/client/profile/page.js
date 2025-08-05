@@ -16,6 +16,7 @@ import {
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
 import CompanyCardGold from "@/components/cards/CompanyCard";
+import OwnerCard from "@/components/cards/OwnerCard";
 import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 import { NonResidentCard } from "@/components/cards/NonResidentCard";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
@@ -549,24 +550,7 @@ setServices(servicesByType);
               {clientType === "company" && (
                 <>
                   <CompanyCardGold companyId={client.userId} lang={lang} />
-                  <ResidentCard
-  client={{
-    firstName: client.ownerFirstName,
-    middleName: client.ownerMiddleName,
-    lastName: client.ownerLastName,
-    nameEn: client.ownerNameEn, // إذا عندك هذا الحقل
-    birthDate: client.ownerBirthDate,
-    gender: client.ownerGender,
-    nationality: client.ownerNationality,
-    phone: client.ownerPhone, // لو كان فيه رقم خاص بالمالك، أو استعمل client.phone
-    eidNumber: client.ownerEidNumber,
-    eidExpiry: client.ownerEidExpiry,
-    passportNumber: client.ownerPassportNumber,
-    passportExpiry: client.ownerPassportExpiry,
-    // أي بيانات أخرى يحتاجها الكارت
-  }}
-  lang={lang}
-/>
+                  <OwnerCard companyId={client.userId} lang={lang} />
                 </>
               )}
             </>
