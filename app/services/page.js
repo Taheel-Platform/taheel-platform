@@ -104,14 +104,16 @@ useEffect(() => {
     try {
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
       for (const section of SECTIONS) {
-        const sectionColRef = collection(firestore, "servicesByClientType", section);
+        // هذا هو المسار الصحيح: كولكشن رئيسي ثم كولكشن فرعي
+        const sectionColRef = collection(firestore, "servicesByClientType", section, section);
         const querySnapshot = await getDocs(sectionColRef);
 
-        // 👈 هنا سيظهر في الكونسول كل الخدمات لهذا القسم
+        // Debug: طباعة ما تم جلبه
         console.log("SECTION:", section, "DOCS:", querySnapshot.docs.map(d => d.data()));
 
         querySnapshot.forEach(docSnap => {
           const service = docSnap.data();
+          // يمكنك حذف شرط الفلترة مؤقتاً لو تريد ظهور كل الخدمات
           if (service.active === false || service.isActive === false) return;
           data[section][docSnap.id] = service;
         });
