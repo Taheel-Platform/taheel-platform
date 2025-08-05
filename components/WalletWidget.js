@@ -20,7 +20,7 @@ export default function WalletWidget({
   lang = "ar",
   onBalanceChange,
   onCoinsChange,
-  onPayGateway, // دالة تفتح بوابة الدفع (تستدعيها عند الضغط على الرصيد)
+  onPayGateway,
 }) {
   const [showModal, setShowModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -35,7 +35,6 @@ export default function WalletWidget({
     if (typeof onCoinsChange === "function") onCoinsChange(newCoins);
   }
 
-  // دالة الشحن الداخلي (اختياري لو فيه بايمنت داخلي)
   async function handleRecharge(amount, coinsBonus) {
     if (!userId) {
       setMsg(lang === "ar" ? "برجاء تسجيل الدخول" : "Please log in");
@@ -46,7 +45,6 @@ export default function WalletWidget({
     try {
       const userRef = doc(firestore, "users", userId);
 
-      // جلب الرصيد الحالي للتأكد من التحديث الصحيح
       const snap = await getDoc(userRef);
       let currentWallet = wallet, currentCoins = userCoins;
       if (snap.exists()) {
@@ -55,10 +53,7 @@ export default function WalletWidget({
         currentCoins = Number(data.coins ?? 0);
       }
 
-      // 1. تحديث رصيد المحفظة
       await updateDoc(userRef, { walletBalance: currentWallet + amount });
-
-      // 2. إضافة الكوينات المجانية
       await updateDoc(userRef, { coins: currentCoins + coinsBonus });
 
       updateLocalBalances(currentWallet + amount, currentCoins + coinsBonus);
@@ -85,7 +80,6 @@ export default function WalletWidget({
     }
   }
 
-  // نص الرصيد
   const valueText =
     lang === "ar"
       ? `رصيدك في المحفظة: ${wallet} درهم\nرصيد الكوينات: ${userCoins} كوين`
@@ -93,25 +87,30 @@ export default function WalletWidget({
 
   return (
     <>
-      {/* زر المحفظة */}
+      {/* زر المحفظة بشكل موحد مع الكوينات */}
       <motion.button
         type="button"
-        className="relative flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-700 border-2 border-emerald-200 shadow-lg rounded-full w-14 h-14 transition hover:scale-105"
+        className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
         title={valueText}
         tabIndex={0}
+        style={{ minWidth: 36, minHeight: 36 }}
         onClick={() => setShowModal(true)}
-        whileHover={{ scale: 1.07, rotate: -3 }}
+        whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 250, damping: 18 }}
       >
-        <FaWallet className="text-white text-3xl drop-shadow-lg" />
-        <span
-          className="absolute -top-2 -right-2 bg-yellow-400 text-white text-xs font-black rounded-full px-2 shadow border-2 border-white/70"
-          style={{ minWidth: 32 }}
-        >
+        <FaWallet
+          className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-500 drop-shadow-lg transition-all duration-150"
+          style={{
+            filter: "drop-shadow(0 2px 8px #05966955)"
+          }}
+        />
+        <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[11px] font-bold rounded-full px-[6px] py-[2px] shadow border-2 border-white/80">
           {wallet}
         </span>
       </motion.button>
 
-      {/* مودال الشحن مع موشن وانسدال */}
+      {/* مودال الشحن كما هو */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -145,12 +144,10 @@ export default function WalletWidget({
                 disabled={isPaying}
               >×</button>
 
-              {/* رصيد المحفظة (قابل للضغط لفتح بوابة الدفع) */}
               <motion.div
                 className="flex flex-col items-center gap-1 cursor-pointer select-none"
                 onClick={() => {
                   if (onPayGateway) onPayGateway();
-                  // يمكنك هنا فتح مودال الدفع الفعلي أو Paytabs
                 }}
                 whileTap={{ scale: 0.97 }}
                 title={lang === "ar" ? "اضغط لإعادة الشحن ببوابة الدفع" : "Click to recharge with payment gateway"}
@@ -172,7 +169,6 @@ export default function WalletWidget({
                 </span>
               </motion.div>
 
-              {/* خيارات الشحن السريعة */}
               <div className="flex flex-col gap-3 mt-2">
                 {rechargeOptions.map(opt => (
                   <motion.button
