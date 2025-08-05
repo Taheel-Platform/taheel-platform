@@ -105,7 +105,7 @@ export default function CompanyCardGold({
   }[lang === "en" ? "en" : "ar"];
 
   // تاريخ الانتهاء
-  const expireDate = company?.companyRegistrationDate || "2026-06-01";
+  const expireDate = company?.companyLicenseExpiry || "2026-06-01";
   const expire = new Date(expireDate);
   const now = new Date();
   const diffDays = Math.ceil((expire - now) / (1000 * 60 * 60 * 24));

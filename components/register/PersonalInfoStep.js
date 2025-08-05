@@ -58,6 +58,7 @@ export default function PersonalInfoStep({
         form.companyNameEn &&
         form.companyLicenseNumber &&
         form.companyRegistrationDate &&
+        form.companyLicenseExpiry &&
         form.ownerFirstName &&
         form.ownerMiddleName &&
         form.ownerLastName &&
@@ -126,51 +127,66 @@ export default function PersonalInfoStep({
         </h2>
 
         {/* بيانات الشركة لو النوع شركة */}
-        {type === "company" && (
-          <>
-            <div className="flex flex-col gap-4 mb-2">
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  className={inputClass}
-                  placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
-                  value={form.companyNameAr || ""}
-                  onChange={e => onChange({ companyNameAr: e.target.value })}
-                  required
-                />
-                <input
-                  className={inputClass}
-                  placeholder={lang === "ar" ? "اسم الشركة بالإنجليزية (إلزامي)" : "Company Name (English) (Required)"}
-                  value={form.companyNameEn || ""}
-                  onChange={e => onChange({ companyNameEn: e.target.value })}
-                  dir="ltr"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  className={inputClass}
-                  placeholder={lang === "ar" ? "رقم الرخصة التجارية أو الصناعية" : "Trade/Industrial License Number"}
-                  value={form.companyLicenseNumber || ""}
-                  onChange={e => onChange({ companyLicenseNumber: e.target.value })}
-                  dir="ltr"
-                  required
-                />
-                <div className="relative w-full">
-                  <label className="block text-xs font-bold text-gray-500 mb-1">
-                    {lang === "ar" ? "تاريخ تسجيل الشركة" : "Company Registration Date"}
-                  </label>
-                  <input
-                    className={inputClass + " pr-10"}
-                    type="date"
-                    value={form.companyRegistrationDate || ""}
-                    onChange={e => onChange({ companyRegistrationDate: e.target.value })}
-                    required
-                    style={{ WebkitAppearance: "none", appearance: "none" }}
-                  />
-                  <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
-                </div>
-              </div>
-            </div>
+{type === "company" && (
+  <>
+    <div className="flex flex-col gap-4 mb-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          className={inputClass}
+          placeholder={lang === "ar" ? "اسم الشركة بالعربية (إلزامي)" : "Company Name (Arabic) (Required)"}
+          value={form.companyNameAr || ""}
+          onChange={e => onChange({ companyNameAr: e.target.value })}
+          required
+        />
+        <input
+          className={inputClass}
+          placeholder={lang === "ar" ? "اسم الشركة بالإنجليزية (إلزامي)" : "Company Name (English) (Required)"}
+          value={form.companyNameEn || ""}
+          onChange={e => onChange({ companyNameEn: e.target.value })}
+          dir="ltr"
+          required
+        />
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          className={inputClass}
+          placeholder={lang === "ar" ? "رقم الرخصة التجارية أو الصناعية" : "Trade/Industrial License Number"}
+          value={form.companyLicenseNumber || ""}
+          onChange={e => onChange({ companyLicenseNumber: e.target.value })}
+          dir="ltr"
+          required
+        />
+        <div className="relative w-full">
+          <label className="block text-xs font-bold text-gray-500 mb-1">
+            {lang === "ar" ? "تاريخ تسجيل الشركة" : "Company Registration Date"}
+          </label>
+          <input
+            className={inputClass + " pr-10"}
+            type="date"
+            value={form.companyRegistrationDate || ""}
+            onChange={e => onChange({ companyRegistrationDate: e.target.value })}
+            required
+            style={{ WebkitAppearance: "none", appearance: "none" }}
+          />
+          <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+        </div>
+        {/* حقل تاريخ انتهاء الرخصة الجديد */}
+        <div className="relative w-full">
+          <label className="block text-xs font-bold text-gray-500 mb-1">
+            {lang === "ar" ? "تاريخ انتهاء الرخصة" : "License Expiry Date"}
+          </label>
+          <input
+            className={inputClass + " pr-10"}
+            type="date"
+            value={form.companyLicenseExpiry || ""}
+            onChange={e => onChange({ companyLicenseExpiry: e.target.value })}
+            required
+            style={{ WebkitAppearance: "none", appearance: "none" }}
+          />
+          <FaRegCalendarAlt className="absolute right-3 top-7 text-emerald-400 pointer-events-none text-lg" />
+        </div>
+      </div>
+    </div>
 
             {/* بيانات المالك بشكل منظم */}
             <div className="border rounded-xl p-4 mb-2 bg-gray-50">
