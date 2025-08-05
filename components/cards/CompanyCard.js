@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
-import { FaSyncAlt, FaBell, FaCamera, FaEdit, FaCloudUploadAlt } from "react-icons/fa";
+import { FaSyncAlt, FaBell, FaCamera, FaEdit, FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
 import Image from "next/image";
 import CompanyCardModal from "./CompanyCardModal";
 
@@ -30,6 +30,10 @@ export default function CompanyCardGold({
   const [showModal, setShowModal] = useState(false);
   const [newCompanyId, setNewCompanyId] = useState(companyId);
 
+  // شعار الشركة (لوجو)
+  const [localLogo, setLocalLogo] = useState(logo);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
   const t = {
     ar: {
       cardTitle: "بطاقة تأهيل",
@@ -50,6 +54,9 @@ export default function CompanyCardGold({
       idNumber: companyId,
       cancel: "إلغاء",
       save: "حفظ",
+      uploadingLogo: "جاري رفع الشعار...",
+      logoUploaded: "تم رفع الشعار بنجاح",
+      logoUploadError: "فشل رفع الشعار",
     },
     en: {
       cardTitle: "Taheel Card",
@@ -70,6 +77,9 @@ export default function CompanyCardGold({
       idNumber: companyId,
       cancel: "Cancel",
       save: "Save",
+      uploadingLogo: "Uploading logo...",
+      logoUploaded: "Logo uploaded successfully",
+      logoUploadError: "Logo upload failed",
     },
   }[lang === "en" ? "en" : "ar"];
 
@@ -82,12 +92,13 @@ export default function CompanyCardGold({
   // رفع وتحديث لوجو الشركة في فايرستور
   const handleLogoChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
+      setUploadingLogo(true);
       const file = e.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
       formData.append('sessionId', companyId);
 
-      let url = logo;
+      let url = localLogo;
       try {
         const res = await fetch('/api/upload-to-gcs', {
           method: 'POST',
@@ -96,8 +107,11 @@ export default function CompanyCardGold({
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
         url = data.url;
+        setLocalLogo(url);
+        setUploadingLogo(false);
       } catch (error) {
-        alert(lang === "ar" ? "حدث خطأ أثناء رفع الشعار" : "Error uploading logo");
+        setUploadingLogo(false);
+        alert(lang === "ar" ? t.logoUploadError : t.logoUploadError);
         return;
       }
 
@@ -172,7 +186,7 @@ export default function CompanyCardGold({
         </div>
       )}
 
-      {/* لوجو */}
+      {/* اللوجو الثابت */}
       <div className="w-full flex justify-center items-center mt-5 mb-1 z-10 relative">
         <div className="w-16 h-16 rounded-full bg-white border flex items-center justify-center shadow-sm"
           style={{ borderColor: goldBorder }}>
@@ -193,14 +207,20 @@ export default function CompanyCardGold({
       {/* صورة وQR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
         <div className="relative group">
-          <Image src={logo} width={90} height={90} alt={name} className="rounded-xl border-2" style={{ borderColor: goldMain, backgroundColor: "#f7f7f7" }} />
+          <Image src={localLogo} width={90} height={90} alt={name} className="rounded-xl border-2" style={{ borderColor: goldMain, backgroundColor: "#f7f7f7" }} />
+          {/* زر الكاميرا لتغيير الشعار */}
           <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-yellow-400 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
-            <FaCamera className="text-yellow-700" size={18} />
+            {uploadingLogo ? (
+              <FaSpinner className="text-yellow-700 animate-spin" size={18} />
+            ) : (
+              <FaCamera className="text-yellow-700" size={18} />
+            )}
             <input
               type="file"
               accept="image/*"
               style={{ display: "none" }}
               onChange={handleLogoChange}
+              disabled={uploadingLogo}
             />
           </label>
         </div>
@@ -302,7 +322,7 @@ export default function CompanyCardGold({
           onSave={handleModalSave}
           onClose={() => setShowModal(false)}
           locale={lang}
-          logo={logo}
+          logo={localLogo}
         />
       )}
     </div>
