@@ -62,8 +62,7 @@ export default function ServicesSection({ lang = "ar" }) {
     repeatable: false,
   });
   const [editingId, setEditingId] = useState(null);
-  const [editService, setEditService] = useState({});
-  const [editDocumentsFields, setEditDocumentsFields] = useState([]);
+  const [editMode, setEditMode] = useState(false); // الجديد: وضع التعديل
 
   // جلب كل الخدمات من Firestore كحقول داخل document الفئة
   useEffect(() => {
@@ -100,18 +99,6 @@ export default function ServicesSection({ lang = "ar" }) {
       )
     );
   }, [documentsCount, newService.requiredDocuments]);
-
-  // تحديث الحقول عند تغيير عدد المستندات المطلوبة (لتعديل خدمة)
-  useEffect(() => {
-    if (editingId && editService.requireUpload) {
-      setEditDocumentsFields(
-        Array.from(
-          { length: editService.requiredDocuments ? editService.requiredDocuments.length : 1 },
-          (_, i) => editService.requiredDocuments[i] || ""
-        )
-      );
-    }
-  }, [editService.requiredDocuments, editingId, editService.requireUpload]);
 
   // تحديث الكوينات فقط عند تغير السعر
   useEffect(() => {
@@ -172,6 +159,8 @@ export default function ServicesSection({ lang = "ar" }) {
     setDocumentsFields([""]);
     setDocumentsCount(1);
     setShowAdd(false);
+    setEditMode(false); // إعادة وضع التعديل
+    setEditingId(null);
     setLoading(false);
   }
 
@@ -197,24 +186,42 @@ export default function ServicesSection({ lang = "ar" }) {
     e.preventDefault();
     setLoading(true);
     const { tax, clientPrice } = calcAll(
-      editService.price,
-      editService.printingFee
+      newService.price,
+      newService.printingFee
     );
     await updateDoc(doc(db, "servicesByClientType", clientType), {
       [editingId]: {
-        ...editService,
-        price: Number(editService.price),
-        printingFee: Number(editService.printingFee),
-        coins: Number(editService.coins),
-        profit: Number(editService.printingFee),
+        ...newService,
+        price: Number(newService.price),
+        printingFee: Number(newService.printingFee),
+        coins: Number(newService.coins),
+        profit: Number(newService.printingFee),
         tax: Number(tax),
         clientPrice: Number(clientPrice),
-        requiredDocuments: editService.requireUpload
-          ? editDocumentsFields.map((s) => s.trim()).filter(Boolean)
+        requiredDocuments: newService.requireUpload
+          ? documentsFields.map((s) => s.trim()).filter(Boolean)
           : [],
       },
     });
     setEditingId(null);
+    setEditMode(false);
+    setNewService({
+      name: "",
+      description: "",
+      category: clientType,
+      subcategory: "",
+      provider: "",
+      price: "",
+      printingFee: "",
+      coins: "",
+      requiredDocuments: [],
+      duration: "",
+      requireUpload: false,
+      repeatable: false,
+    });
+    setDocumentsFields([""]);
+    setDocumentsCount(1);
+    setShowAdd(false);
     setLoading(false);
   }
 
@@ -252,7 +259,29 @@ export default function ServicesSection({ lang = "ar" }) {
               ))}
           </select>
           <button
-            onClick={() => setShowAdd((v) => !v)}
+            onClick={() => {
+              setShowAdd((v) => !v);
+              if (showAdd) {
+                setEditMode(false);
+                setEditingId(null);
+                setNewService({
+                  name: "",
+                  description: "",
+                  category: clientType,
+                  subcategory: "",
+                  provider: "",
+                  price: "",
+                  printingFee: "",
+                  coins: "",
+                  requiredDocuments: [],
+                  duration: "",
+                  requireUpload: false,
+                  repeatable: false,
+                });
+                setDocumentsFields([""]);
+                setDocumentsCount(1);
+              }
+            }}
             className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer"
           >
             {lang === "ar"
@@ -283,10 +312,10 @@ export default function ServicesSection({ lang = "ar" }) {
         ))}
       </div>
 
-      {/* نموذج إضافة خدمة */}
+      {/* نموذج إضافة أو تعديل خدمة */}
       {showAdd && (
         <form
-          onSubmit={handleAddService}
+          onSubmit={editMode ? handleEditService : handleAddService}
           className="bg-cyan-50 rounded-lg p-4 mb-6 shadow flex flex-col gap-2 border border-cyan-200"
         >
           <div className="flex flex-col md:flex-row gap-2">
@@ -494,12 +523,49 @@ export default function ServicesSection({ lang = "ar" }) {
               ? "خدمة متعددة (يمكن للعميل تحديد عدد مرات التنفيذ)"
               : "Repeatable service (Client can specify quantity)"}
           </label>
-          <button
-            disabled={loading}
-            className="px-4 py-2 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 self-end transition cursor-pointer"
-          >
-            {lang === "ar" ? "إضافة الخدمة" : "Add Service"}
-          </button>
+          <div className="flex gap-2 self-end">
+            {editMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMode(false);
+                  setEditingId(null);
+                  setNewService({
+                    name: "",
+                    description: "",
+                    category: clientType,
+                    subcategory: "",
+                    provider: "",
+                    price: "",
+                    printingFee: "",
+                    coins: "",
+                    requiredDocuments: [],
+                    duration: "",
+                    requireUpload: false,
+                    repeatable: false,
+                  });
+                  setDocumentsFields([""]);
+                  setDocumentsCount(1);
+                  setShowAdd(false);
+                }}
+                className="px-4 py-2 rounded bg-gray-400 hover:bg-gray-600 text-white font-bold shadow mt-2 transition cursor-pointer"
+              >
+                {lang === "ar" ? "إلغاء التعديل" : "Cancel Edit"}
+              </button>
+            )}
+            <button
+              disabled={loading}
+              className="px-4 py-2 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 transition cursor-pointer"
+            >
+              {lang === "ar"
+                ? editMode
+                  ? "تعديل الخدمة"
+                  : "إضافة الخدمة"
+                : editMode
+                ? "Edit Service"
+                : "Add Service"}
+            </button>
+          </div>
         </form>
       )}
 
@@ -527,356 +593,148 @@ export default function ServicesSection({ lang = "ar" }) {
             </tr>
           </thead>
           <tbody>
-            {filteredServices.map((service) =>
-              editingId === service.id ? (
-                <tr key={service.id} className="bg-cyan-50">
-                  <td className="py-2 px-2 text-xs font-mono text-cyan-800">
-                    {service.serviceId}
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      className="p-1 rounded border w-28 text-cyan-900"
-                      value={editService.name}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          name: e.target.value,
-                        })
+            {filteredServices.map((service) => (
+              <tr
+                key={service.id}
+                className="border-b hover:bg-cyan-50 transition"
+              >
+                <td className="py-2 px-2 text-xs font-mono text-cyan-800">
+                  {service.serviceId}
+                </td>
+                <td className="py-2 px-2 font-bold text-cyan-900">
+                  {service.name}
+                </td>
+                <td className="py-2 px-2 text-cyan-700 whitespace-pre-line">
+                  {service.description}
+                </td>
+                <td className="py-2 px-2">
+                  {
+                    categories.find(
+                      (c) => c.key === service.category
+                    )?.[lang === "ar" ? "label_ar" : "label_en"] ||
+                    service.category
+                  }
+                </td>
+                <td className="py-2 px-2 text-cyan-700">
+                  {service.subcategory}
+                </td>
+                <td className="py-2 px-2 text-cyan-700">
+                  {service.provider}
+                </td>
+                <td className="py-2 px-2 text-cyan-900">
+                  {service.price} د.إ
+                </td>
+                <td className="py-2 px-2 text-cyan-900">
+                  {service.printingFee || 0} د.إ
+                </td>
+                <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
+                  {service.tax}
+                </td>
+                <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
+                  {service.clientPrice}
+                </td>
+                <td className="py-2 px-2 text-cyan-900">
+                  {service.coins}
+                </td>
+                <td className="py-2 px-2 text-cyan-700">
+                  {service.duration}
+                </td>
+                <td className="py-2 px-2 text-xs text-cyan-800">
+                  {Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
+                    ? service.requiredDocuments.map((d, i) => <div key={i}>{d}</div>)
+                    : "-"}
+                </td>
+                <td className="py-2 px-2">
+                  {service.requireUpload ? (
+                    <span
+                      title={
+                        lang === "ar"
+                          ? "يتطلب رفع مستند"
+                          : "Requires document upload"
                       }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <textarea
-                      className="p-1 rounded border w-32 text-cyan-900"
-                      rows={2}
-                      value={editService.description || ""}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <select
-                      className="p-1 rounded border text-cyan-900"
-                      value={editService.category}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          category: e.target.value,
-                        })
-                      }
+                      className="inline-block w-5 h-5 bg-cyan-700 rounded text-white font-bold text-center leading-5"
                     >
-                      {categories
-                        .filter((c) => c.key !== "all")
-                        .map((cat) => (
-                          <option value={cat.key} key={cat.key}>
-                            {lang === "ar" ? cat.label_ar : cat.label_en}
-                          </option>
-                        ))}
-                    </select>
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      className="p-1 rounded border w-20 text-cyan-900"
-                      value={editService.subcategory}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          subcategory: e.target.value,
-                        })
+                      ✓
+                    </span>
+                  ) : (
+                    <span
+                      title={
+                        lang === "ar"
+                          ? "لا يتطلب"
+                          : "Not required"
                       }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      className="p-1 rounded border w-20 text-cyan-900"
-                      value={editService.provider}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          provider: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="number"
-                      className="p-1 rounded border w-16 text-cyan-900"
-                      value={editService.price}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          price: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="number"
-                      className="p-1 rounded border w-16 text-cyan-900"
-                      value={editService.printingFee}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          printingFee: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
-                    {calcAll(editService.price, editService.printingFee).tax}
-                  </td>
-                  <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
-                    {calcAll(editService.price, editService.printingFee)
-                      .clientPrice}
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="number"
-                      className="p-1 rounded border w-12 text-cyan-900"
-                      value={editService.coins}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          coins: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      className="p-1 rounded border w-20 text-cyan-900"
-                      value={editService.duration}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          duration: e.target.value,
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    {editService.requireUpload &&
-                      editDocumentsFields.map((docName, i) => (
-                        <input
-                          key={i}
-                          className="p-1 rounded border w-32 text-cyan-900 mb-1"
-                          value={docName}
-                          onChange={(e) => {
-                            const docs = [...editDocumentsFields];
-                            docs[i] = e.target.value;
-                            setEditDocumentsFields(docs);
-                            setEditService((es) => ({
-                              ...es,
-                              requiredDocuments: docs,
-                            }));
-                          }}
-                        />
-                      ))}
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="checkbox"
-                      checked={!!editService.requireUpload}
-                      onChange={(e) => {
-                        setEditService({
-                          ...editService,
-                          requireUpload: e.target.checked,
-                        });
-                        if (!e.target.checked) setEditDocumentsFields([""]);
-                      }}
-                      className="accent-cyan-700 w-5 h-5 cursor-pointer"
-                    />
-                    {editService.requireUpload && (
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        className="w-10 ml-1 p-1 rounded border text-cyan-900 font-bold"
-                        value={editDocumentsFields.length}
-                        onChange={(e) => {
-                          const count = Number(e.target.value);
-                          setEditDocumentsFields((prev) =>
-                            Array.from(
-                              { length: count },
-                              (v, i) => prev[i] || ""
-                            )
-                          );
-                          setEditService((es) => ({
-                            ...es,
-                            requiredDocuments: Array.from(
-                              { length: count },
-                              (v, i) => editDocumentsFields[i] || ""
-                            ),
-                          }));
-                        }}
-                      />
-                    )}
-                  </td>
-                  <td className="py-2 px-2">
-                    <input
-                      type="checkbox"
-                      checked={!!editService.repeatable}
-                      onChange={(e) =>
-                        setEditService({
-                          ...editService,
-                          repeatable: e.target.checked,
-                        })
-                      }
-                      className="accent-cyan-700 w-5 h-5 cursor-pointer"
-                    />
-                  </td>
-                  <td className="py-2 px-2">
-                    <button
-                      onClick={handleEditService}
-                      className="px-2 py-1 bg-cyan-700 hover:bg-cyan-900 text-white rounded mx-1 transition cursor-pointer"
+                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
                     >
-                      {lang === "ar" ? "حفظ" : "Save"}
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="px-2 py-1 bg-gray-400 hover:bg-gray-600 text-white rounded mx-1 transition cursor-pointer"
+                      ×
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 px-2">
+                  {service.repeatable ? (
+                    <span
+                      title={
+                        lang === "ar"
+                          ? "خدمة متعددة"
+                          : "Repeatable"
+                      }
+                      className="inline-block w-5 h-5 bg-emerald-700 rounded text-white font-bold text-center leading-5"
                     >
-                      {lang === "ar" ? "إلغاء" : "Cancel"}
-                    </button>
-                  </td>
-                </tr>
-              ) : (
-                <tr
-                  key={service.id}
-                  className="border-b hover:bg-cyan-50 transition"
-                >
-                  <td className="py-2 px-2 text-xs font-mono text-cyan-800">
-                    {service.serviceId}
-                  </td>
-                  <td className="py-2 px-2 font-bold text-cyan-900">
-                    {service.name}
-                  </td>
-                  <td className="py-2 px-2 text-cyan-700 whitespace-pre-line">
-                    {service.description}
-                  </td>
-                  <td className="py-2 px-2">
-                    {
-                      categories.find(
-                        (c) => c.key === service.category
-                      )?.[lang === "ar" ? "label_ar" : "label_en"] ||
-                      service.category
-                    }
-                  </td>
-                  <td className="py-2 px-2 text-cyan-700">
-                    {service.subcategory}
-                  </td>
-                  <td className="py-2 px-2 text-cyan-700">
-                    {service.provider}
-                  </td>
-                  <td className="py-2 px-2 text-cyan-900">
-                    {service.price} د.إ
-                  </td>
-                  <td className="py-2 px-2 text-cyan-900">
-                    {service.printingFee || 0} د.إ
-                  </td>
-                  <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
-                    {service.tax}
-                  </td>
-                  <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
-                    {service.clientPrice}
-                  </td>
-                  <td className="py-2 px-2 text-cyan-900">
-                    {service.coins}
-                  </td>
-                  <td className="py-2 px-2 text-cyan-700">
-                    {service.duration}
-                  </td>
-                  <td className="py-2 px-2 text-xs text-cyan-800">
-                    {Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
-                      ? service.requiredDocuments.map((d, i) => <div key={i}>{d}</div>)
-                      : "-"}
-                  </td>
-                  <td className="py-2 px-2">
-                    {service.requireUpload ? (
-                      <span
-                        title={
-                          lang === "ar"
-                            ? "يتطلب رفع مستند"
-                            : "Requires document upload"
-                        }
-                        className="inline-block w-5 h-5 bg-cyan-700 rounded text-white font-bold text-center leading-5"
-                      >
-                        ✓
-                      </span>
-                    ) : (
-                      <span
-                        title={
-                          lang === "ar"
-                            ? "لا يتطلب"
-                            : "Not required"
-                        }
-                        className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
-                      >
-                        ×
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 px-2">
-                    {service.repeatable ? (
-                      <span
-                        title={
-                          lang === "ar"
-                            ? "خدمة متعددة"
-                            : "Repeatable"
-                        }
-                        className="inline-block w-5 h-5 bg-emerald-700 rounded text-white font-bold text-center leading-5"
-                      >
-                        ✓
-                      </span>
-                    ) : (
-                      <span
-                        title={
-                          lang === "ar"
-                            ? "خدمة مرة واحدة"
-                            : "One time"
-                        }
-                        className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
-                      >
-                        ×
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2 px-2">
-                    <button
-                      onClick={() => {
-                        setEditingId(service.id);
-                        setEditService({
-                          ...service,
-                          requiredDocuments: Array.isArray(service.requiredDocuments)
-                            ? service.requiredDocuments
-                            : [],
-                        });
-                        setEditDocumentsFields(
-                          Array.isArray(service.requiredDocuments)
-                            ? service.requiredDocuments
-                            : [""]
-                        );
-                      }}
-                      className="px-2 py-1 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer"
+                      ✓
+                    </span>
+                  ) : (
+                    <span
+                      title={
+                        lang === "ar"
+                          ? "خدمة مرة واحدة"
+                          : "One time"
+                      }
+                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
                     >
-                      {lang === "ar" ? "تعديل" : "Edit"}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteService(service.id)}
-                      className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer"
-                    >
-                      {lang === "ar" ? "حذف" : "Delete"}
-                    </button>
-                  </td>
-                </tr>
-              )
-            )}
+                      ×
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 px-2">
+                  <button
+                    onClick={() => {
+                      setEditMode(true);
+                      setShowAdd(true);
+                      setEditingId(service.id);
+                      setNewService({
+                        ...service,
+                        price: service.price ?? "",
+                        printingFee: service.printingFee ?? "",
+                        coins: service.coins ?? "",
+                        requireUpload: !!service.requireUpload,
+                        repeatable: !!service.repeatable,
+                        requiredDocuments: Array.isArray(service.requiredDocuments)
+                          ? service.requiredDocuments
+                          : [""],
+                      });
+                      setDocumentsFields(
+                        Array.isArray(service.requiredDocuments)
+                          ? service.requiredDocuments
+                          : [""]
+                      );
+                      setDocumentsCount(
+                        Array.isArray(service.requiredDocuments)
+                          ? service.requiredDocuments.length
+                          : 1
+                      );
+                    }}
+                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer"
+                  >
+                    {lang === "ar" ? "تعديل" : "Edit"}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteService(service.id)}
+                    className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer"
+                  >
+                    {lang === "ar" ? "حذف" : "Delete"}
+                  </button>
+                </td>
+              </tr>
+            ))}
             {filteredServices.length === 0 && (
               <tr>
                 <td colSpan={16} className="py-6 text-gray-400">
