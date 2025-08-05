@@ -16,7 +16,7 @@ export default function OwnerCard({
   const [owner, setOwner] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // صورة المالك
+  // صورة المالك (كصورة شخصية)
   const [localPhoto, setLocalPhoto] = useState("/profile-user.png");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -30,9 +30,7 @@ export default function OwnerCard({
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const data = snap.data();
-          setOwner({
-            ...data,
-          });
+          setOwner({ ...data });
           setLocalPhoto(data.ownerPhoto || "/profile-user.png");
         } else {
           setOwner(null);
@@ -56,8 +54,6 @@ export default function OwnerCard({
       expiryDate: "تاريخ انتهاء الإقامة",
       nationality: "الجنسية",
       gender: "الجنس",
-      passport: "جواز السفر",
-      eid: "الإقامة",
       email: "البريد الإلكتروني",
       phone: "رقم الجوال",
       upload: "تعديل صورة المالك",
@@ -76,8 +72,6 @@ export default function OwnerCard({
       expiryDate: "Residence Expiry Date",
       nationality: "Nationality",
       gender: "Gender",
-      passport: "Passport",
-      eid: "Residence ID",
       email: "Email",
       phone: "Mobile Number",
       upload: "Edit Owner Photo",
@@ -105,7 +99,6 @@ export default function OwnerCard({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('sessionId', companyId + "-owner");
-
       let url = localPhoto;
       try {
         const res = await fetch('/api/upload-to-gcs', {
@@ -116,7 +109,6 @@ export default function OwnerCard({
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
         url = data.url;
         setLocalPhoto(url);
-        // حفظ الرابط الجديد في فايرستور
         await updateDoc(doc(firestore, "users", companyId), { ownerPhoto: url });
         setOwner((prev) => ({ ...prev, ownerPhoto: url }));
         setUploadingPhoto(false);
@@ -128,13 +120,13 @@ export default function OwnerCard({
   };
 
   const dir = lang === "ar" ? "rtl" : "ltr";
-  // لون احترافي بنفسجي فاتح هادي
-  const main = "#6f8cff";
-  const border = "#a2b8ff";
-  const dark = "#4e5fb0";
-  const gradFrom = "#f3f6ff";
-  const gradVia = "#e4eaff";
-  const gradTo = "#dbe7ff";
+  // لون مختلف وهادئ (بنفسجي-أزرق)
+  const main = "#6e8cf4";
+  const border = "#b1c6f3";
+  const dark = "#4664a7";
+  const gradFrom = "#f4f7ff";
+  const gradVia = "#dde6fa";
+  const gradTo = "#b1c6f3";
 
   if (loading)
     return <div style={{ textAlign: "center", padding: "1.5em" }}>...جاري تحميل بيانات المالك</div>;
@@ -168,7 +160,7 @@ export default function OwnerCard({
 
       {/* إشعار */}
       {expiring && (
-        <div className="absolute top-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-r from-indigo-700 to-indigo-400 text-white px-3 py-1 rounded-t-3xl text-xs font-bold z-20 animate-pulse">
+        <div className="absolute top-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-r from-blue-700 to-blue-400 text-white px-3 py-1 rounded-t-3xl text-xs font-bold z-20 animate-pulse">
           <FaBell className="inline mr-1" />
           {expired
             ? t.expired
@@ -179,26 +171,11 @@ export default function OwnerCard({
         </div>
       )}
 
-      {/* صورة المالك */}
+      {/* اللوجو الثابت */}
       <div className="w-full flex justify-center items-center mt-5 mb-1 z-10 relative">
         <div className="w-16 h-16 rounded-full bg-white border flex items-center justify-center shadow-sm"
           style={{ borderColor: border }}>
-          <Image src={localPhoto} width={76} height={76} alt={owner.ownerFirstName + " " + owner.ownerLastName} className="rounded-full border border-indigo-200 object-cover" />
-          {/* زر الكاميرا لتغيير الصورة */}
-          <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-indigo-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
-            {uploadingPhoto ? (
-              <FaSpinner className="text-indigo-600 animate-spin" size={18} />
-            ) : (
-              <FaCamera className="text-indigo-600" size={18} />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handlePhotoChange}
-              disabled={uploadingPhoto}
-            />
-          </label>
+          <Image src="/logo-transparent-large.png" width={56} height={56} alt="Taheel Logo" />
         </div>
       </div>
 
@@ -214,15 +191,29 @@ export default function OwnerCard({
 
       {/* صورة وQR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
+        <div className="relative group">
+          <Image src={localPhoto} width={90} height={90} alt="صورة المالك" className="rounded-xl border-2" style={{ borderColor: main, backgroundColor: "#f7f7f7" }} />
+          {/* زر الكاميرا لتغيير الصورة */}
+          <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-blue-400 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
+            {uploadingPhoto ? (
+              <FaSpinner className="text-blue-700 animate-spin" size={18} />
+            ) : (
+              <FaCamera className="text-blue-700" size={18} />
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handlePhotoChange}
+              disabled={uploadingPhoto}
+            />
+          </label>
+        </div>
         <div className="flex flex-col items-center flex-1 px-2" />
         <div className="flex flex-col items-center">
           <div className="bg-white p-0 rounded-xl shadow border-2 w-[90px] h-[90px] flex items-center justify-center"
             style={{ borderColor: border }}>
-            <StyledQRCode
-              key={owner.ownerEidNumber}
-              value={owner.ownerEidNumber || "NO-EID"}
-              size={82}
-            />
+            <StyledQRCode key={owner.ownerEidNumber} value={owner.ownerEidNumber || "NO-EID"} size={82} />
           </div>
           <span className="mt-1 text-[11px] font-mono font-bold tracking-widest" style={{ color: main }}>
             {owner.ownerEidNumber || "NO-EID"}
