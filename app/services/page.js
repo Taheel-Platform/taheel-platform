@@ -4,12 +4,11 @@ import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { firestore } from "@/lib/firebase.client";
-import { collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { FaGlobe, FaWhatsapp } from "react-icons/fa";
 import { motion } from "framer-motion";
-import { GlobalLoader } from "@/components/GlobalLoader";
-import { doc, getDoc } from "firebase/firestore"; 
-import { collection, getDocs } from "firebase/firestore";
+import { GlobalLoader } from "@/components/GlobalLoader"; 
+
 
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
