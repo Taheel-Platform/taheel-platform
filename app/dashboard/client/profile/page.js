@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   FaSignOutAlt,
   FaBell,
@@ -20,7 +20,7 @@ import OwnerCard from "@/components/cards/OwnerCard";
 import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 import { NonResidentCard } from "@/components/cards/NonResidentCard";
 import ClientOrdersTracking from "@/components/ClientOrdersTracking";
-import { firestore } from "@/lib/firebase.client";
+import { firestore, auth } from "@/lib/firebase.client";
 import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
@@ -29,7 +29,6 @@ import { motion } from "framer-motion";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
-// استدعاء مكونات المحفظة والكوينز
 import WalletWidget from "@/components/WalletWidget";
 import CoinsWidget from "@/components/CoinsWidget";
 
@@ -47,7 +46,6 @@ function getDayGreeting(lang = "ar") {
   }
 }
 
-// استخدم اسم العميل من فير-بيز (firstName + middleName + lastName)
 function getFullName(client, lang = "ar") {
   if (!client) return "";
   if (lang === "ar") {
@@ -109,8 +107,15 @@ function SectionTitle({ icon, color = "emerald", children }) {
 
 // ========== Main Component ==========
 function ClientProfilePageInner({ userId }) {
+  const router = useRouter();
+
   // ---------- States & Refs ----------
-  const [lang, setLang] = useState("ar");
+  const [lang, setLang] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("lang") || "ar";
+    }
+    return "ar";
+  });
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState("personal");
   const [client, setClient] = useState(null);
@@ -166,27 +171,27 @@ function ClientProfilePageInner({ userId }) {
       }
       setCompanies(relatedCompanies);
 
-// جلب الخدمات مباشرة من document الفئة
-const types = ["resident", "company", "nonresident", "other"];
-let servicesByType = {
-  resident: [],
-  nonresident: [],
-  company: [],
-  other: [],
-};
+      // جلب الخدمات مباشرة من document الفئة
+      const types = ["resident", "company", "nonresident", "other"];
+      let servicesByType = {
+        resident: [],
+        nonresident: [],
+        company: [],
+        other: [],
+      };
 
-for (const type of types) {
-  const docRef = doc(firestore, "servicesByClientType", type);
-  const snap = await getDoc(docRef);
-  const data = snap.exists() ? snap.data() : {};
-  // فقط الحقول التي تبدأ بـ service
-  const arr = Object.entries(data)
-    .filter(([key]) => key.startsWith("service"))
-    .map(([key, val]) => ({ ...val, id: key }));
-  // يمكنك فلترة الخدمات غير المفعلة هنا إذا أردت
-  servicesByType[type] = arr.filter(srv => srv.active !== false);
-}
-setServices(servicesByType);
+      for (const type of types) {
+        const docRef = doc(firestore, "servicesByClientType", type);
+        const snap = await getDoc(docRef);
+        const data = snap.exists() ? snap.data() : {};
+        // فقط الحقول التي تبدأ بـ service
+        const arr = Object.entries(data)
+          .filter(([key]) => key.startsWith("service"))
+          .map(([key, val]) => ({ ...val, id: key }));
+        // يمكنك فلترة الخدمات غير المفعلة هنا إذا أردت
+        servicesByType[type] = arr.filter(srv => srv.active !== false);
+      }
+      setServices(servicesByType);
 
       const ordersSnap = await getDocs(
         query(
@@ -223,6 +228,12 @@ setServices(servicesByType);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("lang", lang);
+    }
+  }, [lang]);
+
   // ---------- Data Processing ----------
   const clientType = (client?.type || client?.accountType || "").toLowerCase();
   const residentServices = objectToArray(services.resident);
@@ -242,15 +253,26 @@ setServices(servicesByType);
 
   // ---------- Event Handlers ----------
   function toggleLang() {
-    setLang(l => (l === "ar" ? "en" : "ar"));
+    setLang(l => {
+      const newLang = l === "ar" ? "en" : "ar";
+      if (typeof window !== "undefined") {
+        localStorage.setItem("lang", newLang);
+      }
+      return newLang;
+    });
   }
+
   function handleServicePaid() {
     setReloadClient(v => !v);
   }
+
   async function markNotifAsRead(notifId) {
     await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
-    setReloadClient(v => !v);
+    setNotifications(nots => nots.map(n =>
+      n.notificationId === notifId ? { ...n, isRead: true } : n
+    ));
   }
+
   async function handleWalletCharge(amount) {
     if (!client) return;
     window.Paytabs.open({
@@ -297,6 +319,7 @@ setServices(servicesByType);
       }
     });
   }
+
   async function handleLogout() {
     if (client?.userId) {
       const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
@@ -310,6 +333,7 @@ setServices(servicesByType);
     await signOut(auth);
     router.replace("/login");
   }
+
   function filterService(service) {
     return (lang === "ar" ? service.name : (service.name_en || service.name))
       .toLowerCase()
@@ -374,7 +398,6 @@ setServices(servicesByType);
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
             <span className="text-white text-base sm:text-lg font-bold whitespace-nowrap">
-              {/* صباح الخير، مرحباً محمد عيد */}
               {`${getDayGreeting(lang)}, مرحباً ${getFullName(client, lang)}`}
             </span>
           </div>
@@ -404,30 +427,29 @@ setServices(servicesByType);
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
                 {lang === "ar" ? "المحفظة" : "Wallet"}
               </span>
-
             </div>
             {/* Notifications */}
             <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
               <motion.button
-  type="button"
-  className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
-  tabIndex={0}
-  style={{ minWidth: 36, minHeight: 36 }}
-  onClick={() => setShowNotifMenu(v => !v)}
-  whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
-  whileTap={{ scale: 0.97 }}
-  transition={{ type: "spring", stiffness: 250, damping: 18 }}
->
-  <FaBell
-    className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-400 drop-shadow-lg transition-all duration-150"
-    style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
-  />
-  {notifications.some(n => !n.isRead) && (
-    <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
-      {notifications.filter(n => !n.isRead).length}
-    </span>
-  )}
-</motion.button>
+                type="button"
+                className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+                tabIndex={0}
+                style={{ minWidth: 36, minHeight: 36 }}
+                onClick={() => setShowNotifMenu(v => !v)}
+                whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 250, damping: 18 }}
+              >
+                <FaBell
+                  className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-400 drop-shadow-lg transition-all duration-150"
+                  style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
+                />
+                {notifications.some(n => !n.isRead) && (
+                  <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </motion.button>
               {notifications.some(n => !n.isRead) && (
                 <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
                   {notifications.filter(n => !n.isRead).length}
@@ -469,25 +491,25 @@ setServices(servicesByType);
             {/* Messages */}
             <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
               <motion.button
-  type="button"
-  className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
-  tabIndex={0}
-  style={{ minWidth: 36, minHeight: 36 }}
-  onClick={() => setShowMessagesMenu(v => !v)}
-  whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
-  whileTap={{ scale: 0.97 }}
-  transition={{ type: "spring", stiffness: 250, damping: 18 }}
->
-  <FaEnvelopeOpenText
-    className="text-[27px] sm:text-[29px] lg:text-[32px] text-cyan-400 drop-shadow-lg transition-all duration-150"
-    style={{ filter: "drop-shadow(0 2px 8px #06b6d455)" }}
-  />
-  {client.unreadMessages > 0 && (
-    <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
-      {client.unreadMessages}
-    </span>
-  )}
-</motion.button>
+                type="button"
+                className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+                tabIndex={0}
+                style={{ minWidth: 36, minHeight: 36 }}
+                onClick={() => setShowMessagesMenu(v => !v)}
+                whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
+                whileTap={{ scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 250, damping: 18 }}
+              >
+                <FaEnvelopeOpenText
+                  className="text-[27px] sm:text-[29px] lg:text-[32px] text-cyan-400 drop-shadow-lg transition-all duration-150"
+                  style={{ filter: "drop-shadow(0 2px 8px #06b6d455)" }}
+                />
+                {client.unreadMessages > 0 && (
+                  <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
+                    {client.unreadMessages}
+                  </span>
+                )}
+              </motion.button>
               {client.unreadMessages > 0 && (
                 <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
                   {client.unreadMessages}
@@ -583,36 +605,36 @@ setServices(servicesByType);
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 {sectionToServices[selectedSection].filter(filterFn).map((srv, i) => (
                   <ServiceProfileCard
-  key={srv.name + i}
-  category={selectedSection.replace("Services", "")}
-  name={srv.name}
-  name_en={srv.name_en}
-  description={srv.description}
-  description_en={srv.description_en}
-  price={srv.price}                    // ✅ السعر الأساسي
-  printingFee={srv.printingFee}        // ✅ رسوم الطباعة
-  tax={srv.tax}                        // ✅ الضريبة
-  clientPrice={srv.clientPrice}        // ✅ السعر النهائي (لو متوفر)
-  duration={srv.duration}
-  requiredDocuments={srv.requiredDocuments || srv.documents || []} // ✅ صح
-  requireUpload={srv.requireUpload}
-  coins={srv.coins || 0}
-  lang={lang}
-  userId={client.userId}
-  userWallet={client.walletBalance || 0}
-  userCoins={client.coins || 0}
-  onPaid={handleServicePaid}
-  coinsPercent={0.1}
-  addNotification={addNotification}
-  serviceId={srv.serviceId}
-  repeatable={srv.repeatable}
-  allowPaperCount={srv.allowPaperCount}
-  pricePerPage={srv.pricePerPage}
-  userEmail={client.email}
-  longDescription={srv.longDescription}
-  longDescription_en={srv.longDescription_en}
-  setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
-/>
+                    key={srv.name + i}
+                    category={selectedSection.replace("Services", "")}
+                    name={srv.name}
+                    name_en={srv.name_en}
+                    description={srv.description}
+                    description_en={srv.description_en}
+                    price={srv.price}
+                    printingFee={srv.printingFee}
+                    tax={srv.tax}
+                    clientPrice={srv.clientPrice}
+                    duration={srv.duration}
+                    requiredDocuments={srv.requiredDocuments || srv.documents || []}
+                    requireUpload={srv.requireUpload}
+                    coins={srv.coins || 0}
+                    lang={lang}
+                    userId={client.userId}
+                    userWallet={client.walletBalance || 0}
+                    userCoins={client.coins || 0}
+                    onPaid={handleServicePaid}
+                    coinsPercent={0.1}
+                    addNotification={addNotification}
+                    serviceId={srv.serviceId}
+                    repeatable={srv.repeatable}
+                    allowPaperCount={srv.allowPaperCount}
+                    pricePerPage={srv.pricePerPage}
+                    userEmail={client.email}
+                    longDescription={srv.longDescription}
+                    longDescription_en={srv.longDescription_en}
+                    setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
+                  />
                 ))}
               </div>
             </>
