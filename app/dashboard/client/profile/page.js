@@ -11,7 +11,9 @@ import {
   FaWhatsapp,
   FaComments,
   FaBuilding,
-  FaTag
+  FaTag,
+  FaMoon,
+  FaSun
 } from "react-icons/fa";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import { ResidentCard } from "@/components/cards/ResidentCard";
@@ -25,7 +27,7 @@ import { signOut } from "firebase/auth";
 import { GlobalLoader } from "@/components/GlobalLoader";
 import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
@@ -116,8 +118,19 @@ function ClientProfilePageInner({ userId }) {
     }
     return "ar";
   });
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("darkMode") === "true";
+    }
+    return false;
+  });
   const [openChat, setOpenChat] = useState(false);
-  const [selectedSection, setSelectedSection] = useState("personal");
+  const [selectedSection, setSelectedSection] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("selectedSection") || "personal";
+    }
+    return "personal";
+  });
   const [client, setClient] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
@@ -135,6 +148,24 @@ function ClientProfilePageInner({ userId }) {
   const walletRef = useRef();
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
+
+  // ========= SESSION AUTO LOGOUT =========
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleLogout();
+      alert(lang === "ar" ? "انتهت الجلسة! يرجى تسجيل الدخول مرة أخرى." : "Session expired! Please login again.");
+    }, 1800000); // 30 دقيقة
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line
+  }, [client]);
+
+  // ========= SECURE SESSION =========
+  useEffect(() => {
+    // إذا لم يكن فيه مستخدم (أو لم يعد مسجلاً)، حول للوج إن
+    if (client === null && !loading) {
+      router.replace("/login");
+    }
+  }, [client, loading, router]);
 
   // ---------- Effects ----------
   useEffect(() => {
@@ -228,11 +259,22 @@ function ClientProfilePageInner({ userId }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // حفظ اللغة والدارك مود والقسم المختار بعد التغيير
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("lang", lang);
     }
   }, [lang]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("darkMode", darkMode);
+    }
+  }, [darkMode]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedSection", selectedSection);
+    }
+  }, [selectedSection]);
 
   // ---------- Data Processing ----------
   const clientType = (client?.type || client?.accountType || "").toLowerCase();
@@ -260,6 +302,19 @@ function ClientProfilePageInner({ userId }) {
       }
       return newLang;
     });
+  }
+
+  function toggleDarkMode() {
+    setDarkMode(dm => {
+      const newVal = !dm;
+      if (typeof window !== "undefined") localStorage.setItem("darkMode", newVal);
+      return newVal;
+    });
+  }
+
+  function handleSectionChange(section) {
+    setSelectedSection(section);
+    if (typeof window !== "undefined") localStorage.setItem("selectedSection", section);
   }
 
   function handleServicePaid() {
@@ -357,47 +412,79 @@ function ClientProfilePageInner({ userId }) {
     );
   }
 
+  // ====== Dark mode transition animation ======
+  const darkBgVariants = {
+    initial: { opacity: 0 },
+    animate: { opacity: darkMode ? 1 : 0, transition: { duration: 0.7 } },
+    exit: { opacity: 0, transition: { duration: 0.5 } }
+  };
+
   // ---------- Main Render ----------
   return (
     <div
-      className="min-h-screen flex font-sans bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] relative"
+      className={`
+        min-h-screen flex font-sans relative transition-colors duration-700
+        ${darkMode
+          ? "bg-gray-900 text-white"
+          : "bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] text-gray-900"
+        }
+      `}
       dir={dir}
       lang={lang}
     >
+      {/* Dark overlay */}
+      <AnimatePresence>
+        {darkMode && (
+          <motion.div
+            key="dark-bg"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={darkBgVariants}
+            className="fixed inset-0 z-[1] bg-gray-900 pointer-events-none"
+            style={{ transition: "opacity 0.7s" }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <Sidebar
         selected={selectedSection}
-        onSelect={setSelectedSection}
+        onSelect={handleSectionChange}
         lang={lang}
         clientType={clientType}
       />
 
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative z-10">
         {/* Decorations */}
         <div className="absolute inset-0 pointer-events-none z-0">
-          <div className="absolute -top-32 -left-20 w-[280px] h-[280px] bg-emerald-400 opacity-20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute top-0 right-0 w-[170px] h-[170px] bg-gradient-to-br from-emerald-900 to-emerald-400 opacity-30 rounded-full blur-2xl" />
-          <svg className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30" viewBox="0 0 500 80" fill="none">
-            <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
-          </svg>
+          {!darkMode && (
+            <>
+              <div className="absolute -top-32 -left-20 w-[280px] h-[280px] bg-emerald-400 opacity-20 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute top-0 right-0 w-[170px] h-[170px] bg-gradient-to-br from-emerald-900 to-emerald-400 opacity-30 rounded-full blur-2xl" />
+              <svg className="absolute bottom-0 left-0 w-full h-24 md:h-32 opacity-30" viewBox="0 0 500 80" fill="none">
+                <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
+              </svg>
+            </>
+          )}
         </div>
 
         {/* Header */}
-        <header className="w-full z-30 bg-gradient-to-b from-[#0b131e]/95 to-[#22304a]/90 flex items-center justify-between px-2 sm:px-8 py-4 border-b border-emerald-900 shadow-xl sticky top-0">
+        <header className={`w-full z-30 ${darkMode ? "bg-gray-900/95" : "bg-gradient-to-b from-[#0b131e]/95 to-[#22304a]/90"} flex items-center justify-between px-2 sm:px-8 py-4 border-b border-emerald-900 shadow-xl sticky top-0 transition-colors duration-700`}>
           {/* Logo + info */}
           <div className="flex items-center gap-3 min-w-[230px]">
             <Image src="/logo-transparent-large.png" alt="شعار تأهيل" width={54} height={54} className="rounded-full bg-white ring-2 ring-emerald-400 shadow" priority />
             <div className="flex flex-col items-center text-center">
-              <span className="text-emerald-400 text-2xl sm:text-3xl font-extrabold">تأهيل</span>
-              <span className="text-gray-100 text-lg sm:text-xl font-bold tracking-widest">TAHEEL</span>
-              <span className="text-emerald-200 text-sm sm:text-base font-semibold my-1">
+              <span className={`${darkMode ? "text-emerald-300" : "text-emerald-400"} text-2xl sm:text-3xl font-extrabold`}>تأهيل</span>
+              <span className={`${darkMode ? "text-gray-200" : "text-gray-100"} text-lg sm:text-xl font-bold tracking-widest`}>TAHEEL</span>
+              <span className={`${darkMode ? "text-emerald-100" : "text-emerald-200"} text-sm sm:text-base font-semibold my-1`}>
                 لمتابعة المعلومات والمعاملات والخدمات
               </span>
             </div>
           </div>
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
-            <span className="text-white text-base sm:text-lg font-bold whitespace-nowrap">
+            <span className={`${darkMode ? "text-gray-100" : "text-white"} text-base sm:text-lg font-bold whitespace-nowrap`}>
               {`${getDayGreeting(lang)}, مرحباً ${getFullName(client, lang)}`}
             </span>
           </div>
@@ -406,11 +493,11 @@ function ClientProfilePageInner({ userId }) {
             {/* Coins */}
             <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu(v => !v)}>
               <CoinsWidget coins={client.coins || 0} lang={lang} />
-              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+              <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "الرصيد" : "Coins"}
               </span>
               {showCoinsMenu && (
-                <div className="absolute top-10 right-0 w-56 bg-white shadow-xl rounded-lg p-4 z-50">
+                <div className={`absolute top-10 right-0 w-56 shadow-xl rounded-lg p-4 z-50 ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}>
                   <div className="font-bold text-yellow-600 mb-2">{lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}</div>
                   <div className="text-2xl font-black text-yellow-500">{client.coins || 0}</div>
                   <div className="text-xs text-gray-600 mt-2">
@@ -424,7 +511,7 @@ function ClientProfilePageInner({ userId }) {
             {/* Wallet */}
             <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu(v => !v)}>
               <WalletWidget balance={client.walletBalance || 0} onCharge={handleWalletCharge} lang={lang} />
-              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+              <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "المحفظة" : "Wallet"}
               </span>
             </div>
@@ -441,7 +528,7 @@ function ClientProfilePageInner({ userId }) {
                 transition={{ type: "spring", stiffness: 250, damping: 18 }}
               >
                 <FaBell
-                  className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-400 drop-shadow-lg transition-all duration-150"
+                  className={`text-[27px] sm:text-[29px] lg:text-[32px] ${darkMode ? "text-emerald-300" : "text-emerald-400"} drop-shadow-lg transition-all duration-150`}
                   style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
                 />
                 {notifications.some(n => !n.isRead) && (
@@ -455,11 +542,11 @@ function ClientProfilePageInner({ userId }) {
                   {notifications.filter(n => !n.isRead).length}
                 </span>
               )}
-              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+              <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "الإشعارات" : "Notifications"}
               </span>
               {showNotifMenu && (
-                <div className="absolute top-10 right-0 w-72 bg-white shadow-xl rounded-lg p-4 z-50">
+                <div className={`absolute top-10 right-0 w-72 shadow-xl rounded-lg p-4 z-50 ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}>
                   <div className="font-bold text-emerald-700 mb-3">{lang === "ar" ? "الإشعارات" : "Notifications"}</div>
                   {notifications.length === 0 ? (
                     <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</div>
@@ -501,7 +588,7 @@ function ClientProfilePageInner({ userId }) {
                 transition={{ type: "spring", stiffness: 250, damping: 18 }}
               >
                 <FaEnvelopeOpenText
-                  className="text-[27px] sm:text-[29px] lg:text-[32px] text-cyan-400 drop-shadow-lg transition-all duration-150"
+                  className={`text-[27px] sm:text-[29px] lg:text-[32px] ${darkMode ? "text-cyan-300" : "text-cyan-400"} drop-shadow-lg transition-all duration-150`}
                   style={{ filter: "drop-shadow(0 2px 8px #06b6d455)" }}
                 />
                 {client.unreadMessages > 0 && (
@@ -515,11 +602,11 @@ function ClientProfilePageInner({ userId }) {
                   {client.unreadMessages}
                 </span>
               )}
-              <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
+              <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "الرسائل الواردة" : "Admin Messages"}
               </span>
               {showMessagesMenu && (
-                <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
+                <div className={`absolute top-10 right-0 w-64 shadow-xl rounded-lg p-4 z-50 ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}>
                   <div className="font-bold text-cyan-800 mb-2">{lang === "ar" ? "الرسائل" : "Messages"}</div>
                   {client.messages && client.messages.length > 0 ? (
                     <ul className="space-y-2 max-h-60 overflow-y-auto">
@@ -542,6 +629,22 @@ function ClientProfilePageInner({ userId }) {
             <span className="hidden sm:inline">
               <WeatherTimeWidget isArabic={lang === "ar"} />
             </span>
+            <button
+              onClick={toggleDarkMode}
+              className={`
+                px-3 py-1.5 rounded-full border text-xs sm:text-sm font-bold shadow transition cursor-pointer
+                ${darkMode
+                  ? "bg-emerald-800 text-white border-emerald-400 hover:bg-emerald-600"
+                  : "bg-[#16222c] text-emerald-200 border-emerald-500 hover:bg-emerald-500 hover:text-white"
+                }
+              `}
+              title={darkMode ? "الوضع الفاتح" : "الوضع الداكن"}
+            >
+              <span className="flex items-center gap-2">
+                {darkMode ? <FaSun /> : <FaMoon />}
+                {darkMode ? (lang === "ar" ? "الوضع الفاتح" : "Light Mode") : (lang === "ar" ? "الوضع الداكن" : "Dark Mode")}
+              </span>
+            </button>
             <button
               onClick={toggleLang}
               className="px-3 py-1.5 rounded-full border border-emerald-500 bg-[#16222c] text-emerald-200 hover:bg-emerald-500 hover:text-white text-xs sm:text-sm font-bold shadow transition cursor-pointer"
