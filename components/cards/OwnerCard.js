@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
-import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
+import { FaBell, FaCamera, FaSpinner } from "react-icons/fa";
 import Image from "next/image";
 
 // Firestore imports
@@ -9,7 +9,6 @@ import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export default function OwnerCard({
-  ownerId,
   companyId,
   lang = "ar",
 }) {
@@ -31,23 +30,8 @@ export default function OwnerCard({
         const snap = await getDoc(ref);
         if (snap.exists()) {
           const data = snap.data();
-          // بيانات المالك داخل وثيقة الشركة
           setOwner({
-            ownerFirstName: data.ownerFirstName || "",
-            ownerMiddleName: data.ownerMiddleName || "",
-            ownerLastName: data.ownerLastName || "",
-            ownerNameEn: data.ownerNameEn || "",
-            ownerBirthDate: data.ownerBirthDate || "",
-            ownerNationality: data.ownerNationality || "",
-            ownerGender: data.ownerGender || "",
-            ownerPassportNumber: data.ownerPassportNumber || "",
-            ownerPassportExpiry: data.ownerPassportExpiry || "",
-            ownerEidNumber: data.ownerEidNumber || "",
-            ownerEidExpiry: data.ownerEidExpiry || "",
-            ownerPhoto: data.ownerPhoto || "/profile-user.png",
-            ownerEmail: data.ownerEmail || "",
-            ownerPhone: data.ownerPhone || "",
-            ownerId: data.ownerId || "",
+            ...data,
           });
           setLocalPhoto(data.ownerPhoto || "/profile-user.png");
         } else {
@@ -66,10 +50,10 @@ export default function OwnerCard({
     ar: {
       cardTitle: "بطاقة مالك الشركة",
       cardType: "مالك شركة",
-      expired: "⚠️ انتهت صلاحية الهوية! يرجى التجديد فوراً.",
-      expiresToday: "⚠️ تنتهي الهوية اليوم!",
-      expiresIn: (n) => `تنبيه: ستنتهي الهوية خلال ${n} يوم${n === 1 ? "" : "ًا"}!`,
-      expiryDate: "تاريخ انتهاء جواز السفر",
+      expired: "⚠️ انتهت صلاحية الإقامة! يرجى التجديد فوراً.",
+      expiresToday: "⚠️ تنتهي الإقامة اليوم!",
+      expiresIn: (n) => `تنبيه: ستنتهي الإقامة خلال ${n} يوم${n === 1 ? "" : "ًا"}!`,
+      expiryDate: "تاريخ انتهاء الإقامة",
       nationality: "الجنسية",
       gender: "الجنس",
       passport: "جواز السفر",
@@ -86,10 +70,10 @@ export default function OwnerCard({
     en: {
       cardTitle: "Company Owner Card",
       cardType: "Company Owner",
-      expired: "⚠️ The ID has expired! Please renew immediately.",
-      expiresToday: "⚠️ The ID expires today!",
-      expiresIn: (n) => `Alert: The ID will expire in ${n} day${n === 1 ? "" : "s"}!`,
-      expiryDate: "Passport Expiry Date",
+      expired: "⚠️ The residence has expired! Please renew immediately.",
+      expiresToday: "⚠️ The residence expires today!",
+      expiresIn: (n) => `Alert: The residence will expire in ${n} day${n === 1 ? "" : "s"}!`,
+      expiryDate: "Residence Expiry Date",
       nationality: "Nationality",
       gender: "Gender",
       passport: "Passport",
@@ -105,7 +89,7 @@ export default function OwnerCard({
     },
   }[lang === "en" ? "en" : "ar"];
 
-  // تاريخ الانتهاء (جواز السفر)
+  // تاريخ الانتهاء (الإقامة)
   const expireDate = owner?.ownerEidExpiry || "2026-06-01";
   const expire = new Date(expireDate);
   const now = new Date();
@@ -144,13 +128,13 @@ export default function OwnerCard({
   };
 
   const dir = lang === "ar" ? "rtl" : "ltr";
-  // لون احترافي - أزرق-بنفسجي متدرج أنيق
-  const main = "#5069d6";
-  const border = "#3a4a7c";
-  const dark = "#2d3568";
-  const gradFrom = "#eaf1ff";
-  const gradVia = "#dbe3ff";
-  const gradTo = "#b6b6ee";
+  // لون احترافي بنفسجي فاتح هادي
+  const main = "#6f8cff";
+  const border = "#a2b8ff";
+  const dark = "#4e5fb0";
+  const gradFrom = "#f3f6ff";
+  const gradVia = "#e4eaff";
+  const gradTo = "#dbe7ff";
 
   if (loading)
     return <div style={{ textAlign: "center", padding: "1.5em" }}>...جاري تحميل بيانات المالك</div>;
@@ -184,7 +168,7 @@ export default function OwnerCard({
 
       {/* إشعار */}
       {expiring && (
-        <div className="absolute top-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-r from-indigo-700 to-blue-400 text-white px-3 py-1 rounded-t-3xl text-xs font-bold z-20 animate-pulse">
+        <div className="absolute top-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-r from-indigo-700 to-indigo-400 text-white px-3 py-1 rounded-t-3xl text-xs font-bold z-20 animate-pulse">
           <FaBell className="inline mr-1" />
           {expired
             ? t.expired
@@ -197,14 +181,11 @@ export default function OwnerCard({
 
       {/* صورة المالك */}
       <div className="w-full flex justify-center items-center mt-5 mb-1 z-10 relative">
-        <div className="w-20 h-20 rounded-full bg-white border flex items-center justify-center shadow-sm"
+        <div className="w-16 h-16 rounded-full bg-white border flex items-center justify-center shadow-sm"
           style={{ borderColor: border }}>
-          <Image src={localPhoto} width={76} height={76}
-            alt={owner.ownerFirstName + " " + owner.ownerLastName}
-            className="rounded-full border border-indigo-200 object-cover"
-          />
+          <Image src={localPhoto} width={76} height={76} alt={owner.ownerFirstName + " " + owner.ownerLastName} className="rounded-full border border-indigo-200 object-cover" />
           {/* زر الكاميرا لتغيير الصورة */}
-          <label className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md border border-indigo-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
+          <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-indigo-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
             {uploadingPhoto ? (
               <FaSpinner className="text-indigo-600 animate-spin" size={18} />
             ) : (
@@ -231,26 +212,26 @@ export default function OwnerCard({
       <div className="absolute left-0 top-0 h-full w-2 rounded-l-3xl"
         style={{ background: `linear-gradient(to bottom, ${main} 0%, ${dark} 100%)`, zIndex: 10 }} />
 
-      {/* QR كود ورقم جواز السفر */}
+      {/* صورة وQR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
         <div className="flex flex-col items-center flex-1 px-2" />
         <div className="flex flex-col items-center">
           <div className="bg-white p-0 rounded-xl shadow border-2 w-[90px] h-[90px] flex items-center justify-center"
             style={{ borderColor: border }}>
             <StyledQRCode
-              key={owner.ownerPassportNumber}
-              value={owner.ownerPassportNumber || "NO-PASS"}
+              key={owner.ownerEidNumber}
+              value={owner.ownerEidNumber || "NO-EID"}
               size={82}
             />
           </div>
           <span className="mt-1 text-[11px] font-mono font-bold tracking-widest" style={{ color: main }}>
-            {owner.ownerPassportNumber || "NO-PASS"}
+            {owner.ownerEidNumber || "NO-EID"}
           </span>
         </div>
       </div>
 
       {/* بيانات المالك */}
-      <div className="flex flex-col items-center justify-center mt-4 mb-2 px-4 relative z-10">
+      <div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
         <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={owner.ownerFirstName + " " + owner.ownerMiddleName + " " + owner.ownerLastName}>
           {owner.ownerFirstName + " " + owner.ownerMiddleName + " " + owner.ownerLastName}
         </span>
@@ -268,7 +249,7 @@ export default function OwnerCard({
         </span>
       </div>
 
-      {/* تاريخ انتهاء جواز السفر */}
+      {/* تاريخ الانتهاء ورقم الإقامة */}
       <div className="flex items-end justify-between px-4 pb-4 mt-2 relative z-10">
         <div className="flex flex-col items-end ml-2">
           <span className="text-[13px] font-bold text-gray-700">{t.expiryDate}</span>
@@ -278,7 +259,7 @@ export default function OwnerCard({
         </div>
         <div className="flex flex-col items-center">
           <span className="text-[12px] text-gray-500 font-mono font-bold tracking-widest transition">
-            {owner.ownerPassportNumber}
+            {owner.ownerEidNumber}
           </span>
         </div>
       </div>
