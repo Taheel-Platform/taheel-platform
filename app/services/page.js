@@ -95,7 +95,7 @@ export default function ServicesPage() {
     setFilteredServices(newFiltered);
   }, [searchTerm, services]);
   // ---- (انتهى البحث) ----
-
+console.log("DATA:", data);
 useEffect(() => {
   async function fetchServices() {
     setLoading(true);
