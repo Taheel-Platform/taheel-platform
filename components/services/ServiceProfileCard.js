@@ -408,19 +408,25 @@ export default function ServiceProfileCard({
     : (longDescription_en || longDescription || "");
 
   // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
-  function renderDetailsTable() {
-    // LOG 3: عند فتح جدول التفاصيل
-    console.log("[CARD DETAILS TABLE]", {
-      price, printingFee, tax, servicePriceTotal, printingTotal, taxTotal, totalServicePrice
-    });
-    return (
+function renderDetailsTable() {
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
+      style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
+      tabIndex={0}
+      onClick={() => setShowDetailTable(false)}
+    >
       <div
-        className="absolute z-40 left-1/2 -translate-x-1/2 top-2 bg-white rounded-xl shadow-2xl border border-emerald-200 w-[98vw] max-w-md p-4"
-        style={{ minWidth: 240 }}
-        tabIndex={0}
-        onMouseLeave={() => setShowDetailTable(false)}
-        onClick={() => setShowDetailTable(false)}
+        className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
+        style={{ minWidth: 250, maxWidth: 380 }}
+        onClick={e => e.stopPropagation()} // يمنع إغلاق النافذة عند الضغط داخلها
       >
+        <button
+          onClick={() => setShowDetailTable(false)}
+          className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
+          title={lang === "ar" ? "إغلاق" : "Close"}
+          style={{ cursor: "pointer" }}
+        >×</button>
         <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
           <tbody>
             <tr>
@@ -481,8 +487,9 @@ export default function ServiceProfileCard({
           {labels.hideDetails}
         </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // ظهور جدول التفاصيل بعد الوقوف 1.5 ثانية
   function handleMouseEnter() {
