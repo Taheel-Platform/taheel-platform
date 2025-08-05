@@ -550,17 +550,23 @@ setServices(servicesByType);
                 <>
                   <CompanyCardGold companyId={client.userId} lang={lang} />
                   <ResidentCard
-                    client={{
-                      firstName: client.ownerFirstName,
-                      middleName: client.ownerMiddleName,
-                      lastName: client.ownerLastName,
-                      birthDate: client.ownerBirthDate,
-                      gender: client.ownerGender,
-                      nationality: client.ownerNationality,
-                      phone: client.phone,
-                    }}
-                    lang={lang}
-                  />
+  client={{
+    firstName: client.ownerFirstName,
+    middleName: client.ownerMiddleName,
+    lastName: client.ownerLastName,
+    nameEn: client.ownerNameEn, // إذا عندك هذا الحقل
+    birthDate: client.ownerBirthDate,
+    gender: client.ownerGender,
+    nationality: client.ownerNationality,
+    phone: client.ownerPhone, // لو كان فيه رقم خاص بالمالك، أو استعمل client.phone
+    eidNumber: client.ownerEidNumber,
+    eidExpiry: client.ownerEidExpiry,
+    passportNumber: client.ownerPassportNumber,
+    passportExpiry: client.ownerPassportExpiry,
+    // أي بيانات أخرى يحتاجها الكارت
+  }}
+  lang={lang}
+/>
                 </>
               )}
             </>
