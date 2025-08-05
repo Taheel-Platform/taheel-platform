@@ -406,7 +406,26 @@ setServices(servicesByType);
             </div>
             {/* Notifications */}
             <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
-              <FaBell size={22} className="text-emerald-300 hover:text-emerald-400 transition" />
+              <motion.button
+  type="button"
+  className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+  tabIndex={0}
+  style={{ minWidth: 36, minHeight: 36 }}
+  onClick={() => setShowNotifMenu(v => !v)}
+  whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
+  whileTap={{ scale: 0.97 }}
+  transition={{ type: "spring", stiffness: 250, damping: 18 }}
+>
+  <FaBell
+    className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-400 drop-shadow-lg transition-all duration-150"
+    style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
+  />
+  {notifications.some(n => !n.isRead) && (
+    <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
+      {notifications.filter(n => !n.isRead).length}
+    </span>
+  )}
+</motion.button>
               {notifications.some(n => !n.isRead) && (
                 <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
                   {notifications.filter(n => !n.isRead).length}
@@ -447,7 +466,26 @@ setServices(servicesByType);
             </div>
             {/* Messages */}
             <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
-              <FaEnvelopeOpenText size={22} className="text-cyan-200 hover:text-cyan-300 transition" />
+              <motion.button
+  type="button"
+  className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+  tabIndex={0}
+  style={{ minWidth: 36, minHeight: 36 }}
+  onClick={() => setShowMessagesMenu(v => !v)}
+  whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
+  whileTap={{ scale: 0.97 }}
+  transition={{ type: "spring", stiffness: 250, damping: 18 }}
+>
+  <FaEnvelopeOpenText
+    className="text-[27px] sm:text-[29px] lg:text-[32px] text-cyan-400 drop-shadow-lg transition-all duration-150"
+    style={{ filter: "drop-shadow(0 2px 8px #06b6d455)" }}
+  />
+  {client.unreadMessages > 0 && (
+    <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
+      {client.unreadMessages}
+    </span>
+  )}
+</motion.button>
               {client.unreadMessages > 0 && (
                 <span className="absolute -top-2 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow">
                   {client.unreadMessages}
