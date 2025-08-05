@@ -1,15 +1,16 @@
 "use client";
 import { useState } from "react";
 import { FaWallet } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 
-// خريطة خيارات الشحن والكوينات المجانية
+// خيارات الشحن والكوينات المجانية
 const rechargeOptions = [
-  { amount: 100, coins: 50, color: "bg-green-100" },
-  { amount: 500, coins: 250, color: "bg-teal-100" },
-  { amount: 1000, coins: 500, color: "bg-yellow-100" },
-  { amount: 5000, coins: 2500, color: "bg-orange-100" },
+  { amount: 100, coins: 50, color: "from-emerald-200 to-emerald-50" },
+  { amount: 500, coins: 250, color: "from-emerald-300 to-yellow-50" },
+  { amount: 1000, coins: 500, color: "from-yellow-200 to-yellow-50" },
+  { amount: 5000, coins: 2500, color: "from-orange-200 to-emerald-50" },
 ];
 
 export default function WalletWidget({
@@ -19,6 +20,7 @@ export default function WalletWidget({
   lang = "ar",
   onBalanceChange,
   onCoinsChange,
+  onPayGateway, // دالة تفتح بوابة الدفع (تستدعيها عند الضغط على الرصيد)
 }) {
   const [showModal, setShowModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -26,7 +28,6 @@ export default function WalletWidget({
   const [wallet, setWallet] = useState(balance);
   const [userCoins, setUserCoins] = useState(coins);
 
-  // تحديث القيم في الأعلى وفي الأعلى لو احتاجت
   function updateLocalBalances(newWallet, newCoins) {
     setWallet(newWallet);
     setUserCoins(newCoins);
@@ -34,7 +35,7 @@ export default function WalletWidget({
     if (typeof onCoinsChange === "function") onCoinsChange(newCoins);
   }
 
-  // دالة الشحن
+  // دالة الشحن الداخلي (اختياري لو فيه بايمنت داخلي)
   async function handleRecharge(amount, coinsBonus) {
     if (!userId) {
       setMsg(lang === "ar" ? "برجاء تسجيل الدخول" : "Please log in");
@@ -73,7 +74,7 @@ export default function WalletWidget({
       setTimeout(() => {
         setShowModal(false);
         setMsg("");
-      }, 2000);
+      }, 1800);
     } catch (err) {
       setMsg(
         <span className="text-red-600 font-bold">
@@ -93,78 +94,125 @@ export default function WalletWidget({
   return (
     <>
       {/* زر المحفظة */}
-      <button
+      <motion.button
         type="button"
-        className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+        className="relative flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-700 border-2 border-emerald-200 shadow-lg rounded-full w-14 h-14 transition hover:scale-105"
         title={valueText}
-        style={{ minWidth: 42, minHeight: 42 }}
         tabIndex={0}
         onClick={() => setShowModal(true)}
+        whileHover={{ scale: 1.07, rotate: -3 }}
       >
-        <FaWallet className="text-emerald-500 text-2xl" />
-        <span className="absolute -top-2 -right-2 bg-emerald-700 text-white text-xs font-bold rounded-full px-1 shadow">
+        <FaWallet className="text-white text-3xl drop-shadow-lg" />
+        <span
+          className="absolute -top-2 -right-2 bg-yellow-400 text-white text-xs font-black rounded-full px-2 shadow border-2 border-white/70"
+          style={{ minWidth: 32 }}
+        >
           {wallet}
         </span>
-      </button>
+      </motion.button>
 
-      {/* مودال خيارات الشحن */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
-          tabIndex={-1}
-          onClick={() => !isPaying && setShowModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-xs w-full p-4 relative"
-            style={{ minWidth: 250, maxWidth: 340 }}
-            onClick={e => e.stopPropagation()}
+      {/* مودال الشحن مع موشن وانسدال */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            tabIndex={-1}
+            onClick={() => !isPaying && setShowModal(false)}
+            style={{ backdropFilter: "blur(3px)" }}
           >
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-              title={lang === "ar" ? "إغلاق" : "Close"}
-              style={{ cursor: "pointer" }}
-              disabled={isPaying}
-            >×</button>
-            <div className="text-center mb-2 text-lg font-bold text-emerald-800">
-              {lang === "ar" ? "شحن المحفظة" : "Recharge Wallet"}
-            </div>
-            <div className="flex flex-col gap-2 mb-3">
-              {rechargeOptions.map(opt => (
-                <button
-                  key={opt.amount}
-                  disabled={isPaying}
-                  onClick={() => handleRecharge(opt.amount, opt.coins)}
-                  className={`
-                    flex justify-between items-center px-4 py-2 rounded-xl shadow font-bold text-[15px]
-                    transition border border-emerald-200
-                    ${opt.color}
-                    hover:bg-emerald-100 hover:scale-105 duration-150
-                    ${isPaying ? "opacity-40 pointer-events-none" : ""}
-                  `}
-                  style={{ direction: "rtl" }}
-                >
-                  <span>
-                    {lang === "ar" ? `شحن ${opt.amount} درهم` : `Recharge ${opt.amount} AED`}
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl border-2 border-emerald-200 max-w-xs w-full p-5 relative flex flex-col gap-4"
+              style={{
+                minWidth: 240,
+                maxWidth: 340,
+                boxShadow: "0 12px 32px 8px #05966922",
+                background: "linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)",
+              }}
+              initial={{ y: -60, opacity: 0, scale: 0.96 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.94 }}
+              transition={{ type: "spring", stiffness: 180, damping: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowModal(false)}
+                className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2 z-20"
+                title={lang === "ar" ? "إغلاق" : "Close"}
+                style={{ cursor: "pointer" }}
+                disabled={isPaying}
+              >×</button>
+
+              {/* رصيد المحفظة (قابل للضغط لفتح بوابة الدفع) */}
+              <motion.div
+                className="flex flex-col items-center gap-1 cursor-pointer select-none"
+                onClick={() => {
+                  if (onPayGateway) onPayGateway();
+                  // يمكنك هنا فتح مودال الدفع الفعلي أو Paytabs
+                }}
+                whileTap={{ scale: 0.97 }}
+                title={lang === "ar" ? "اضغط لإعادة الشحن ببوابة الدفع" : "Click to recharge with payment gateway"}
+              >
+                <span className="text-xl font-extrabold text-emerald-700 drop-shadow-sm flex items-center gap-2">
+                  {wallet}
+                  <span className="text-[14px] text-gray-500 font-bold">
+                    {lang === "ar" ? "درهم" : "AED"}
                   </span>
-                  <span className="text-yellow-700">
-                    +{opt.coins} {lang === "ar" ? "كوين" : "coins"}
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({lang === "ar" ? "مجانا" : "free"})
+                </span>
+                <span className="text-xs text-emerald-600 font-bold">
+                  {lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}
+                </span>
+                <span className="text-xs text-yellow-600 font-bold">
+                  {lang === "ar" ? `كوينات: ${userCoins}` : `Coins: ${userCoins}`}
+                </span>
+                <span className="text-xs text-blue-400 font-bold animate-pulse">
+                  {lang === "ar" ? "اضغط لإعادة الشحن بوسيلة دفع إلكترونية" : "Click to recharge via payment gateway"}
+                </span>
+              </motion.div>
+
+              {/* خيارات الشحن السريعة */}
+              <div className="flex flex-col gap-3 mt-2">
+                {rechargeOptions.map(opt => (
+                  <motion.button
+                    key={opt.amount}
+                    disabled={isPaying}
+                    onClick={() => handleRecharge(opt.amount, opt.coins)}
+                    className={`
+                      flex justify-between items-center px-4 py-2 rounded-xl font-bold text-[15px] border
+                      bg-gradient-to-r ${opt.color}
+                      border-emerald-100 shadow
+                      hover:scale-[1.03] active:scale-95 transition
+                      ${isPaying ? "opacity-40 pointer-events-none" : ""}
+                    `}
+                    style={{ direction: "rtl", boxShadow: "0 4px 14px #05966910" }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <span>
+                      {lang === "ar" ? `شحن ${opt.amount} درهم` : `Recharge ${opt.amount} AED`}
                     </span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div className="text-xs text-gray-600 text-center mb-2 whitespace-pre-line">
-              {lang === "ar"
-                ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد\nواستلام كوينات مجانية حسب قيمة الشحن"
-                : "You can recharge your wallet or pay directly from the balance\nand get free coins with each recharge."}
-            </div>
-            <div className="text-center min-h-[24px]">{msg}</div>
-          </div>
-        </div>
-      )}
+                    <span className="text-yellow-700">
+                      +{opt.coins} {lang === "ar" ? "كوين" : "coins"}
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({lang === "ar" ? "مجانا" : "free"})
+                      </span>
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+
+              <div className="text-xs text-gray-500 text-center mb-0 whitespace-pre-line mt-1">
+                {lang === "ar"
+                  ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد\nواستلام كوينات مجانية حسب قيمة الشحن"
+                  : "You can recharge your wallet or pay directly from the balance\nand get free coins with each recharge."}
+              </div>
+              <div className="text-center min-h-[24px]">{msg}</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -402,43 +402,7 @@ setServices(servicesByType);
               <span className="absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs bg-black/70 text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none">
                 {lang === "ar" ? "المحفظة" : "Wallet"}
               </span>
-              {showWalletMenu && (
-                <div className="absolute top-10 right-0 w-64 bg-white shadow-xl rounded-lg p-4 z-50">
-                  <div className="font-bold text-emerald-700 mb-2">{lang === "ar" ? "رصيد المحفظة" : "Wallet Balance"}</div>
-                  <div className="text-2xl font-black text-emerald-600">{client.walletBalance || 0}</div>
-                  <div className="text-xs text-gray-600 mt-2 mb-4">
-                    {lang === "ar"
-                      ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد."
-                      : "You can top-up or pay directly from your wallet balance."}
-                  </div>
-                  <div className="flex flex-col gap-2 mb-2">
-                    <button
-                      className="w-full py-2 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold shadow"
-                      onClick={() => handleWalletCharge(100)}
-                    >
-                      {lang === "ar" ? "شحن 100 درهم+(50 كوين مجانا)" : "Charge 100 AED (+50 coins)"}
-                    </button>
-                    <button
-                      className="w-full py-2 rounded-full bg-emerald-200 hover:bg-emerald-300 text-emerald-900 font-bold shadow"
-                      onClick={() => handleWalletCharge(500)}
-                    >
-                      {lang === "ar" ? "شحن 500 درهم+(250 كوين مجانا)" : "Charge 500 AED (+250 coins)"}
-                    </button>
-                    <button
-                      className="w-full py-2 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold shadow"
-                      onClick={() => handleWalletCharge(1000)}
-                    >
-                      {lang === "ar" ? "شحن 1000 درهم+(500 كوين مجانا)" : "Charge 1000 AED (+500 coins)"}
-                    </button>
-                    <button
-                      className="w-full py-2 rounded-full bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold shadow"
-                      onClick={() => handleWalletCharge(5000)}
-                    >
-                      {lang === "ar" ? "شحن 5000 درهم+(2500 كوين مجانا)" : "Charge 5000 AED (+2500 coins)"}
-                    </button>
-                  </div>
-                </div>
-              )}
+
             </div>
             {/* Notifications */}
             <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
