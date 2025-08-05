@@ -548,7 +548,7 @@ setServices(servicesByType);
               )}
               {clientType === "company" && (
                 <>
-                  <CompanyCardGold company={client} lang={lang} />
+                  <CompanyCardGold companyId={client.userId} lang={lang} />
                   <ResidentCard
                     client={{
                       firstName: client.ownerFirstName,
