@@ -95,7 +95,7 @@ export default function ServicesPage() {
     setFilteredServices(newFiltered);
   }, [searchTerm, services]);
   // ---- (انتهى البحث) ----
-console.log("DATA:", data);
+
 useEffect(() => {
   async function fetchServices() {
     setLoading(true);
@@ -114,6 +114,7 @@ useEffect(() => {
           data[section][doc.id] = servicePublic;
         });
       }
+      console.log("DATA:", data);
       setServices(data);
     } catch (e) {
       setFirebaseError(e?.message || "خطأ غير معروف في جلب البيانات من Firestore");
