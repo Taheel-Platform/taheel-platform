@@ -638,11 +638,11 @@ function ClientProfilePageInner({ userId }) {
                   : "bg-[#16222c] text-emerald-200 border-emerald-500 hover:bg-emerald-500 hover:text-white"
                 }
               `}
-              title={darkMode ? "الوضع الفاتح" : "الوضع الداكن"}
+              title={darkMode ? "الوضع النهاري" :  "الوضع المظلم"}
             >
               <span className="flex items-center gap-2">
                 {darkMode ? <FaSun /> : <FaMoon />}
-                {darkMode ? (lang === "ar" ? "الوضع الفاتح" : "Light Mode") : (lang === "ar" ? "الوضع الداكن" : "Dark Mode")}
+                {darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
               </span>
             </button>
             <button
