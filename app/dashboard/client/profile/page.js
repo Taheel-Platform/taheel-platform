@@ -590,23 +590,35 @@ setServices(servicesByType);
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 {sectionToServices[selectedSection].filter(filterFn).map((srv, i) => (
                   <ServiceProfileCard
-                    key={srv.name + i}
-                    category={selectedSection.replace("Services", "")}
-                    name={srv.name}
-                    description={srv.description}
-                    price={srv.price}
-                    duration={srv.duration}
-                    requiredDocs={srv.documents || []}
-                    requireUpload={srv.requireUpload}
-                    coins={srv.coins || 0}
-                    lang={lang}
-                    userId={client.userId}
-                    userWallet={client.walletBalance || 0}
-                    userCoins={client.coins || 0}
-                    onPaid={handleServicePaid}
-                    coinsPercent={0.1}
-                    addNotification={addNotification}
-                  />
+  key={srv.name + i}
+  category={selectedSection.replace("Services", "")}
+  name={srv.name}
+  name_en={srv.name_en}
+  description={srv.description}
+  description_en={srv.description_en}
+  price={srv.price}                    // ✅ السعر الأساسي
+  printingFee={srv.printingFee}        // ✅ رسوم الطباعة
+  tax={srv.tax}                        // ✅ الضريبة
+  clientPrice={srv.clientPrice}        // ✅ السعر النهائي (لو متوفر)
+  duration={srv.duration}
+  requiredDocuments={srv.requiredDocuments || srv.documents || []} // ✅ صح
+  requireUpload={srv.requireUpload}
+  coins={srv.coins || 0}
+  lang={lang}
+  userId={client.userId}
+  userWallet={client.walletBalance || 0}
+  userCoins={client.coins || 0}
+  onPaid={handleServicePaid}
+  coinsPercent={0.1}
+  addNotification={addNotification}
+  serviceId={srv.serviceId}
+  repeatable={srv.repeatable}
+  allowPaperCount={srv.allowPaperCount}
+  pricePerPage={srv.pricePerPage}
+  userEmail={client.email}
+  longDescription={srv.longDescription}
+  longDescription_en={srv.longDescription_en}
+/>
                 ))}
               </div>
             </>

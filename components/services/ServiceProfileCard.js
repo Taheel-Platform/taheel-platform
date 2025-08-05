@@ -92,6 +92,13 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
+  // LOG 1: كل البراميترات القادمة
+  console.log("[CARD PROPS]", {
+    category, name, price, printingFee, tax, clientPrice, requiredDocuments,
+    coins, userId, userWallet, userCoins, lang, repeatable, requireUpload, serviceId,
+    allowPaperCount, pricePerPage, userEmail, longDescription, longDescription_en
+  });
+
   // المستندات المطلوبة
   const requiredDocs = requiredDocuments || [];
 
@@ -151,6 +158,12 @@ export default function ServiceProfileCard({
     typeof clientPrice !== "undefined"
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
+
+  // LOG 2: القيم المالية المحسوبة
+  console.log("[CARD CALC]", {
+    servicePriceTotal, printingTotal, taxTotal, totalServicePrice,
+    baseServiceCount, basePaperCount
+  });
 
   // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
@@ -396,6 +409,10 @@ export default function ServiceProfileCard({
 
   // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
   function renderDetailsTable() {
+    // LOG 3: عند فتح جدول التفاصيل
+    console.log("[CARD DETAILS TABLE]", {
+      price, printingFee, tax, servicePriceTotal, printingTotal, taxTotal, totalServicePrice
+    });
     return (
       <div
         className="absolute z-40 left-1/2 -translate-x-1/2 top-2 bg-white rounded-xl shadow-2xl border border-emerald-200 w-[98vw] max-w-md p-4"
@@ -606,6 +623,9 @@ export default function ServiceProfileCard({
               />
             </div>
             {/* جدول مبسط للسعر */}
+            {console.log("[CARD TABLE]", {
+              servicePriceTotal, printingTotal, taxTotal, totalServicePrice
+            })}
             <table className="w-full text-xs text-gray-700 mb-1">
               <tbody>
                 <tr>
