@@ -102,18 +102,16 @@ useEffect(() => {
     setFirebaseError("");
     try {
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
-      for (const section of SECTIONS) {
-        const sectionCol = collection(firestore, "servicesByClientType", section);
-        const querySnapshot = await getDocs(sectionCol);
-        querySnapshot.forEach(doc => {
-          const service = doc.data();
-          const isActive = service.active !== false && service.isActive !== false;
-          if (!isActive) return;
-          // احذف الحقول المالية لو تحب
-          const { price, printingFee, tax, clientPrice, ...servicePublic } = service;
-          data[section][doc.id] = servicePublic;
-        });
-      }
+for (const section of SECTIONS) {
+  const sectionCol = collection(firestore, "servicesByClientType", section);
+  const querySnapshot = await getDocs(sectionCol);
+  querySnapshot.forEach(doc => {
+    const service = doc.data();
+    const isActive = service.active !== false && service.isActive !== false;
+    if (!isActive) return;
+    data[section][doc.id] = service;
+  });
+}
       console.log("DATA:", data);
       setServices(data);
     } catch (e) {
