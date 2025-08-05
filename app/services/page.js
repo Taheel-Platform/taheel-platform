@@ -106,6 +106,10 @@ useEffect(() => {
       for (const section of SECTIONS) {
         const sectionColRef = collection(firestore, "servicesByClientType", section);
         const querySnapshot = await getDocs(sectionColRef);
+
+        // 👈 هنا سيظهر في الكونسول كل الخدمات لهذا القسم
+        console.log("SECTION:", section, "DOCS:", querySnapshot.docs.map(d => d.data()));
+
         querySnapshot.forEach(docSnap => {
           const service = docSnap.data();
           if (service.active === false || service.isActive === false) return;
