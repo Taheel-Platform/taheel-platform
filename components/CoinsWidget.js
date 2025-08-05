@@ -19,27 +19,34 @@ export default function CoinsWidget({ coins = 0, lang = "ar" }) {
   return (
     <motion.button
       type="button"
-      className="relative flex items-center justify-center bg-gradient-to-br from-yellow-100 via-yellow-300 to-yellow-100 border-2 border-yellow-300 shadow-lg rounded-full w-11 h-11 transition hover:scale-105 focus:outline-none cursor-pointer"
+      className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
       title={valueText}
       tabIndex={0}
-      style={{ minWidth: 38, minHeight: 38 }}
+      style={{ minWidth: 36, minHeight: 36 }}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
-      whileHover={{ scale: 1.11, rotate: -7 }}
+      whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.15)" }}
       whileTap={{ scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 250, damping: 18 }}
     >
-      <FaCoins className="text-yellow-500 drop-shadow-lg text-xl" />
-      <span className="absolute -top-2 -right-2 bg-emerald-500 text-yellow-100 text-[11px] font-bold rounded-full px-[6px] py-[1px] shadow border-2 border-white/80">
+      {/* أيقونة فقط بدون دائرة */}
+      <FaCoins
+        className="text-[26px] sm:text-[28px] lg:text-[32px] text-yellow-400 drop-shadow-lg transition-all duration-150"
+        style={{
+          filter: "drop-shadow(0 2px 7px #FFD60088)"
+        }}
+      />
+      <span className="absolute -top-2 -right-2 bg-yellow-400 text-white text-[11px] font-bold rounded-full px-[6px] py-[2px] shadow border-2 border-white/80">
         {coins}
       </span>
       <AnimatePresence>
         {showTooltip && (
           <motion.span
-            className="absolute left-1/2 -translate-x-1/2 top-12 z-50 bg-yellow-50 text-emerald-700 text-xs font-bold rounded px-3 py-1 shadow-xl border border-yellow-300 whitespace-nowrap"
+            className="absolute left-1/2 -translate-x-1/2 top-9 z-50 bg-yellow-50 text-emerald-700 text-xs font-bold rounded px-3 py-1 shadow-xl border border-yellow-200 whitespace-nowrap"
             style={{ pointerEvents: "none" }}
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 14 }}
+            exit={{ opacity: 0, y: 12 }}
             transition={{ duration: 0.16 }}
           >
             {valueText}
