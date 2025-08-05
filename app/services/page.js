@@ -103,21 +103,24 @@ useEffect(() => {
     setFirebaseError("");
     try {
       let data = { resident: {}, nonresident: {}, company: {}, other: {} };
+
       for (const section of SECTIONS) {
-        // هذا هو المسار الصحيح: كولكشن رئيسي ثم كولكشن فرعي
-        const sectionColRef = collection(firestore, "servicesByClientType", section, section);
-        const querySnapshot = await getDocs(sectionColRef);
+        // جلب الدوكيومنت للفئة مباشرة
+        const sectionDocRef = doc(firestore, "servicesByClientType", section);
+        const sectionDocSnap = await getDoc(sectionDocRef);
 
-        // Debug: طباعة ما تم جلبه
-        console.log("SECTION:", section, "DOCS:", querySnapshot.docs.map(d => d.data()));
-
-        querySnapshot.forEach(docSnap => {
-          const service = docSnap.data();
-          // يمكنك حذف شرط الفلترة مؤقتاً لو تريد ظهور كل الخدمات
-          if (service.active === false || service.isActive === false) return;
-          data[section][docSnap.id] = service;
-        });
+        if (sectionDocSnap.exists()) {
+          const docData = sectionDocSnap.data();
+          // استخراج كل الحقول التي تبدأ بـ service فقط
+          Object.entries(docData)
+            .filter(([key]) => key.startsWith("service"))
+            .forEach(([key, service]) => {
+              if (service.active === false || service.isActive === false) return;
+              data[section][key] = service;
+            });
+        }
       }
+
       setServices(data);
     } catch (e) {
       setFirebaseError(e?.message || "خطأ غير معروف في جلب البيانات من Firestore");
