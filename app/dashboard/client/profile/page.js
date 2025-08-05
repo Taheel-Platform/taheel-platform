@@ -618,6 +618,7 @@ setServices(servicesByType);
   userEmail={client.email}
   longDescription={srv.longDescription}
   longDescription_en={srv.longDescription_en}
+  setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
 />
                 ))}
               </div>

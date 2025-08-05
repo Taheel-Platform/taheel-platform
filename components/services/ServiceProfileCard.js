@@ -235,66 +235,81 @@ export default function ServiceProfileCard({
     } catch (err) {}
   }
 
-  async function handlePayment(method, withCoinDiscount = false) {
-    setIsPaying(true);
-    setPayMsg("");
-    try {
-      let currentCoins = Number(coinsBalance) || 0;
-      let currentWallet = Number(wallet) || 0;
-      let amountToPay = totalServicePrice;
-      let discount = 0;
-      const userRef = doc(firestore, "users", userId);
+async function handlePayment(method, withCoinDiscount = false) {
+  setIsPaying(true);
+  setPayMsg("");
+  try {
+    let currentCoins = Number(coinsBalance) || 0;
+    let currentWallet = Number(wallet) || 0;
+    let amountToPay = totalServicePrice;
+    let discount = 0;
 
-      if (withCoinDiscount) {
-        if (currentCoins < 100) {
-          setPayMsg(
-            <span className="text-red-600 font-bold">
-              {lang === "ar" ? "رصيد الكوينات غير كافي" : "Not enough coins"}
-            </span>
-          );
-          setIsPaying(false);
-          return;
-        }
-        discount = Math.floor(amountToPay * 0.1);
-        if (discount < 1) discount = 1;
-        amountToPay = amountToPay - discount;
-        await updateDoc(userRef, { coins: currentCoins - 100 });
-        setCoinsBalance(currentCoins - 100);
-        currentCoins = currentCoins - 100;
-      } else {
-        await updateDoc(userRef, {
-          coins: currentCoins + coins * baseServiceCount,
-        });
-        setCoinsBalance(currentCoins + coins * baseServiceCount);
-        currentCoins = currentCoins + coins * baseServiceCount;
+    if (withCoinDiscount) {
+      // 1. احسب الحد الأقصى للخصم المسموح (10% من رسوم الطباعة فقط)
+      const maxDiscountDirham = printingTotal * 0.10;
+      const maxDiscountCoins = Math.floor(maxDiscountDirham * 100); // عدد الكوينات اللي يقدر يستخدمها
+
+      // 2. الكوينات اللي يقدر العميل يستخدمها (لا تتجاوز رصيده ولا الحد الأعلى)
+      const coinsToUse = Math.min(currentCoins, maxDiscountCoins);
+
+      if (coinsToUse < 1) {
+        setPayMsg(
+          <span className="text-red-600 font-bold">
+            {lang === "ar" ? "رصيد الكوينات غير كافي للخصم" : "Not enough coins for discount"}
+          </span>
+        );
+        setIsPaying(false);
+        return;
       }
 
-      if (method === "wallet") {
-        if (isNaN(currentWallet) || currentWallet <= 0) {
-          setPayMsg(
-            <span className="text-red-600 font-bold">
-              {lang === "ar"
-                ? "المحفظة فارغة، الرجاء إضافة رصيد في المحفظة."
-                : "Wallet is empty, please add balance to your wallet."}
-            </span>
-          );
-          setIsPaying(false);
-          return;
-        }
-        if (currentWallet < amountToPay) {
-          setPayMsg(
-            <span className="text-red-600 font-bold">
-              {lang === "ar"
-                ? "رصيدك في المحفظة غير كافي، الرجاء إضافة رصيد في المحفظة."
-                : "Insufficient wallet balance, please add balance to your wallet."}
-            </span>
-          );
-          setIsPaying(false);
-          return;
-        }
-        await updateDoc(userRef, { walletBalance: currentWallet - amountToPay });
-        setWallet(currentWallet - amountToPay);
+      discount = (coinsToUse * 0.01);
+      amountToPay = amountToPay - discount;
+
+      // خصم الكوينات من رصيد العميل
+      await updateDoc(userRef, { coins: currentCoins - coinsToUse });
+      setCoinsBalance(currentCoins - coinsToUse);
+      if (typeof setCoinsBalance === "function") {
+        setCoinsBalance(currentCoins - coinsToUse);
       }
+      currentCoins = currentCoins - coinsToUse;
+    } else {
+      // إضافة كوينات الخدمة لرصيد العميل
+      const newCoins = currentCoins + coins * baseServiceCount;
+      await updateDoc(userRef, { coins: newCoins });
+      setCoinsBalance(newCoins);
+      if (typeof setCoinsBalance === "function") {
+        setCoinsBalance(newCoins);
+      }
+      currentCoins = newCoins;
+    }
+
+// الدفع من المحفظة
+if (method === "wallet") {
+  if (isNaN(currentWallet) || currentWallet <= 0) {
+    setPayMsg(
+      <span className="text-red-600 font-bold">
+        {lang === "ar"
+          ? "المحفظة فارغة، الرجاء إضافة رصيد في المحفظة."
+          : "Wallet is empty, please add balance to your wallet."}
+      </span>
+    );
+    setIsPaying(false);
+    return;
+  }
+  if (currentWallet < amountToPay) {
+    setPayMsg(
+      <span className="text-red-600 font-bold">
+        {lang === "ar"
+          ? "رصيدك في المحفظة غير كافي، الرجاء إضافة رصيد في المحفظة."
+          : "Insufficient wallet balance, please add balance to your wallet."}
+      </span>
+    );
+    setIsPaying(false);
+    return;
+  }
+  await updateDoc(userRef, { walletBalance: currentWallet - amountToPay });
+  setWallet(currentWallet - amountToPay);
+}
 
       // Gateway code here if needed
 
@@ -774,29 +789,34 @@ function renderDetailsTable() {
           >
             {lang === "ar" ? "ادفع الآن" : "Pay Now"}
           </button>
-          {canUseCoinDiscount && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openCoinDiscountModal();
-              }}
-              className={`
-                w-full py-1.5 rounded-full font-black shadow text-base transition
-                bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 text-white
-                hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-200/90
-                hover:scale-105 duration-150
-                focus:outline-none focus:ring-2 focus:ring-yellow-400
-                cursor-pointer
-                ${!canPay ? "opacity-40 pointer-events-none" : ""}
-              `}
-              style={{ cursor: "pointer" }}
-              disabled={!canPay}
-            >
-              {lang === "ar"
-                ? "خصم 10% مقابل 100 كوين"
-                : "10% discount for 100 coins"}
-            </button>
-          )}
+{canUseCoinDiscount && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      openCoinDiscountModal();
+    }}
+    className={`
+      w-full py-1.5 rounded-full font-black shadow text-base transition
+      bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 text-white
+      hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-200/90
+      hover:scale-105 duration-150
+      focus:outline-none focus:ring-2 focus:ring-yellow-400
+      cursor-pointer
+      ${!canPay ? "opacity-40 pointer-events-none" : ""}
+    `}
+    style={{ cursor: "pointer" }}
+    disabled={!canPay}
+    title={
+      lang === "ar"
+        ? "يمكنك خصم حتى 10% من رسوم الطباعة باستخدام الكوينات المتاحة لديك"
+        : "You can use your available coins to get up to 10% off the printing fee"
+    }
+  >
+    {lang === "ar"
+      ? "استخدم الكوينات للخصم (حتى 10% من رسوم الطباعة)"
+      : "Use coins for discount (up to 10% of printing fee)"}
+  </button>
+)}
         </div>
       </div>
       {/* جدول التفاصيل إذا ضغط أو وقف فترة طويلة */}
