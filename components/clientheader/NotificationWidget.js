@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { FaBell } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
-import { getDocs, query, collection, where, updateDoc, doc } from "firebase/firestore";
+import { getDocs, query, collection, where, updateDoc, doc, deleteDoc } from "firebase/firestore";
 
 export default function NotificationWidget({ userId, lang = "ar", darkMode = false }) {
   const [notifications, setNotifications] = useState([]);
@@ -18,8 +18,28 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
         query(collection(firestore, "notifications"), where("targetId", "==", userId))
       );
       let clientNotifs = notifsSnap.docs.map(d => d.data());
-      clientNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-      setNotifications(clientNotifs);
+      // تصفية الإشعارات الأقدم من 15 يومًا
+      const now = new Date();
+      const filteredNotifs = clientNotifs.filter(n => {
+        if (!n.timestamp) return true;
+        const notifDate = new Date(n.timestamp);
+        const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
+        return diffDays <= 15;
+      });
+      // (اختياري) حذف الإشعارات الأقدم نهائيًا من قاعدة البيانات
+      for (const n of clientNotifs) {
+        if (n.timestamp) {
+          const notifDate = new Date(n.timestamp);
+          const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
+          if (diffDays > 15 && n.notificationId) {
+            try {
+              await deleteDoc(doc(firestore, "notifications", n.notificationId));
+            } catch (e) {/* ignore errors */}
+          }
+        }
+      }
+      filteredNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setNotifications(filteredNotifs);
     }
     fetchNotifications();
   }, [userId]);
@@ -80,7 +100,7 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
           >
             <div className="font-bold text-emerald-700 mb-3">{lang === "ar" ? "الإشعارات" : "Notifications"}</div>
             {notifications.length === 0 ? (
-              <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</div>
+              <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات خلال آخر 15 يوم" : "No notifications in last 15 days"}</div>
             ) : (
               <ul className="space-y-2">
                 {notifications.map((notif, idx) => (
@@ -88,7 +108,7 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
                     key={notif.notificationId || idx}
                     className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
                     onClick={() => {
-                      markNotifAsRead(notif.notificationId);
+                      if (!notif.isRead) markNotifAsRead(notif.notificationId);
                       setActiveNotif(notif);
                     }}
                     title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء وفتح التفاصيل" : "Mark as read and view details")}
