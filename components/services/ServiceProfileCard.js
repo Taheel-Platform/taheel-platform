@@ -9,12 +9,9 @@ import {
   FaTag,
   FaCoins,
 } from "react-icons/fa";
-import { firestore } from "@/lib/firebase.client";
-import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import ServiceUploadModal from "./ServiceUploadModal";
 import { translateText } from "@/lib/translateText";
 
-// رقم الطلب الفريد
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
   const part2 = Math.floor(1000 + Math.random() * 9000);
@@ -91,9 +88,7 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
-  // المستندات المطلوبة
   const requiredDocs = requiredDocuments || [];
-
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
@@ -108,8 +103,8 @@ export default function ServiceProfileCard({
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
 
-  // جدول التفاصيل يظهر عند الوقوف فترة طويلة فقط
-  const [showDetailTable, setShowDetailTable] = useState(false);
+  // نافذة التفاصيل خارج الكارت
+  const [showDetailPopover, setShowDetailPopover] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
 
   useEffect(() => {
@@ -163,7 +158,6 @@ export default function ServiceProfileCard({
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
-  // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
@@ -184,143 +178,110 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // نافذة التفاصيل خارج الكارت منسقة وتعرض كل البيانات مهما كانت
-  function renderDetailsTable() {
+  // نافذة التفاصيل منبثقة صغيرة ومرتبة خارج الكارت
+  function renderDetailPopover() {
     return (
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
-        style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
+        onClick={() => setShowDetailPopover(false)}
         tabIndex={0}
-        onClick={() => setShowDetailTable(false)}
+        style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
       >
         <div
-          className="bg-white rounded-3xl shadow-2xl border border-emerald-300 max-w-lg w-full p-6 relative overflow-y-auto"
-          style={{ minWidth: 280, maxWidth: 430, maxHeight: '80vh' }}
+          className="bg-white rounded-2xl shadow-2xl border border-emerald-300 w-full max-w-xs p-4 relative overflow-y-auto"
+          style={{ minWidth: 240, maxWidth: 350, maxHeight: '80vh' }}
           onClick={e => e.stopPropagation()}
         >
           <button
-            onClick={() => setShowDetailTable(false)}
+            onClick={() => setShowDetailPopover(false)}
             className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
             title={lang === "ar" ? "إغلاق" : "Close"}
             style={{ cursor: "pointer" }}
           >×</button>
-          {/* اسم الخدمة وتصنيفها */}
+          {/* اسم الخدمة والتصنيف */}
           <div className="flex flex-col items-center mb-3">
-            <div className={`flex items-center gap-2 px-3 py-1 text-sm font-black rounded-full shadow ${style.badge} ${style.text}`}>
+            <h3 className="text-lg font-extrabold text-emerald-700 text-center mb-1 break-words">
+              {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
+            </h3>
+            <div className={`flex items-center gap-2 px-3 py-1 text-xs font-black rounded-full shadow ${style.badge} ${style.text}`}>
               {style.icon()}
               <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
             </div>
-            <h3 className="text-2xl font-extrabold text-emerald-700 text-center mt-2 mb-1 break-words">
-              {lang === "en"
-                ? (name_en || translatedName || name || "")
-                : (name || name_en || "")}
-            </h3>
           </div>
           {/* الوصف الكامل */}
-          <div className="mb-2 text-gray-700 text-base whitespace-pre-line text-center font-medium break-words">
+          <div className="mb-2 text-gray-700 text-xs whitespace-pre-line text-center font-medium break-words">
             {lang === "en"
               ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
               : (longDescription || longDescription_en || description || description_en || "")}
           </div>
           {/* المستندات المطلوبة */}
           {requiredDocs.length > 0 && (
-            <div className="mb-4">
-              <span className="block font-bold text-emerald-600 mb-1 text-base text-center">
+            <>
+              <span className="block font-bold text-emerald-600 mb-1 text-xs text-center">
                 <FaFileAlt className="inline mr-1" />
                 {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
               </span>
-              <ul className="list-inside list-disc text-base text-gray-700 mx-auto w-fit text-center space-y-1 mb-2">
+              <ul className="list-inside list-disc text-xs text-gray-700 mx-auto w-fit text-center space-y-1 mb-2">
                 {requiredDocs.map((doc, i) => (
                   <li key={i}>{doc}</li>
                 ))}
               </ul>
-            </div>
+            </>
           )}
-          {/* جدول السعر كامل */}
-          <div className="mb-4">
-            <table className="w-full text-sm text-emerald-900 font-bold border border-emerald-200 rounded-xl shadow mb-2 bg-emerald-50 overflow-hidden">
-              <tbody>
-                <tr>
-                  <td className="p-2">{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-                  <td className="p-2 text-right">
-                    {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                    {repeatable ? ` × ${quantity}` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="p-2">
-                    {lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}
-                    {allowPaperCount ? ` (${lang === "ar" ? "لكل ورقة" : "per page"})` : ""}
-                  </td>
-                  <td className="p-2 text-right">
-                    {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                    {allowPaperCount ? ` × ${paperCount}` : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="p-2">{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
-                  <td className="p-2 text-right">
-                    {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="font-extrabold text-emerald-900 p-2">{lang === "ar" ? "الإجمالي" : "Total"}</td>
-                  <td className="font-extrabold text-emerald-900 p-2 text-right">
-                    {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          {/* مدخلات الخدمة */}
-          {repeatable && (
-            <div className="flex flex-col items-center mb-2 w-full">
-              <label className="text-xs font-bold text-gray-600 mb-1">
-                {lang === "ar" ? "عدد مرات الخدمة" : "Quantity"}
-              </label>
-              <span className="font-bold">{quantity}</span>
-            </div>
-          )}
-          {allowPaperCount && (
-            <div className="flex flex-col items-center mb-2 w-full">
-              <label className="text-xs font-bold text-gray-600 mb-1">
-                {lang === "ar" ? "عدد الأوراق" : "Pages"}
-              </label>
-              <span className="font-bold">{paperCount}</span>
-            </div>
-          )}
-          {/* أضف هنا أي بيانات إضافية تريدها للنافذة! */}
+          {/* جدول السعر مختصر */}
+          <table className="w-full text-xs text-emerald-900 font-bold border border-emerald-200 rounded-xl shadow mb-2 bg-emerald-50 overflow-hidden">
+            <tbody>
+              <tr>
+                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+                <td className="text-right">
+                  {price} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
+                <td className="text-right">
+                  {printingFee} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "الإجمالي" : "Total"}</td>
+                <td className="font-extrabold text-emerald-900 text-right">
+                  {(Number(price) + Number(printingFee))} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     );
   }
 
-  // ظهور جدول التفاصيل بعد الوقوف 2 ثانية
+  // ظهور النافذة بعد hover 2 ثانية
   function handleMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setHoverTimeout(
-      setTimeout(() => {
-        setShowDetailTable(true);
-      }, 2000) // ثانيتين بالضبط
+      setTimeout(() => setShowDetailPopover(true), 2000)
     );
   }
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    setShowDetailTable(false);
+    setShowDetailPopover(false);
   }
 
-  // باقي الكارت زي ماهو بالضبط بدون وصف ولا مستندات داخله
   return (
     <div
       className={`
         group relative w-full max-w-sm min-w-[242px] h-[auto] flex flex-col
-        rounded-2xl border-0
-        shadow-lg shadow-emerald-100/60 hover:shadow-emerald-300/70
-        transition-all duration-300 overflow-hidden
-        bg-gradient-to-br ${style.gradient} backdrop-blur-xl
-        ring-1 ${style.ring}
-        cursor-pointer
+        rounded-2xl border-0 shadow-lg shadow-emerald-100/60 hover:shadow-emerald-300/70
+        transition-all duration-300 overflow-hidden bg-gradient-to-br ${style.gradient} backdrop-blur-xl
+        ring-1 ${style.ring} cursor-pointer
       `}
+      tabIndex={0}
+      role="button"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={() => setShowDetailPopover(true)}
+      onTouchEnd={() => setShowDetailPopover(false)}
       style={{
         border: "none",
         backdropFilter: "blur(6px)",
@@ -331,14 +292,8 @@ export default function ServiceProfileCard({
         maxHeight: 340,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
+        justifyContent: 'space-between'
       }}
-      tabIndex={0}
-      role="button"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onTouchStart={() => setShowDetailTable(true)}
-      onTouchEnd={() => setShowDetailTable(false)}
     >
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
@@ -477,7 +432,6 @@ export default function ServiceProfileCard({
           </button>
         </div>
       )}
-      {/* مودال رفع المستندات زي ماهو */}
       <ServiceUploadModal
         open={showDocsModal}
         onClose={closeDocsModal}
@@ -488,7 +442,6 @@ export default function ServiceProfileCard({
         lang={lang}
         service={{ serviceId, name: name }}
       />
-      {/* أزرار الدفع زي ماهي */}
       <div className="mt-auto w-full flex flex-col gap-2 px-3 pb-3">
         <button
           onClick={(e) => {
@@ -511,7 +464,7 @@ export default function ServiceProfileCard({
         </button>
       </div>
       {/* نافذة التفاصيل خارج الكارت عند الوقوف 2 ثانية */}
-      {showDetailTable && renderDetailsTable()}
+      {showDetailPopover && renderDetailPopover()}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
