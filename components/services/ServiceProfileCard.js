@@ -105,7 +105,6 @@ export default function ServiceProfileCard({
 
   // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
   const [showTooltip, setShowTooltip] = useState(false);
-  const [hoverTimeout, setHoverTimeout] = useState(null);
   const cardRef = useRef();
 
   useEffect(() => {
@@ -245,7 +244,12 @@ export default function ServiceProfileCard({
   }
 
   // Tooltip يظهر فقط عند الوقوف على اسم الخدمة وليس الكارت كله
-
+  function handleNameMouseEnter() {
+    setShowTooltip(true);
+  }
+  function handleNameMouseLeave() {
+    setShowTooltip(false);
+  }
 
   // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
   function getServiceNameFontSize() {
@@ -307,29 +311,29 @@ export default function ServiceProfileCard({
       {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
       <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
         <h3
-  className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
-  style={{
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    width: "100%",
-    minHeight: "30px",
-    lineHeight: "1.15",
-    display: "block",
-    cursor: "pointer"
-  }}
-  title={
-    lang === "en"
-      ? (name_en || translatedName || name || "")
-      : (name || name_en || "")
-  }
-  onMouseEnter={handleNameMouseEnter}
-  onMouseLeave={handleNameMouseLeave}
->
-  {lang === "en"
-    ? (name_en || translatedName || name || "")
-    : (name || name_en || "")}
-</h3>
+          className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            width: "100%",
+            minHeight: "30px",
+            lineHeight: "1.15",
+            display: "block",
+            cursor: "pointer"
+          }}
+          title={
+            lang === "en"
+              ? (name_en || translatedName || name || "")
+              : (name || name_en || "")
+          }
+          onMouseEnter={handleNameMouseEnter}
+          onMouseLeave={handleNameMouseLeave}
+        >
+          {lang === "en"
+            ? (name_en || translatedName || name || "")
+            : (name || name_en || "")}
+        </h3>
         {showTooltip && renderTooltip()}
       </div>
       {/* عناصر السعر وزرار التقديم بشكل مرتب وكبير */}
