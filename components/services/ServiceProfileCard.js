@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   FaFileAlt,
   FaBuilding,
@@ -93,9 +93,10 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
+  // المستندات المطلوبة
   const requiredDocs = requiredDocuments || [];
-  const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
 
+  const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -109,29 +110,10 @@ export default function ServiceProfileCard({
   const [uploadedDocs, setUploadedDocs] = useState({});
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [hoverTimeout, setHoverTimeout] = useState(null);
 
-  // Responsive font size for card name
-  const nameRef = useRef(null);
-  useEffect(() => {
-    const adjustFontSize = () => {
-      const el = nameRef.current;
-      if (el) {
-        el.style.fontSize = "2rem"; // default large
-        el.style.whiteSpace = "nowrap";
-        el.style.lineHeight = "1.1";
-        let fontSize = 32;
-        while (el.scrollWidth > el.offsetWidth && fontSize > 16) {
-          fontSize -= 2;
-          el.style.fontSize = fontSize + "px";
-        }
-      }
-    };
-    adjustFontSize();
-    window.addEventListener("resize", adjustFontSize);
-    return () => window.removeEventListener("resize", adjustFontSize);
-  }, [name, name_en, translatedName, lang]);
+  // جدول التفاصيل يظهر عند الوقوف فترة طويلة فقط
+  const [showDetailTable, setShowDetailTable] = useState(false);
+  const [hoverTimeout, setHoverTimeout] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -171,6 +153,7 @@ export default function ServiceProfileCard({
     fetchUser();
   }, [userId]);
 
+  // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
   const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
@@ -183,6 +166,7 @@ export default function ServiceProfileCard({
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
+  // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
@@ -209,38 +193,36 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // تفاصيل الخدمة تظهر في نافذة خارج الكارت
-  function openDetailModal() {
-    setShowDetailModal(true);
-  }
-  function closeDetailModal() {
-    setShowDetailModal(false);
-  }
-
-  // نافذة التفاصيل (الوصف + المستندات)
-  function renderDetailsModal() {
+  // جدول التفاصيل في نافذة خارج الكارت (يظهر عند الوقوف الطويل)
+  function renderDetailsTable() {
     return (
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
         style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
         tabIndex={0}
-        onClick={closeDetailModal}
+        onClick={() => setShowDetailTable(false)}
       >
         <div
-          className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative overflow-y-auto"
-          style={{ minWidth: 250, maxWidth: 380, maxHeight: '70vh' }}
-          onClick={e => e.stopPropagation()}
+          className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
+          style={{ minWidth: 250, maxWidth: 380 }}
+          onClick={e => e.stopPropagation()} // يمنع إغلاق النافذة عند الضغط داخلها
         >
           <button
-            onClick={closeDetailModal}
+            onClick={() => setShowDetailTable(false)}
             className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
             title={lang === "ar" ? "إغلاق" : "Close"}
             style={{ cursor: "pointer" }}
           >×</button>
-          <div className="text-lg font-bold text-emerald-700 mb-2 text-center">{displayName}</div>
-          {/* الوصف */}
-          <div className="text-gray-700 text-xs whitespace-pre-line mb-3">{displayLongDescription || displayDescription}</div>
-          {/* المستندات المطلوبة */}
+          <div className="text-lg font-bold text-emerald-700 mb-2 text-center">
+            {lang === "en"
+              ? (name_en || translatedName || name || "")
+              : (name || name_en || "")}
+          </div>
+          <div className="text-gray-700 text-xs whitespace-pre-line mb-3">
+            {lang === "en"
+              ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
+              : (longDescription || longDescription_en || description || description_en || "")}
+          </div>
           {requiredDocs.length > 0 && (
             <div className="mb-4">
               <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
@@ -253,26 +235,76 @@ export default function ServiceProfileCard({
               </ul>
             </div>
           )}
+          <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
+            <tbody>
+              <tr>
+                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+                <td>
+                  {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                  {repeatable ? ` × ${quantity}` : ""}
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  {lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}
+                  {allowPaperCount ? ` (${lang === "ar" ? "لكل ورقة" : "per page"})` : ""}
+                </td>
+                <td>
+                  {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                  {allowPaperCount ? ` × ${paperCount}` : ""}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
+                <td>
+                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td className="font-extrabold text-emerald-900">{lang === "ar" ? "الإجمالي" : "Total"}</td>
+                <td className="font-extrabold text-emerald-900">
+                  {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          {/* مدخلات الخدمة */}
+          {repeatable && (
+            <div className="flex flex-col items-center mb-2 w-full">
+              <label className="text-xs font-bold text-gray-600 mb-1">
+                {lang === "ar" ? "عدد مرات الخدمة" : "Quantity"}
+              </label>
+              <span className="font-bold">{quantity}</span>
+            </div>
+          )}
+          {allowPaperCount && (
+            <div className="flex flex-col items-center mb-2 w-full">
+              <label className="text-xs font-bold text-gray-600 mb-1">
+                {lang === "ar" ? "عدد الأوراق" : "Pages"}
+              </label>
+              <span className="font-bold">{paperCount}</span>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // فتح نافذة التفاصيل لما يقف أو يضغط على الكارت
+  // ظهور جدول التفاصيل بعد الوقوف 2 ثانية
   function handleMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setHoverTimeout(
       setTimeout(() => {
-        openDetailModal();
-      }, 1200)
+        setShowDetailTable(true);
+      }, 2000) // ثانيتين بالضبط
     );
   }
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    closeDetailModal();
+    setShowDetailTable(false);
   }
 
-  // باقي الكارت كما هو (السعر، المدخلات، الزراير ...)
+  // باقي الكارت زي ماهو بالضبط بدون وصف ولا مستندات داخله
   return (
     <div
       className={`
@@ -300,7 +332,8 @@ export default function ServiceProfileCard({
       role="button"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={openDetailModal}
+      onTouchStart={() => setShowDetailTable(true)}
+      onTouchEnd={() => setShowDetailTable(false)}
     >
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
@@ -323,25 +356,15 @@ export default function ServiceProfileCard({
         {style.icon()}
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
-      {/* اسم الخدمة بحجم متغير حسب الطول */}
-      <div className="flex flex-col items-center px-3 pt-1 pb-3 flex-1 w-full min-h-0 justify-center">
-        <h3
-          ref={nameRef}
-          className="font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full"
-          style={{
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            width: "100%",
-            lineHeight: "1.1",
-            transition: 'font-size 0.2s',
-          }}
-        >
+      {/* اسم الخدمة فقط */}
+      <div className="flex flex-col items-center px-3 pt-1 pb-3 flex-1 w-full min-h-0">
+        <h3 className="text-lg font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate">
           {lang === "en"
             ? (name_en || translatedName || name || "")
             : (name || name_en || "")}
         </h3>
       </div>
-      {/* باقي الكارت كما هو */}
+      {/* تفاصيل السعر النهائى زي ماهي */}
       <div className="w-full mt-2 mb-2">
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
           <div className="flex items-center gap-2 mb-2">
@@ -389,7 +412,7 @@ export default function ServiceProfileCard({
           </table>
         </div>
       </div>
-      {/* مدخلات الخدمة */}
+      {/* عدد مرات الخدمة زي ماهو */}
       {repeatable && (
         <div className="flex flex-col items-center mb-2 w-full">
           <label className="text-xs font-bold text-gray-600 mb-1">
@@ -408,6 +431,7 @@ export default function ServiceProfileCard({
           />
         </div>
       )}
+      {/* عدد الأوراق زي ماهو */}
       {allowPaperCount && (
         <div className="flex flex-col items-center mb-2 w-full">
           <label className="text-xs font-bold text-gray-600 mb-1">
@@ -428,7 +452,7 @@ export default function ServiceProfileCard({
           />
         </div>
       )}
-      {/* رفع المستندات */}
+      {/* رفع المستندات زي ماهو */}
       {requireUpload && (
         <div className="my-1 w-full flex flex-col max-w-full">
           <button
@@ -448,6 +472,7 @@ export default function ServiceProfileCard({
           </button>
         </div>
       )}
+      {/* مودال رفع المستندات زي ماهو */}
       <ServiceUploadModal
         open={showDocsModal}
         onClose={closeDocsModal}
@@ -458,7 +483,7 @@ export default function ServiceProfileCard({
         lang={lang}
         service={{ serviceId, name: name }}
       />
-      {/* أزرار الدفع كما هي */}
+      {/* أزرار الدفع زي ماهي */}
       <div className="mt-auto w-full flex flex-col gap-2 px-3 pb-3">
         <button
           onClick={(e) => {
@@ -479,7 +504,7 @@ export default function ServiceProfileCard({
         >
           {lang === "ar" ? "ادفع الآن" : "Pay Now"}
         </button>
-        {canUseCoinDiscount && (
+        {Number(coinsBalance) >= 100 && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -508,8 +533,8 @@ export default function ServiceProfileCard({
           </button>
         )}
       </div>
-      {/* نافذة التفاصيل خارج الكارت */}
-      {showDetailModal && renderDetailsModal()}
+      {/* نافذة التفاصيل خارج الكارت عند الوقوف 2 ثانية */}
+      {showDetailTable && renderDetailsTable()}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
