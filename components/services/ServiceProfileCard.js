@@ -254,11 +254,23 @@ export default function ServiceProfileCard({
     setShowTooltip(false);
   }
 
+  // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
+  function getServiceNameFontSize() {
+    const nameStr =
+      lang === "en"
+        ? (name_en || translatedName || name || "")
+        : (name || name_en || "");
+    if (nameStr.length > 38) return "text-[16px]"; // اسم طويل جدا
+    if (nameStr.length > 28) return "text-[18px]";
+    if (nameStr.length > 18) return "text-[20px]";
+    return "text-[22px]"; // اسم صغير
+  }
+
   return (
     <div
       ref={cardRef}
       className={`
-        relative w-full max-w-sm min-w-[242px] h-[auto] flex flex-col
+        relative w-full max-w-sm min-w-[242px] h-[340px] flex flex-col
         rounded-2xl border-0 shadow-lg shadow-emerald-100/60 hover:shadow-emerald-300/70
         transition-all duration-300 overflow-visible bg-gradient-to-br ${style.gradient} backdrop-blur-xl
         ring-1 ${style.ring} cursor-pointer
@@ -281,9 +293,9 @@ export default function ServiceProfileCard({
       }}
     >
       {/* الكوينات */}
-      <div className="absolute top-4 left-4 flex items-center group/coins z-10">
-        <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[36px] cursor-help">
-          <FaCoins className="text-yellow-500" size={13} />
+      <div className="absolute top-3 left-3 flex items-center group/coins z-10">
+        <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[30px] cursor-help">
+          <FaCoins className="text-yellow-500" size={12} />
           <span className="text-yellow-700 font-bold text-xs">{coins}</span>
         </div>
         <div className="absolute z-20 left-1/2 -translate-x-1/2 top-7 whitespace-nowrap bg-yellow-200 text-yellow-900 text-xs font-bold px-3 py-1 rounded shadow-lg opacity-0 group-hover/coins:opacity-100 transition pointer-events-none">
@@ -292,18 +304,34 @@ export default function ServiceProfileCard({
       </div>
       {/* التصنيف */}
       <div
-        className={`flex items-center justify-center gap-2 px-3 py-1
-        text-[11px] font-extrabold rounded-full shadow
+        className={`flex items-center justify-center gap-2 px-2 py-1
+        text-[10px] font-extrabold rounded-full shadow
         ${style.badge} ${style.text} bg-opacity-90 backdrop-blur-sm border border-white/40
-        w-fit mx-auto mt-4 mb-2 select-none
+        w-fit mx-auto mt-3 mb-2 select-none
       `}
       >
         {style.icon()}
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
-      {/* اسم الخدمة فقط */}
-      <div className="flex flex-col items-center px-3 pt-1 pb-3 flex-1 w-full min-h-0">
-        <h3 className="text-lg font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate">
+      {/* اسم الخدمة بخط مرن واجبارى الظهور */}
+      <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
+        <h3
+          className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            width: "100%",
+            minHeight: "30px",
+            lineHeight: "1.15",
+            display: "block"
+          }}
+          title={
+            lang === "en"
+              ? (name_en || translatedName || name || "")
+              : (name || name_en || "")
+          }
+        >
           {lang === "en"
             ? (name_en || translatedName || name || "")
             : (name || name_en || "")}
@@ -311,21 +339,21 @@ export default function ServiceProfileCard({
       </div>
       {/* Tooltip المنبثقة فوق الكارت */}
       {showTooltip && renderTooltip()}
-      {/* تفاصيل السعر النهائى زي ماهي */}
-      <div className="w-full mt-2 mb-2">
+      {/* عناصر السعر وزرار التقديم بشكل مرتب */}
+      <div className="w-full mt-1 mb-1 flex flex-col items-center">
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-extrabold text-emerald-700 text-xl drop-shadow text-center">
               {totalServicePrice}
             </span>
-            <span className="text-base text-gray-500 font-bold">
+            <span className="text-xs text-gray-500 font-bold">
               {lang === "ar" ? "درهم" : "AED"}
             </span>
             <Image
               src="/aed-logo.png"
               alt={lang === "ar" ? "درهم إماراتي" : "AED"}
-              width={34}
-              height={34}
+              width={26}
+              height={26}
               className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
             />
           </div>
@@ -349,105 +377,99 @@ export default function ServiceProfileCard({
                   {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
-              <tr>
-                <td className="font-extrabold text-emerald-900">{lang === "ar" ? "الإجمالي" : "Total"}</td>
-                <td className="font-extrabold text-emerald-900 text-right">
-                  {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
             </tbody>
           </table>
         </div>
-      </div>
-      {/* عدد مرات الخدمة زي ماهو */}
-      {repeatable && (
-        <div className="flex flex-col items-center mb-2 w-full">
-          <label className="text-xs font-bold text-gray-600 mb-1">
-            {lang === "ar" ? "عدد مرات الخدمة" : "Quantity"}
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={99}
-            value={quantity}
-            onChange={(e) =>
-              setQuantity(Math.max(1, Math.min(99, Number(e.target.value))))
-            }
-            className="w-[70px] p-1 rounded border border-emerald-200 text-emerald-900 text-center font-bold"
-            style={{ direction: "ltr" }}
-          />
-        </div>
-      )}
-      {/* عدد الأوراق زي ماهو */}
-      {allowPaperCount && (
-        <div className="flex flex-col items-center mb-2 w-full">
-          <label className="text-xs font-bold text-gray-600 mb-1">
-            {lang === "ar" ? "عدد الأوراق" : "Pages"}
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={99}
-            value={paperCount}
-            onChange={(e) =>
-              setPaperCount(
-                Math.max(1, Math.min(99, Number(e.target.value)))
-              )
-            }
-            className="w-[70px] p-1 rounded border border-emerald-200 text-emerald-900 text-center font-bold"
-            style={{ direction: "ltr" }}
-          />
-        </div>
-      )}
-      {/* رفع المستندات زي ماهو */}
-      {requireUpload && (
-        <div className="my-1 w-full flex flex-col max-w-full">
-          <button
-            className="w-full py-1.5 mt-1 rounded-full font-black shadow text-base transition
-              bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
-              hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
-              hover:scale-105 duration-150
-              focus:outline-none focus:ring-2 focus:ring-cyan-400
-              cursor-pointer"
-            style={{ cursor: "pointer" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              openDocsModal();
-            }}
-          >
-            {lang === "ar" ? "رفع المستندات" : "Upload Documents"}
-          </button>
-        </div>
-      )}
-      <ServiceUploadModal
-        open={showDocsModal}
-        onClose={closeDocsModal}
-        requiredDocs={requiredDocs}
-        uploadedDocs={uploadedDocs}
-        setUploadedDocs={handleDocsUploaded}
-        userId={userId}
-        lang={lang}
-        service={{ serviceId, name: name }}
-      />
-      <div className="mt-auto w-full flex flex-col gap-2 px-3 pb-3">
+        {/* عداد عدد مرات الخدمة بشكل صغير */}
+        {repeatable && (
+          <div className="flex flex-row items-center justify-center mt-1 gap-1">
+            <label className="text-[10px] font-bold text-gray-600 mb-0">
+              {lang === "ar" ? "عدد مرات" : "Qty"}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={quantity}
+              onChange={(e) =>
+                setQuantity(Math.max(1, Math.min(99, Number(e.target.value))))
+              }
+              className="w-[36px] p-0.5 rounded border border-emerald-200 text-emerald-900 text-center font-bold text-xs"
+              style={{ direction: "ltr", height: "22px" }}
+            />
+          </div>
+        )}
+        {/* عداد عدد الأوراق بشكل صغير */}
+        {allowPaperCount && (
+          <div className="flex flex-row items-center justify-center mt-1 gap-1">
+            <label className="text-[10px] font-bold text-gray-600 mb-0">
+              {lang === "ar" ? "عدد الأوراق" : "Pages"}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={paperCount}
+              onChange={(e) =>
+                setPaperCount(
+                  Math.max(1, Math.min(99, Number(e.target.value)))
+                )
+              }
+              className="w-[36px] p-0.5 rounded border border-emerald-200 text-emerald-900 text-center font-bold text-xs"
+              style={{ direction: "ltr", height: "22px" }}
+            />
+          </div>
+        )}
+        {/* رفع المستندات */}
+        {requireUpload && (
+          <div className="w-full flex flex-col max-w-full mt-1 mb-1">
+            <button
+              className="w-full py-1 rounded-full font-black shadow text-xs transition
+                bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
+                hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
+                hover:scale-105 duration-150
+                focus:outline-none focus:ring-2 focus:ring-cyan-400
+                cursor-pointer"
+              style={{ cursor: "pointer" }}
+              onClick={(e) => {
+                e.stopPropagation();
+                openDocsModal();
+              }}
+            >
+              {lang === "ar" ? "رفع المستندات" : "Upload Documents"}
+            </button>
+          </div>
+        )}
+        <ServiceUploadModal
+          open={showDocsModal}
+          onClose={closeDocsModal}
+          requiredDocs={requiredDocs}
+          uploadedDocs={uploadedDocs}
+          setUploadedDocs={handleDocsUploaded}
+          userId={userId}
+          lang={lang}
+          service={{ serviceId, name: name }}
+        />
+        {/* زرار التقديم دايما ظاهر في الأسفل */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             openPaymentModal();
           }}
           className={`
-            w-full py-1.5 rounded-full font-black shadow text-base transition
+            w-full py-1 rounded-full font-black shadow text-xs transition
             bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
             hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
             hover:scale-105 duration-150
             focus:outline-none focus:ring-2 focus:ring-emerald-400
             cursor-pointer
             ${!canPay ? "opacity-40 pointer-events-none" : ""}
+            mt-1
           `}
           style={{ cursor: "pointer" }}
           disabled={!canPay}
         >
-          {lang === "ar" ? "ادفع الآن" : "Pay Now"}
+          {lang === "ar" ? "تقدم الآن" : "Apply Now"}
         </button>
       </div>
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
