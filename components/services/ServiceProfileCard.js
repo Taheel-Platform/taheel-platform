@@ -103,7 +103,7 @@ export default function ServiceProfileCard({
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
 
-  // Tooltip المنبثقة فوق الكارت
+  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
   const [showTooltip, setShowTooltip] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const cardRef = useRef();
@@ -179,7 +179,7 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف عليه)
+  // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف على اسم الخدمة فقط)
   function renderTooltip() {
     return (
       <div
@@ -244,12 +244,12 @@ export default function ServiceProfileCard({
     );
   }
 
-  // إظهار وإخفاء Tooltip عند الوقوف أو المغادرة
-  function handleMouseEnter() {
+  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة وليس الكارت كله
+  function handleNameMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoverTimeout(setTimeout(() => setShowTooltip(true), 400)); // 0.4 ثانية
+    setHoverTimeout(setTimeout(() => setShowTooltip(true), 400));
   }
-  function handleMouseLeave() {
+  function handleNameMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setShowTooltip(false);
   }
@@ -260,10 +260,10 @@ export default function ServiceProfileCard({
       lang === "en"
         ? (name_en || translatedName || name || "")
         : (name || name_en || "");
-    if (nameStr.length > 38) return "text-[16px]"; // اسم طويل جدا
+    if (nameStr.length > 38) return "text-[16px]";
     if (nameStr.length > 28) return "text-[18px]";
     if (nameStr.length > 18) return "text-[20px]";
-    return "text-[22px]"; // اسم صغير
+    return "text-[22px]";
   }
 
   return (
@@ -277,8 +277,6 @@ export default function ServiceProfileCard({
       `}
       tabIndex={0}
       role="button"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       style={{
         border: "none",
         backdropFilter: "blur(6px)",
@@ -313,7 +311,7 @@ export default function ServiceProfileCard({
         {style.icon()}
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
-      {/* اسم الخدمة بخط مرن واجبارى الظهور */}
+      {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
       <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
         <h3
           className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
@@ -324,40 +322,42 @@ export default function ServiceProfileCard({
             width: "100%",
             minHeight: "30px",
             lineHeight: "1.15",
-            display: "block"
+            display: "block",
+            cursor: "pointer"
           }}
           title={
             lang === "en"
               ? (name_en || translatedName || name || "")
               : (name || name_en || "")
           }
+          onMouseEnter={handleNameMouseEnter}
+          onMouseLeave={handleNameMouseLeave}
         >
           {lang === "en"
             ? (name_en || translatedName || name || "")
             : (name || name_en || "")}
         </h3>
+        {showTooltip && renderTooltip()}
       </div>
-      {/* Tooltip المنبثقة فوق الكارت */}
-      {showTooltip && renderTooltip()}
-      {/* عناصر السعر وزرار التقديم بشكل مرتب */}
+      {/* عناصر السعر وزرار التقديم بشكل مرتب وكبير */}
       <div className="w-full mt-1 mb-1 flex flex-col items-center">
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-extrabold text-emerald-700 text-xl drop-shadow text-center">
+            <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
               {totalServicePrice}
             </span>
-            <span className="text-xs text-gray-500 font-bold">
+            <span className="text-base text-gray-500 font-bold">
               {lang === "ar" ? "درهم" : "AED"}
             </span>
             <Image
               src="/aed-logo.png"
               alt={lang === "ar" ? "درهم إماراتي" : "AED"}
-              width={26}
-              height={26}
+              width={34}
+              height={34}
               className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
             />
           </div>
-          <table className="w-full text-xs text-gray-700 mb-1">
+          <table className="w-full text-sm text-gray-700 mb-1">
             <tbody>
               <tr>
                 <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
