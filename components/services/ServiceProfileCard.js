@@ -364,13 +364,13 @@ export default function ServiceProfileCard({
               <tr>
                 <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
                 <td className="text-right">
-                  {printingTotalMain} {lang === "ar" ? "د.إ" : "AED"}
+                  {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
               <tr>
                 <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
                 <td className="text-right">
-                  {taxTotalMain} {lang === "ar" ? "د.إ" : "AED"}
+                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
             </tbody>
