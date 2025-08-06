@@ -1,4 +1,3 @@
-"use client";
 import { useRef, useState } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes } from "react-icons/fa";
 
@@ -8,8 +7,8 @@ export default function ServiceUploadModal({
   service,
   userId,
   lang = "ar",
-  setUploadedDocs, // مهم لاستقبال التغيير من الأب (ServiceProfileCard)
-  uploadedDocs,    // استقبال بيانات الملفات المرفوعة من الأعلى
+  setUploadedDocs,
+  uploadedDocs,
 }) {
   const fileRef = useRef();
   const [uploading, setUploading] = useState(false);
@@ -21,13 +20,12 @@ export default function ServiceUploadModal({
   function handleFileChange(e) {
     setError("");
     setMsg("");
-    setUploadSuccess(false); // إعادة التفعيل عند تغيير الملفات
+    setUploadSuccess(false);
     const files = Array.from(e.target.files);
     if (files.length === 0) {
       setSelectedFiles([]);
       return;
     }
-    // فقط PDF ويسمح بحد أقصى 2 ملف
     if (files.length > 2) {
       setError(lang === "ar" ? "يمكنك رفع ملف واحد أو ملفين فقط." : "You can upload only one or two files.");
       fileRef.current.value = null;
@@ -48,6 +46,7 @@ export default function ServiceUploadModal({
     e.preventDefault();
     setError("");
     setMsg("");
+    setUploadSuccess(false);
     if (selectedFiles.length === 0) {
       setError(lang === "ar" ? "يجب اختيار ملف PDF واحد على الأقل" : "Please select at least one PDF file.");
       return;
@@ -64,8 +63,17 @@ export default function ServiceUploadModal({
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (res.ok) {
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        setError(lang === "ar" ? "استجابة غير صحيحة من السيرفر." : "Invalid server response.");
+        setUploading(false);
+        return;
+      }
+
+      if (res.ok && data.files && data.files.length > 0) {
         setMsg(
           lang === "ar"
             ? `تم رفع ${data.files.length} ملف بنجاح!`
@@ -75,14 +83,11 @@ export default function ServiceUploadModal({
         fileRef.current.value = null;
         setUploadSuccess(true);
 
-        // تحديث بيانات الملفات المرفوعة للأب (تحديث uploadedDocs)
         if (setUploadedDocs) {
-          // نضيف كل ملف مرفوع إلى uploadedDocs["main"] أو قائمة الملفات حسب متطلباتك
-          // هنا سنسجل أول ملف باسم "main" ولو أكثر من ملف يمكنك تخصيصها أكثر
           const filesObj = {};
           data.files.forEach((file, idx) => {
             filesObj[`main${idx ? idx+1 : ""}`] = {
-              name: file.originalname || selectedFiles[idx]?.name || `file${idx+1}.pdf`,
+              name: file.originalname || `file${idx+1}.pdf`,
               url: file.url,
               type: "application/pdf",
             };
@@ -90,7 +95,12 @@ export default function ServiceUploadModal({
           setUploadedDocs({ ...(uploadedDocs || {}), ...filesObj });
         }
       } else {
-        setError(data.error || (lang === "ar" ? "حدث خطأ أثناء رفع الملفات." : "An error occurred during upload."));
+        setError(
+          data?.error ||
+          (lang === "ar"
+            ? "حدث خطأ أثناء رفع الملفات."
+            : "An error occurred during upload.")
+        );
       }
     } catch (err) {
       setError(lang === "ar" ? "حدث خطأ أثناء رفع الملفات." : "An error occurred during upload.");
@@ -107,7 +117,7 @@ export default function ServiceUploadModal({
         "
         style={{ boxShadow: "0 6px 32px 0 rgba(31,174,209,0.08), 0 1.5px 6px 0 rgba(20,96,129,0.07)" }}
       >
-        {/* زر إغلاق صغير أعلى الركن */}
+        {/* زر إغلاق */}
         <button
           className="absolute top-2 right-2 bg-gray-100 hover:bg-red-500 text-gray-400 hover:text-white rounded-full w-7 h-7 flex items-center justify-center text-base shadow transition"
           onClick={onClose}
@@ -136,7 +146,6 @@ export default function ServiceUploadModal({
         </div>
 
         <form onSubmit={handleUpload} className="flex flex-col items-center w-full gap-2 mt-1">
-          {/* زر رفع PDF أنيق */}
           <label
             htmlFor="pdf-upload"
             className={`
@@ -169,8 +178,6 @@ export default function ServiceUploadModal({
               </div>
             )}
           </label>
-
-          {/* زر الرفع */}
           <button
             type="submit"
             disabled={uploading || selectedFiles.length === 0 || uploadSuccess}
@@ -185,8 +192,6 @@ export default function ServiceUploadModal({
               ? (lang === "ar" ? "جاري الرفع..." : "Uploading...")
               : (lang === "ar" ? "رفع الملف" : "Upload File(s)")}
           </button>
-
-          {/* رسائل التنبيه */}
           {error && (
             <div className="text-center text-red-600 font-bold flex items-center gap-1 mt-1 text-xs">
               <FaExclamationCircle /> {error}
@@ -199,9 +204,6 @@ export default function ServiceUploadModal({
           )}
         </form>
       </div>
-      {/* خلفية زخرفية هادئة */}
-      <div className="absolute -top-24 -left-16 w-40 h-40 bg-cyan-300 opacity-15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-cyan-900 to-cyan-400 opacity-10 rounded-full blur-2xl pointer-events-none" />
     </div>
   );
 }

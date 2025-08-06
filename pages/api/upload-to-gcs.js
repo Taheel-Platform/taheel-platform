@@ -17,42 +17,51 @@ export default async function handler(req, res) {
     return;
   }
   try {
-    const form = formidable({ maxFileSize: 5 * 1024 * 1024, multiples: false });
+    const form = formidable({ maxFileSize: 5 * 1024 * 1024, multiples: true }); // يدعم رفع عدة ملفات
     const { fields, files } = await new Promise((resolve, reject) =>
       form.parse(req, (err, fields, files) => err ? reject(err) : resolve({ fields, files }))
     );
 
-    const fileArr = files.file;
-    const file = Array.isArray(fileArr) ? fileArr[0] : fileArr;
+    // يدعم رفع ملف أو عدة ملفات
+    const uploadedFiles = Array.isArray(files.file) ? files.file : [files.file];
 
-    const sessionId = Array.isArray(fields.sessionId) ? fields.sessionId[0] : fields.sessionId;
-    const docType = Array.isArray(fields.docType) ? fields.docType[0] : fields.docType;
-    const ext = file?.originalFilename?.split('.').pop() || "bin";
-    const uniqueName = `${sessionId || "no-session"}_${docType || "document"}_${Date.now()}.${ext}`;
+    const results = [];
+    for (const file of uploadedFiles) {
+      const sessionId = Array.isArray(fields.sessionId) ? fields.sessionId[0] : fields.sessionId;
+      const docType = Array.isArray(fields.docType) ? fields.docType[0] : fields.docType;
+      const ext = file?.originalFilename?.split('.').pop() || "bin";
+      const uniqueName = `${sessionId || "no-session"}_${docType || "document"}_${Date.now()}.${ext}`;
 
-    const bucket = storage.bucket(bucketName);
-    const blob = bucket.file(uniqueName);
-    const filePath = file?.filepath || file?.path;
+      const bucket = storage.bucket(bucketName);
+      const blob = bucket.file(uniqueName);
+      const filePath = file?.filepath || file?.path;
 
-    if (!filePath) {
-      res.status(400).json({ error: "File path not found" });
-      return;
+      if (!filePath) {
+        res.status(400).json({ error: "File path not found" });
+        return;
+      }
+
+      await new Promise((resolve, reject) => {
+        const writeStream = blob.createWriteStream({ contentType: file.mimetype, resumable: false });
+        const readStream = fs.createReadStream(filePath);
+        readStream.on("error", reject);
+        writeStream.on("error", reject);
+        writeStream.on("finish", resolve);
+        readStream.pipe(writeStream);
+      });
+
+      fs.unlink(filePath, () => {});
+
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${uniqueName}`;
+      results.push({
+        name: file.originalFilename,
+        url: publicUrl,
+        type: file.mimetype,
+        size: file.size,
+      });
     }
 
-    await new Promise((resolve, reject) => {
-      const writeStream = blob.createWriteStream({ contentType: file.mimetype, resumable: false });
-      const readStream = fs.createReadStream(filePath);
-      readStream.on("error", reject);
-      writeStream.on("error", reject);
-      writeStream.on("finish", resolve);
-      readStream.pipe(writeStream);
-    });
-
-    // حذف الملف المؤقت بعد الرفع (اختياري)
-    fs.unlink(filePath, () => {});
-
-    const publicUrl = `https://storage.googleapis.com/${bucketName}/${uniqueName}`;
-    res.status(200).json({ success: true, url: publicUrl });
+    res.status(200).json({ success: true, files: results });
   } catch (error) {
     res.status(500).json({ error: "Failed to upload file", details: error.message });
   }
