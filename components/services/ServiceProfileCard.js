@@ -103,10 +103,16 @@ export default function ServiceProfileCard({
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
 
-  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
+  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة أو النافذة نفسها
   const [showTooltip, setShowTooltip] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
-  const cardRef = useRef();
+
+  // الإجمالي الصحيح للنافذة المنبثقة = رسوم الطباعة + الضريبة فقط
+  const printingTotal = Number(printingFee) || 0;
+  const taxTotal = typeof tax !== "undefined"
+    ? Number(tax) * (allowPaperCount ? paperCount : 1)
+    : +(printingTotal * 0.05).toFixed(2);
+  const tooltipTotal = printingTotal + taxTotal;
 
   useEffect(() => {
     let ignore = false;
@@ -146,54 +152,62 @@ export default function ServiceProfileCard({
     fetchUser();
   }, [userId]);
 
-  // الحسابات المالية
+  // الحسابات المالية للكارت الرئيسي
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
   const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
-  const printingTotal = (Number(printingFee) || 0) * basePaperCount;
-  const taxTotal = typeof tax !== "undefined"
+  const printingTotalMain = (Number(printingFee) || 0) * basePaperCount;
+  const taxTotalMain = typeof tax !== "undefined"
     ? Number(tax) * basePaperCount
     : +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
   const totalServicePrice =
     typeof clientPrice !== "undefined"
       ? Number(clientPrice) * baseServiceCount
-      : servicePriceTotal + printingTotal + taxTotal;
+      : servicePriceTotal + printingTotalMain + taxTotalMain;
 
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
   const canPay = allDocsUploaded && isPaperCountReady;
 
-  function openDocsModal() {
-    setShowDocsModal(true);
+  // Tooltip يظهر عند الوقوف على اسم الخدمة أو النافذة نفسها
+  function handleTooltipEnter() {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    setShowTooltip(true);
   }
-  function closeDocsModal() {
-    setShowDocsModal(false);
-  }
-  function handleDocsUploaded(newDocs) {
-    setUploadedDocs(newDocs);
-    closeDocsModal();
-  }
-  function openPaymentModal() {
-    setShowPayModal(true);
-    setPayMsg("");
+  function handleTooltipLeave() {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    setShowTooltip(false);
   }
 
-  // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف على اسم الخدمة فقط)
+  // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
+  function getServiceNameFontSize() {
+    const nameStr =
+      lang === "en"
+        ? (name_en || translatedName || name || "")
+        : (name || name_en || "");
+    if (nameStr.length > 38) return "text-[16px]";
+    if (nameStr.length > 28) return "text-[18px]";
+    if (nameStr.length > 18) return "text-[20px]";
+    return "text-[22px]";
+  }
+
+  // Tooltip المنبثقة (يتم التحكم فيها داخل div خارج h3)
   function renderTooltip() {
     return (
       <div
         className="absolute z-50 left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center"
+        onMouseEnter={handleTooltipEnter}
+        onMouseLeave={handleTooltipLeave}
         style={{
           minWidth: 250,
           maxWidth: 340,
           boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
-          pointerEvents: "none",
+          pointerEvents: "auto",
         }}
       >
         <div
           className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
-          style={{ pointerEvents: "auto" }}
         >
           <h3 className="text-base font-extrabold text-emerald-700 mb-1 text-center">
             {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
@@ -220,21 +234,21 @@ export default function ServiceProfileCard({
           <table className="w-full text-xs text-emerald-900 font-bold border border-emerald-200 rounded-xl shadow mb-2 bg-emerald-50 overflow-hidden">
             <tbody>
               <tr>
-                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-                <td className="text-right">
-                  {price} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-              <tr>
                 <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
                 <td className="text-right">
-                  {printingFee} {lang === "ar" ? "د.إ" : "AED"}
+                  {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
               <tr>
-                <td>{lang === "ar" ? "الإجمالي" : "Total"}</td>
+                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5%"}</td>
+                <td className="text-right">
+                  {taxTotal} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td className="font-extrabold text-emerald-900">{lang === "ar" ? "الإجمالي" : "Total"}</td>
                 <td className="font-extrabold text-emerald-900 text-right">
-                  {(Number(price) + Number(printingFee))} {lang === "ar" ? "د.إ" : "AED"}
+                  {tooltipTotal} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
             </tbody>
@@ -242,28 +256,6 @@ export default function ServiceProfileCard({
         </div>
       </div>
     );
-  }
-
-  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة وليس الكارت كله
-  function handleNameMouseEnter() {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoverTimeout(setTimeout(() => setShowTooltip(true), 400));
-  }
-  function handleNameMouseLeave() {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    setShowTooltip(false);
-  }
-
-  // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
-  function getServiceNameFontSize() {
-    const nameStr =
-      lang === "en"
-        ? (name_en || translatedName || name || "")
-        : (name || name_en || "");
-    if (nameStr.length > 38) return "text-[16px]";
-    if (nameStr.length > 28) return "text-[18px]";
-    if (nameStr.length > 18) return "text-[20px]";
-    return "text-[22px]";
   }
 
   return (
@@ -311,33 +303,37 @@ export default function ServiceProfileCard({
         {style.icon()}
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
-      {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
+      {/* اسم الخدمة وTooltip */}
       <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
-        <h3
-          className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            width: "100%",
-            minHeight: "30px",
-            lineHeight: "1.15",
-            display: "block",
-            cursor: "pointer"
-          }}
-          title={
-            lang === "en"
-              ? (name_en || translatedName || name || "")
-              : (name || name_en || "")
-          }
-          onMouseEnter={handleNameMouseEnter}
-          onMouseLeave={handleNameMouseLeave}
+        <div
+          style={{ width: "100%", position: "relative" }}
+          onMouseEnter={handleTooltipEnter}
+          onMouseLeave={handleTooltipLeave}
         >
-          {lang === "en"
-            ? (name_en || translatedName || name || "")
-            : (name || name_en || "")}
-        </h3>
-        {showTooltip && renderTooltip()}
+          <h3
+            className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              width: "100%",
+              minHeight: "30px",
+              lineHeight: "1.15",
+              display: "block",
+              cursor: "pointer"
+            }}
+            title={
+              lang === "en"
+                ? (name_en || translatedName || name || "")
+                : (name || name_en || "")
+            }
+          >
+            {lang === "en"
+              ? (name_en || translatedName || name || "")
+              : (name || name_en || "")}
+          </h3>
+          {showTooltip && renderTooltip()}
+        </div>
       </div>
       {/* عناصر السعر وزرار التقديم بشكل مرتب وكبير */}
       <div className="w-full mt-1 mb-1 flex flex-col items-center">
@@ -368,13 +364,13 @@ export default function ServiceProfileCard({
               <tr>
                 <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
                 <td className="text-right">
-                  {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
+                  {printingTotalMain} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
               <tr>
                 <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
                 <td className="text-right">
-                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                  {taxTotalMain} {lang === "ar" ? "د.إ" : "AED"}
                 </td>
               </tr>
             </tbody>
