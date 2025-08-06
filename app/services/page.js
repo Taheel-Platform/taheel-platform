@@ -9,7 +9,6 @@ import { FaGlobe, FaWhatsapp } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { GlobalLoader } from "@/components/GlobalLoader"; 
 
-
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
@@ -97,39 +96,39 @@ export default function ServicesPage() {
   }, [searchTerm, services]);
   // ---- (انتهى البحث) ----
 
-useEffect(() => {
-  async function fetchServices() {
-    setLoading(true);
-    setFirebaseError("");
-    try {
-      let data = { resident: {}, nonresident: {}, company: {}, other: {} };
+  useEffect(() => {
+    async function fetchServices() {
+      setLoading(true);
+      setFirebaseError("");
+      try {
+        let data = { resident: {}, nonresident: {}, company: {}, other: {} };
 
-      for (const section of SECTIONS) {
-        // جلب الدوكيومنت للفئة مباشرة
-        const sectionDocRef = doc(firestore, "servicesByClientType", section);
-        const sectionDocSnap = await getDoc(sectionDocRef);
+        for (const section of SECTIONS) {
+          // جلب الدوكيومنت للفئة مباشرة
+          const sectionDocRef = doc(firestore, "servicesByClientType", section);
+          const sectionDocSnap = await getDoc(sectionDocRef);
 
-        if (sectionDocSnap.exists()) {
-          const docData = sectionDocSnap.data();
-          // استخراج كل الحقول التي تبدأ بـ service فقط
-          Object.entries(docData)
-            .filter(([key]) => key.startsWith("service"))
-            .forEach(([key, service]) => {
-              if (service.active === false || service.isActive === false) return;
-              data[section][key] = service;
-            });
+          if (sectionDocSnap.exists()) {
+            const docData = sectionDocSnap.data();
+            // استخراج كل الحقول التي تبدأ بـ service فقط
+            Object.entries(docData)
+              .filter(([key]) => key.startsWith("service"))
+              .forEach(([key, service]) => {
+                if (service.active === false || service.isActive === false) return;
+                data[section][key] = service;
+              });
+          }
         }
-      }
 
-      setServices(data);
-    } catch (e) {
-      setFirebaseError(e?.message || "خطأ غير معروف في جلب البيانات من Firestore");
-      setServices({});
+        setServices(data);
+      } catch (e) {
+        setFirebaseError(e?.message || "خطأ غير معروف في جلب البيانات من Firestore");
+        setServices({});
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }
-  fetchServices();
-}, []);
+    fetchServices();
+  }, []);
 
   // تغيير اللغة
   const toggleLang = () => {
@@ -232,12 +231,12 @@ useEffect(() => {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: idx * 0.07, duration: 0.45, type: "spring" }}
                           className={`
-                            group relative flex flex-col items-center w-full max-w-[250px] min-h-[340px] mx-auto
+                            group relative flex flex-col items-center w-full max-w-[250px] min-h-[340px] max-h-[340px] mx-auto
                             bg-gradient-to-br from-[#23384e] via-[#19313e] to-[#112126]
                             border border-emerald-700/40 rounded-3xl shadow-xl hover:shadow-emerald-300/30
                             transition-all duration-300 ease-out
                             hover:-translate-y-2 hover:scale-[1.025] cursor-pointer
-                            overflow-visible
+                            overflow-hidden
                           `}
                           style={{
                             backdropFilter: "blur(3px)",
@@ -245,14 +244,14 @@ useEffect(() => {
                           }}
                         >
                           {/* أيقونة فقط بدون دائرة ولا ظل ولا حواف */}
-  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-100">
-    <Image
-      src={ICONS[sec] || "/icons/service.png"}
-      alt={sec}
-      width={54}
-      height={54}
-      className="object-contain w-10 h-10 sm:w-14 sm:h-14"
-      draggable={false}
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-100">
+                            <Image
+                              src={ICONS[sec] || "/icons/service.png"}
+                              alt={sec}
+                              width={54}
+                              height={54}
+                              className="object-contain w-10 h-10 sm:w-14 sm:h-14"
+                              draggable={false}
                             />
                           </div>
                           {/* بيانات الخدمة */}
@@ -260,12 +259,12 @@ useEffect(() => {
                             <h3 className="text-lg font-extrabold text-emerald-300 text-center mt-1 mb-1 w-full truncate">
                               {lang === "ar" ? service.name : service.name_en}
                             </h3>
-                            <p className="text-[15px] text-gray-200 text-center mb-2 mt-1 min-h-[38px] line-clamp-2">
+                            <p className="text-[15px] text-gray-200 text-center mb-2 mt-1 min-h-[38px] max-h-[38px] line-clamp-2 overflow-hidden">
                               {lang === "ar" ? service.description : service.description_en}
                             </p>
                             {/* المستندات المطلوبة */}
                             {service.requiredDocuments && service.requiredDocuments.length > 0 && (
-                              <div className="w-full my-1">
+                              <div className="w-full my-1 max-h-[60px] overflow-hidden">
                                 <span className="block font-bold text-emerald-400 mb-1 text-sm text-center">
                                   {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:
                                 </span>
@@ -294,6 +293,28 @@ useEffect(() => {
                           >
                             {lang === "ar" ? "تقدم الآن" : "Apply Now"}
                           </button>
+                          {/* Tooltip للبيانات الطويلة */}
+                          <div className="absolute inset-0 z-50 items-center justify-center pointer-events-none group-hover:pointer-events-auto hidden group-hover:flex">
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-gray-900 rounded-2xl shadow-2xl p-5 border border-emerald-300 w-[320px] max-w-[95vw] max-h-[70vh] overflow-y-auto transition-all">
+                              <h3 className="text-lg font-extrabold text-emerald-700 mb-2 text-center">
+                                {lang === "ar" ? service.name : service.name_en}
+                              </h3>
+                              <p className="text-base text-gray-900 text-center mb-2">
+                                {lang === "ar" ? service.description : service.description_en}
+                              </p>
+                              {service.requiredDocuments && (
+                                <>
+                                  <span className="font-bold text-emerald-500 text-sm">{lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:</span>
+                                  <ul className="list-inside list-disc text-sm text-gray-700 mb-2 text-right">
+                                    {service.requiredDocuments.map((doc, idx) => (
+                                      <li key={idx}>{doc}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+                              {/* أضف أي بيانات أخرى تريدها هنا */}
+                            </div>
+                          </div>
                         </motion.div>
                       ))
                   ) : (
