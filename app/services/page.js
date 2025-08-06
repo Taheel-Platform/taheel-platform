@@ -225,77 +225,78 @@ export default function ServicesPage() {
                   {filteredServices[sec] && Object.keys(filteredServices[sec]).length > 0 ? (
                     Object.entries(filteredServices[sec])
                       .map(([id, service], idx) => (
-                        <motion.div
-                          key={id}
-                          initial={{ opacity: 0, y: 50 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.07, duration: 0.45, type: "spring" }}
-                          className={`
-                            group relative flex flex-col items-center w-full max-w-[250px] min-h-[340px] max-h-[340px] mx-auto
-                            bg-gradient-to-br from-[#23384e] via-[#19313e] to-[#112126]
-                            border border-emerald-700/40 rounded-3xl shadow-xl hover:shadow-emerald-300/30
-                            transition-all duration-300 ease-out
-                            hover:-translate-y-2 hover:scale-[1.025] cursor-pointer
-                            overflow-hidden
-                          `}
-                          style={{
-                            backdropFilter: "blur(3px)",
-                            WebkitBackdropFilter: "blur(3px)"
-                          }}
-                        >
-                          {/* أيقونة فقط بدون دائرة ولا ظل ولا حواف */}
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-100">
-                            <Image
-                              src={ICONS[sec] || "/icons/service.png"}
-                              alt={sec}
-                              width={54}
-                              height={54}
-                              className="object-contain w-10 h-10 sm:w-14 sm:h-14"
-                              draggable={false}
-                            />
-                          </div>
-                          {/* بيانات الخدمة */}
-                          <div className="flex-1 flex flex-col items-center w-full px-3 mt-10" dir={lang === "ar" ? "rtl" : "ltr"}>
-                            <h3 className="text-lg font-extrabold text-emerald-300 text-center mt-1 mb-1 w-full truncate">
-                              {lang === "ar" ? service.name : service.name_en}
-                            </h3>
-                            <p className="text-[15px] text-gray-200 text-center mb-2 mt-1 min-h-[38px] max-h-[38px] line-clamp-2 overflow-hidden">
-                              {lang === "ar" ? service.description : service.description_en}
-                            </p>
-                            {/* المستندات المطلوبة */}
-                            {service.requiredDocuments && service.requiredDocuments.length > 0 && (
-                              <div className="w-full my-1 max-h-[60px] overflow-hidden">
-                                <span className="block font-bold text-emerald-400 mb-1 text-sm text-center">
-                                  {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:
-                                </span>
-                                <ul className="list-inside list-disc text-sm text-gray-300 mx-auto w-fit text-center space-y-1">
-                                  {service.requiredDocuments.map((doc, idx) => (
-                                    <li key={idx}>{doc}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                          {/* زر التقديم */}
-                          <button
-                            onClick={() => router.push("/login")}
-                            className="
-                              my-3 w-11/12 py-2 rounded-full font-bold
-                              bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-400
-                              hover:from-emerald-500 hover:to-emerald-400
-                              text-gray-900 text-base transition-all duration-200 shadow-md
-                              group-hover:scale-105
-                              border border-emerald-200/70
-                              outline-none focus:ring-2 focus:ring-emerald-400
-                            "
-                            style={{ cursor: "pointer" }}
-                            aria-label={lang === "ar" ? "تقدم الآن" : "Apply Now"}
+                        <div key={id} className="relative group w-full max-w-[250px] mx-auto">
+                          <motion.div
+                            initial={{ opacity: 0, y: 50 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.07, duration: 0.45, type: "spring" }}
+                            className={`
+                              flex flex-col items-center w-full min-h-[340px] max-h-[340px]
+                              bg-gradient-to-br from-[#23384e] via-[#19313e] to-[#112126]
+                              border border-emerald-700/40 rounded-3xl shadow-xl hover:shadow-emerald-300/30
+                              transition-all duration-300 ease-out
+                              hover:-translate-y-2 hover:scale-[1.025] cursor-pointer
+                              overflow-hidden
+                            `}
+                            style={{
+                              backdropFilter: "blur(3px)",
+                              WebkitBackdropFilter: "blur(3px)"
+                            }}
                           >
-                            {lang === "ar" ? "تقدم الآن" : "Apply Now"}
-                          </button>
-                          {/* Tooltip للبيانات الطويلة */}
-                          <div className="absolute inset-0 z-50 items-center justify-center pointer-events-none group-hover:pointer-events-auto hidden group-hover:flex">
-                            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-gray-900 rounded-2xl shadow-2xl p-5 border border-emerald-300 w-[320px] max-w-[95vw] max-h-[70vh] overflow-y-auto transition-all">
+                            {/* أيقونة فقط بدون دائرة ولا ظل ولا حواف */}
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-lg flex items-center justify-center border-2 border-emerald-100">
+                              <Image
+                                src={ICONS[sec] || "/icons/service.png"}
+                                alt={sec}
+                                width={54}
+                                height={54}
+                                className="object-contain w-10 h-10 sm:w-14 sm:h-14"
+                                draggable={false}
+                              />
+                            </div>
+                            {/* بيانات الخدمة */}
+                            <div className="flex-1 flex flex-col items-center w-full px-3 mt-10" dir={lang === "ar" ? "rtl" : "ltr"}>
+                              <h3 className="text-lg font-extrabold text-emerald-300 text-center mt-1 mb-1 w-full truncate">
+                                {lang === "ar" ? service.name : service.name_en}
+                              </h3>
+                              <p className="text-[15px] text-gray-200 text-center mb-2 mt-1 min-h-[38px] max-h-[38px] line-clamp-2 overflow-hidden">
+                                {lang === "ar" ? service.description : service.description_en}
+                              </p>
+                              {/* المستندات المطلوبة */}
+                              {service.requiredDocuments && service.requiredDocuments.length > 0 && (
+                                <div className="w-full my-1 max-h-[60px] overflow-hidden">
+                                  <span className="block font-bold text-emerald-400 mb-1 text-sm text-center">
+                                    {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:
+                                  </span>
+                                  <ul className="list-inside list-disc text-sm text-gray-300 mx-auto w-fit text-center space-y-1">
+                                    {service.requiredDocuments.map((doc, idx) => (
+                                      <li key={idx}>{doc}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                            {/* زر التقديم */}
+                            <button
+                              onClick={() => router.push("/login")}
+                              className="
+                                my-3 w-11/12 py-2 rounded-full font-bold
+                                bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-400
+                                hover:from-emerald-500 hover:to-emerald-400
+                                text-gray-900 text-base transition-all duration-200 shadow-md
+                                group-hover:scale-105
+                                border border-emerald-200/70
+                                outline-none focus:ring-2 focus:ring-emerald-400
+                              "
+                              style={{ cursor: "pointer" }}
+                              aria-label={lang === "ar" ? "تقدم الآن" : "Apply Now"}
+                            >
+                              {lang === "ar" ? "تقدم الآن" : "Apply Now"}
+                            </button>
+                          </motion.div>
+                          {/* Tooltip خارج الكارت (Popover) */}
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-6 z-50 hidden group-hover:flex flex-col items-center pointer-events-none">
+                            <div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-emerald-400 p-4 w-[320px] max-w-[95vw] max-h-[70vh] overflow-y-auto text-sm transition-all pointer-events-auto">
                               <h3 className="text-lg font-extrabold text-emerald-700 mb-2 text-center">
                                 {lang === "ar" ? service.name : service.name_en}
                               </h3>
@@ -315,7 +316,7 @@ export default function ServicesPage() {
                               {/* أضف أي بيانات أخرى تريدها هنا */}
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       ))
                   ) : (
                     <div className="text-center text-gray-400 py-10 w-full col-span-full">{LANGS[lang].notFound}</div>
