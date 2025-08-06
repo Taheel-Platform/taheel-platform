@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FaFileAlt,
   FaBuilding,
@@ -103,9 +103,10 @@ export default function ServiceProfileCard({
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
 
-  // نافذة التفاصيل خارج الكارت
-  const [showDetailPopover, setShowDetailPopover] = useState(false);
+  // Tooltip المنبثقة فوق الكارت
+  const [showTooltip, setShowTooltip] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+  const cardRef = useRef();
 
   useEffect(() => {
     let ignore = false;
@@ -158,70 +159,37 @@ export default function ServiceProfileCard({
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
-  const allDocsUploaded =
-    !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
-  const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
-  const canPay = allDocsUploaded && isPaperCountReady;
-
-  function openDocsModal() {
-    setShowDocsModal(true);
-  }
-  function closeDocsModal() {
-    setShowDocsModal(false);
-  }
-  function handleDocsUploaded(newDocs) {
-    setUploadedDocs(newDocs);
-    closeDocsModal();
-  }
-  function openPaymentModal() {
-    setShowPayModal(true);
-    setPayMsg("");
-  }
-
-  // نافذة التفاصيل منبثقة صغيرة ومرتبة خارج الكارت
-  function renderDetailPopover() {
+  // Tooltip المنبثقة فوق الكارت
+  function renderTooltip() {
     return (
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
-        onClick={() => setShowDetailPopover(false)}
-        tabIndex={0}
-        style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
+        className="absolute z-50 left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center"
+        style={{
+          minWidth: 250,
+          maxWidth: 340,
+          boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
+          pointerEvents: "none",
+        }}
       >
         <div
-          className="bg-white rounded-2xl shadow-2xl border border-emerald-300 w-full max-w-xs p-4 relative overflow-y-auto"
-          style={{ minWidth: 240, maxWidth: 350, maxHeight: '80vh' }}
-          onClick={e => e.stopPropagation()}
+          className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
+          style={{ pointerEvents: "auto" }}
         >
-          <button
-            onClick={() => setShowDetailPopover(false)}
-            className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-            title={lang === "ar" ? "إغلاق" : "Close"}
-            style={{ cursor: "pointer" }}
-          >×</button>
-          {/* اسم الخدمة والتصنيف */}
-          <div className="flex flex-col items-center mb-3">
-            <h3 className="text-lg font-extrabold text-emerald-700 text-center mb-1 break-words">
-              {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
-            </h3>
-            <div className={`flex items-center gap-2 px-3 py-1 text-xs font-black rounded-full shadow ${style.badge} ${style.text}`}>
-              {style.icon()}
-              <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
-            </div>
-          </div>
-          {/* الوصف الكامل */}
-          <div className="mb-2 text-gray-700 text-xs whitespace-pre-line text-center font-medium break-words">
+          <h3 className="text-base font-extrabold text-emerald-700 mb-1 text-center">
+            {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
+          </h3>
+          <div className="text-gray-800 text-xs mb-2 text-center">
             {lang === "en"
               ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
               : (longDescription || longDescription_en || description || description_en || "")}
           </div>
-          {/* المستندات المطلوبة */}
           {requiredDocs.length > 0 && (
             <>
-              <span className="block font-bold text-emerald-600 mb-1 text-xs text-center">
+              <div className="font-bold text-emerald-600 mb-1 text-xs text-center">
                 <FaFileAlt className="inline mr-1" />
                 {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
-              </span>
-              <ul className="list-inside list-disc text-xs text-gray-700 mx-auto w-fit text-center space-y-1 mb-2">
+              </div>
+              <ul className="list-inside list-disc text-xs text-gray-700 mb-2 text-right">
                 {requiredDocs.map((doc, i) => (
                   <li key={i}>{doc}</li>
                 ))}
@@ -256,32 +224,44 @@ export default function ServiceProfileCard({
     );
   }
 
-  // ظهور النافذة بعد hover 2 ثانية
+  // إظهار وإخفاء Tooltip عند الوقوف أو المغادرة
   function handleMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoverTimeout(
-      setTimeout(() => setShowDetailPopover(true), 2000)
-    );
+    setHoverTimeout(setTimeout(() => setShowTooltip(true), 400)); // 0.4 ثانية
   }
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    setShowDetailPopover(false);
+    setShowTooltip(false);
+  }
+
+  function openDocsModal() {
+    setShowDocsModal(true);
+  }
+  function closeDocsModal() {
+    setShowDocsModal(false);
+  }
+  function handleDocsUploaded(newDocs) {
+    setUploadedDocs(newDocs);
+    closeDocsModal();
+  }
+  function openPaymentModal() {
+    setShowPayModal(true);
+    setPayMsg("");
   }
 
   return (
     <div
+      ref={cardRef}
       className={`
-        group relative w-full max-w-sm min-w-[242px] h-[auto] flex flex-col
+        relative w-full max-w-sm min-w-[242px] h-[auto] flex flex-col
         rounded-2xl border-0 shadow-lg shadow-emerald-100/60 hover:shadow-emerald-300/70
-        transition-all duration-300 overflow-hidden bg-gradient-to-br ${style.gradient} backdrop-blur-xl
+        transition-all duration-300 overflow-visible bg-gradient-to-br ${style.gradient} backdrop-blur-xl
         ring-1 ${style.ring} cursor-pointer
       `}
       tabIndex={0}
       role="button"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onTouchStart={() => setShowDetailPopover(true)}
-      onTouchEnd={() => setShowDetailPopover(false)}
       style={{
         border: "none",
         backdropFilter: "blur(6px)",
@@ -324,6 +304,8 @@ export default function ServiceProfileCard({
             : (name || name_en || "")}
         </h3>
       </div>
+      {/* Tooltip المنبثقة فوق الكارت */}
+      {showTooltip && renderTooltip()}
       {/* تفاصيل السعر النهائى زي ماهي */}
       <div className="w-full mt-2 mb-2">
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
@@ -463,8 +445,6 @@ export default function ServiceProfileCard({
           {lang === "ar" ? "ادفع الآن" : "Pay Now"}
         </button>
       </div>
-      {/* نافذة التفاصيل خارج الكارت عند الوقوف 2 ثانية */}
-      {showDetailPopover && renderDetailPopover()}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
