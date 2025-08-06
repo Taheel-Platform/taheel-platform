@@ -159,7 +159,27 @@ export default function ServiceProfileCard({
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
-  // Tooltip المنبثقة فوق الكارت
+  const allDocsUploaded =
+    !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
+  const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
+  const canPay = allDocsUploaded && isPaperCountReady;
+
+  function openDocsModal() {
+    setShowDocsModal(true);
+  }
+  function closeDocsModal() {
+    setShowDocsModal(false);
+  }
+  function handleDocsUploaded(newDocs) {
+    setUploadedDocs(newDocs);
+    closeDocsModal();
+  }
+  function openPaymentModal() {
+    setShowPayModal(true);
+    setPayMsg("");
+  }
+
+  // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف عليه)
   function renderTooltip() {
     return (
       <div
@@ -232,21 +252,6 @@ export default function ServiceProfileCard({
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setShowTooltip(false);
-  }
-
-  function openDocsModal() {
-    setShowDocsModal(true);
-  }
-  function closeDocsModal() {
-    setShowDocsModal(false);
-  }
-  function handleDocsUploaded(newDocs) {
-    setUploadedDocs(newDocs);
-    closeDocsModal();
-  }
-  function openPaymentModal() {
-    setShowPayModal(true);
-    setPayMsg("");
   }
 
   return (
