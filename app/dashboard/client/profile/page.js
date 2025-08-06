@@ -575,22 +575,21 @@ function ClientProfilePageInner({ userId }) {
             <span className="hidden sm:inline">
               <WeatherTimeWidget isArabic={lang === "ar"} />
             </span>
-            <button
-              onClick={toggleDarkMode}
-              className={`
-                px-3 py-1.5 rounded-full border text-xs sm:text-sm font-bold shadow transition cursor-pointer
-                ${darkMode
-                  ? "bg-emerald-800 text-white border-emerald-400 hover:bg-emerald-600"
-                  : "bg-[#16222c] text-emerald-200 border-emerald-500 hover:bg-emerald-500 hover:text-white"
-                }
-              `}
-              title={darkMode ? "الوضع النهاري" :  "الوضع المظلم"}
-            >
-              <span className="flex items-center gap-2">
-                {darkMode ? <FaSun /> : <FaMoon />}
-                {darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
-              </span>
-            </button>
+<button
+  onClick={toggleDarkMode}
+  className={`
+    relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition
+    w-9 h-9
+    ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}
+  `}
+  title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
+>
+  {darkMode ? (
+    <FaSun className="text-yellow-400 text-[22px] drop-shadow" />
+  ) : (
+    <FaMoon className="text-gray-700 text-[22px] drop-shadow" />
+  )}
+</button>
             <button
               onClick={toggleLang}
               className="px-3 py-1.5 rounded-full border border-emerald-500 bg-[#16222c] text-emerald-200 hover:bg-emerald-500 hover:text-white text-xs sm:text-sm font-bold shadow transition cursor-pointer"
