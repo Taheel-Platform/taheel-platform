@@ -245,14 +245,7 @@ export default function ServiceProfileCard({
   }
 
   // Tooltip يظهر فقط عند الوقوف على اسم الخدمة وليس الكارت كله
-  function handleNameMouseEnter() {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoverTimeout(setTimeout(() => setShowTooltip(true), 400));
-  }
-  function handleNameMouseLeave() {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    setShowTooltip(false);
-  }
+
 
   // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
   function getServiceNameFontSize() {
