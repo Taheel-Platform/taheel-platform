@@ -66,31 +66,33 @@ export default function ServiceUploadModal({
         return;
       }
 
-if (res.ok && data.url) {
-  setMsg(
-    lang === "ar"
-      ? "تم رفع الملف بنجاح!"
-      : "File uploaded successfully!"
-  );
-  setSelectedFile(null);
-  fileRef.current.value = null;
-  setUploadSuccess(true);
+      if (res.ok && data.url) {
+        setMsg(
+          lang === "ar"
+            ? "تم رفع الملف بنجاح!"
+            : "File uploaded successfully!"
+        );
+        setSelectedFile(null);
+        fileRef.current.value = null;
+        setUploadSuccess(true);
 
-  // حفظ بيانات الملف مؤقتاً للأب
-  if (setUploadedDocs) {
-    const fileObj = {
-      name: selectedFile.name,
-      url: data.url,
-      type: "application/pdf",
-    };
-    setUploadedDocs({ ...(uploadedDocs || {}), main: fileObj });
-  }
-
-  // إغلاق المدوال بعد ثانيتين (أو مباشرة لو أردت)
-  setTimeout(() => {
-    onClose && onClose();
-  }, 800); // يمكنك تقليل أو زيادة الوقت حسب رغبتك
-}
+        // حفظ بيانات الملف مؤقتاً للأب
+        if (setUploadedDocs) {
+          const fileObj = {
+            name: selectedFile.name,
+            url: data.url,
+            type: "application/pdf",
+          };
+          setUploadedDocs({ ...(uploadedDocs || {}), main: fileObj });
+        }
+      } else {
+        setError(
+          data?.error ||
+          (lang === "ar"
+            ? "حدث خطأ أثناء رفع الملف."
+            : "An error occurred during upload.")
+        );
+      }
     } catch (err) {
       setError(lang === "ar" ? "حدث خطأ أثناء رفع الملف." : "An error occurred during upload.");
     }
