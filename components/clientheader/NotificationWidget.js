@@ -55,12 +55,12 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMenu]);
 
-  async function markNotifAsRead(notifId) {
-    await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
-    setNotifications(nots => nots.map(n =>
-      n.notificationId === notifId ? { ...n, isRead: true } : n
-    ));
-  }
+async function markNotifAsRead(notifId) {
+  await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
+  setNotifications(nots => nots.map(n =>
+    n.notificationId === notifId ? { ...n, isRead: true } : n
+  ));
+}
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -108,9 +108,9 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
                     key={notif.notificationId || idx}
                     className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
                     onClick={() => {
-                      if (!notif.isRead) markNotifAsRead(notif.notificationId);
-                      setActiveNotif(notif);
-                    }}
+  if (!notif.isRead) markNotifAsRead(notif.notificationId);
+  setActiveNotif(notif);
+}}
                     title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء وفتح التفاصيل" : "Mark as read and view details")}
                     style={{ transition: "opacity 0.2s" }}
                   >
