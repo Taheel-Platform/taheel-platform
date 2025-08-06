@@ -418,56 +418,72 @@ export default function ServiceProfileCard({
           </div>
         )}
         {/* رفع المستندات */}
-        {requireUpload && (
-          <div className="w-full flex flex-col max-w-full mt-1 mb-1">
-            <button
-              className="w-full py-1 rounded-full font-black shadow text-xs transition
-                bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
-                hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
-                hover:scale-105 duration-150
-                focus:outline-none focus:ring-2 focus:ring-cyan-400
-                cursor-pointer"
-              style={{ cursor: "pointer" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                openDocsModal();
-              }}
-            >
-              {lang === "ar" ? "رفع المستندات" : "Upload Documents"}
-            </button>
-          </div>
-        )}
-        <ServiceUploadModal
-          open={showDocsModal}
-          onClose={closeDocsModal}
-          requiredDocs={requiredDocs}
-          uploadedDocs={uploadedDocs}
-          setUploadedDocs={handleDocsUploaded}
-          userId={userId}
-          lang={lang}
-          service={{ serviceId, name: name }}
-        />
-        {/* زرار التقديم دايما ظاهر في الأسفل */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            openPaymentModal();
-          }}
-          className={`
-            w-full py-1 rounded-full font-black shadow text-xs transition
-            bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
-            hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-            hover:scale-105 duration-150
-            focus:outline-none focus:ring-2 focus:ring-emerald-400
-            cursor-pointer
-            ${!canPay ? "opacity-40 pointer-events-none" : ""}
-            mt-1
-          `}
-          style={{ cursor: "pointer" }}
-          disabled={!canPay}
+{requireUpload && (
+  <div className="w-full flex flex-col max-w-full mt-1 mb-1">
+    <button
+      className="w-full py-1 rounded-full font-black shadow text-xs transition
+        bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
+        hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
+        hover:scale-105 duration-150
+        focus:outline-none focus:ring-2 focus:ring-cyan-400
+        cursor-pointer"
+      style={{ cursor: "pointer" }}
+      onClick={(e) => {
+        e.stopPropagation();
+        openDocsModal();
+      }}
+    >
+      {uploadedDocs.main
+        ? (lang === "ar" ? "تعديل المستند" : "Edit Document")
+        : (lang === "ar" ? "رفع المستند" : "Upload Document")}
+    </button>
+    {/* عرض اسم المستند المرفوع ورابطه */}
+    {uploadedDocs.main && (
+      <div className="text-xs text-emerald-700 font-bold mt-1 text-center">
+        {lang === "ar" ? "تم رفع المستند: " : "Uploaded: "}
+        <a
+          href={uploadedDocs.main.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-emerald-800 font-bold"
         >
-          {lang === "ar" ? "تقدم الآن" : "Apply Now"}
-        </button>
+          {uploadedDocs.main.name}
+        </a>
+      </div>
+    )}
+  </div>
+)}
+<ServiceUploadModal
+  open={showDocsModal}
+  onClose={closeDocsModal}
+  requiredDocs={requiredDocs}
+  uploadedDocs={uploadedDocs}
+  setUploadedDocs={handleDocsUploaded}
+  userId={userId}
+  lang={lang}
+  service={{ serviceId, name: name }}
+/>
+{/* زرار التقديم دايما ظاهر في الأسفل */}
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+    openPaymentModal();
+  }}
+  className={`
+    w-full py-1 rounded-full font-black shadow text-xs transition
+    bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+    hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+    hover:scale-105 duration-150
+    focus:outline-none focus:ring-2 focus:ring-emerald-400
+    cursor-pointer
+    ${!canPay ? "opacity-40 pointer-events-none" : ""}
+    mt-1
+  `}
+  style={{ cursor: "pointer" }}
+  disabled={!canPay}
+>
+  {lang === "ar" ? "تقدم الآن" : "Apply Now"}
+</button>
       </div>
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
