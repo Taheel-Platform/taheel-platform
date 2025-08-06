@@ -4,16 +4,6 @@ import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpi
 /**
  * ServiceUploadModal يدعم رفع مستند واحد لكل مرة مع اسم ديناميكي للمستند.
  * يجب أن يتم تمرير currentDocName من الأب ليعرف أي مستند يتم رفعه.
- * 
- * props:
- * - open: هل المدوال مفتوح
- * - onClose: دالة إغلاق المدوال
- * - service: بيانات الخدمة
- * - userId: رقم المستخدم
- * - lang: اللغة
- * - setUploadedDocs: دالة تحديث المستندات في الأب
- * - uploadedDocs: المستندات المرفوعة حاليًا
- * - currentDocName: اسم المستند الجاري رفعه (جديد!)
  */
 
 export default function ServiceUploadModal({
@@ -31,6 +21,26 @@ export default function ServiceUploadModal({
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+
+  // حماية من فتح المدوال بدون اسم مستند
+  if (!open) return null;
+  if (!currentDocName) {
+    return (
+      <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 backdrop-blur-[2px]">
+        <div className="bg-white rounded p-6 shadow-xl text-center max-w-xs">
+          <div className="font-bold text-lg text-emerald-800 mb-2">
+            {lang === "ar" ? "يجب اختيار مستند للرفع" : "Please choose a document to upload"}
+          </div>
+          <button
+            className="mt-2 px-6 py-2 bg-emerald-500 text-white rounded"
+            onClick={onClose}
+          >
+            {lang === "ar" ? "إغلاق" : "Close"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function handleFileChange(e) {
     setError("");
@@ -115,7 +125,6 @@ export default function ServiceUploadModal({
     setUploading(false);
   }
 
-  if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 backdrop-blur-[2px]">
       <div className="
@@ -139,7 +148,7 @@ export default function ServiceUploadModal({
             {uploading ? <FaSpinner className="text-3xl text-cyan-700 drop-shadow animate-spin" /> : <FaFilePdf className="text-3xl text-cyan-700 drop-shadow" />}
           </div>
           <div className="font-extrabold text-cyan-800 text-md text-center">
-            {lang === "ar" ? `رفع مستند ${currentDocName || "PDF"}` : `Upload ${currentDocName || "PDF"} Document`}
+            {lang === "ar" ? `رفع مستند ${currentDocName}` : `Upload ${currentDocName} Document`}
           </div>
           <div className="text-xs text-gray-500 text-center mt-0.5 mb-0.5 max-w-xs truncate">
             {service?.name}

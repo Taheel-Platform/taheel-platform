@@ -181,21 +181,21 @@ export default function ServiceProfileCard({
   }
 
   // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف على اسم الخدمة فقط)
-  function renderTooltip() {
-    return (
+function renderTooltip() {
+  return (
+    <div
+      className="absolute z-50 left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center pointer-events-none"
+      style={{
+        minWidth: 250,
+        maxWidth: 340,
+        boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
+        // لا تحتاج pointerEvents: "none" هنا إذا أضفت الكلاس!
+      }}
+    >
       <div
-        className="absolute z-50 left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center"
-        style={{
-          minWidth: 250,
-          maxWidth: 340,
-          boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
-          pointerEvents: "none",
-        }}
+        className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
+        style={{ pointerEvents: "none" }}
       >
-        <div
-          className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
-          style={{ pointerEvents: "auto" }}
-        >
           <h3 className="text-base font-extrabold text-emerald-700 mb-1 text-center">
             {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
           </h3>
