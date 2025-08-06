@@ -516,7 +516,7 @@ export default function ServiceProfileCard({
   return (
     <div
       className={`
-        group relative w-full max-w-sm min-w-[242px] h-[auto] flex flex-col
+        group relative w-full max-w-[250px] min-h-[340px] max-h-[340px] flex flex-col
         rounded-2xl border-0
         shadow-lg shadow-emerald-100/60 hover:shadow-emerald-300/70
         transition-all duration-300 overflow-hidden
@@ -528,7 +528,6 @@ export default function ServiceProfileCard({
         border: "none",
         backdropFilter: "blur(6px)",
         width: "100%",
-        maxWidth: 370,
         minWidth: 220,
       }}
       tabIndex={0}
@@ -538,14 +537,13 @@ export default function ServiceProfileCard({
       onTouchStart={() => { setShowDetailTable(true); setShowTooltip(true); }}
       onTouchEnd={() => { setShowDetailTable(false); setShowTooltip(false); }}
     >
-      {/* Tooltip خارج الكارت */}
+      {/* Tooltip خارج الكارت بحجم ثابت ومنسق */}
       {showTooltip && (
-        <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-50 flex flex-col items-center pointer-events-none">
-          <div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-emerald-400 p-4 w-[320px] max-w-[95vw] max-h-[70vh] overflow-y-auto text-sm transition-all pointer-events-auto">
-            <div className="font-bold text-emerald-700 text-lg mb-2 text-center">{displayName}</div>
-            <div className="mb-2 text-gray-700 text-base text-center">
-              {descText}
-            </div>
+        <div className="absolute left-1/2 -translate-x-1/2 -top-7 z-50 flex flex-col items-center pointer-events-none">
+          <div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-emerald-400
+            p-4 w-[310px] max-w-[310px] max-h-[340px] overflow-y-auto text-sm transition-all pointer-events-auto">
+            <h3 className="text-lg font-extrabold text-emerald-700 mb-2 text-center">{displayName}</h3>
+            <p className="text-base text-gray-900 text-center mb-2">{displayLongDescription || displayDescription}</p>
             {requiredDocs.length > 0 && (
               <>
                 <span className="font-bold text-emerald-500 text-sm">{lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:</span>
@@ -556,9 +554,7 @@ export default function ServiceProfileCard({
                 </ul>
               </>
             )}
-            <div className="mt-2 font-bold text-gray-600 text-xs">
-              {lang === "ar" ? "السعر النهائى:" : "Total Price:"} {clientPrice || price || 0} {lang === "ar" ? "د.إ" : "AED"}
-            </div>
+            {/* أضف أي بيانات إضافية هنا */}
           </div>
         </div>
       )}
