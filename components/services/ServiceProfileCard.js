@@ -309,74 +309,73 @@ function renderTooltip() {
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
       {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
-      <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
-        <h3
-          className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            width: "100%",
-            minHeight: "30px",
-            lineHeight: "1.15",
-            display: "block",
-            cursor: "pointer"
-          }}
-          title={
-            lang === "en"
-              ? (name_en || translatedName || name || "")
-              : (name || name_en || "")
-          }
-          onMouseEnter={handleNameMouseEnter}
-          onMouseLeave={handleNameMouseLeave}
-        >
-          {lang === "en"
-            ? (name_en || translatedName || name || "")
-            : (name || name_en || "")}
-        </h3>
-        {showTooltip && renderTooltip()}
-      </div>
-      {/* عناصر السعر وزرار التقديم بشكل مرتب وكبير */}
-      <div className="w-full mt-1 mb-1 flex flex-col items-center">
-        <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
-              {totalServicePrice}
-            </span>
-            <span className="text-base text-gray-500 font-bold">
-              {lang === "ar" ? "درهم" : "AED"}
-            </span>
-            <Image
-              src="/aed-logo.png"
-              alt={lang === "ar" ? "درهم إماراتي" : "AED"}
-              width={34}
-              height={34}
-              className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
-            />
-          </div>
-          <table className="w-full text-sm text-gray-700 mb-1">
-            <tbody>
-              <tr>
-                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-                <td className="text-right">
-                  {servicePriceTotal} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-              <tr>
-                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
-                <td className="text-right">
-                  {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-              <tr>
-                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
-                <td className="text-right">
-                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+<div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
+  <h3
+    className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
+    style={{
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      width: "100%",
+      minHeight: "30px",
+      lineHeight: "1.15",
+      display: "block",
+      cursor: "pointer"
+    }}
+    title={
+      lang === "en"
+        ? (name_en || translatedName || name || "")
+        : (name || name_en || "")
+    }
+    onMouseEnter={handleNameMouseEnter}
+    onMouseLeave={handleNameMouseLeave}
+  >
+    {lang === "en"
+      ? (name_en || translatedName || name || "")
+      : (name || name_en || "")}
+  </h3>
+  {showTooltip && renderTooltip()}
+
+  {/* السعر الثابت تحت اسم الخدمة مباشرة */}
+  <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2 mt-1 mb-2">
+    <div className="flex items-center gap-2 mb-1">
+      <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
+        {totalServicePrice}
+      </span>
+      <span className="text-base text-gray-500 font-bold">
+        {lang === "ar" ? "درهم" : "AED"}
+      </span>
+      <Image
+        src="/aed-logo.png"
+        alt={lang === "ar" ? "درهم إماراتي" : "AED"}
+        width={34}
+        height={34}
+        className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
+      />
+    </div>
+    <table className="w-full text-sm text-gray-700 mb-1">
+      <tbody>
+        <tr>
+          <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+          <td className="text-right">
+            {servicePriceTotal} {lang === "ar" ? "د.إ" : "AED"}
+          </td>
+        </tr>
+        <tr>
+          <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
+          <td className="text-right">
+            {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
+          </td>
+        </tr>
+        <tr>
+          <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
+          <td className="text-right">
+            {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
         {/* عداد عدد مرات الخدمة بشكل صغير */}
         {repeatable && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
