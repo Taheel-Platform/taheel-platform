@@ -31,8 +31,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
 } from "firebase/firestore";
-import WalletWidget from "@/components/WalletWidget";
-import CoinsWidget from "@/components/CoinsWidget";
+import WalletWidget from "@/components/clientheader/WalletWidget";
+import CoinsWidget from "@/components/clientheader/CoinsWidget";
+import NotificationWidget from "./clientheader/NotificationWidget";
 
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
@@ -148,6 +149,8 @@ function ClientProfilePageInner({ userId }) {
   const walletRef = useRef();
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
+  const [activeNotif, setActiveNotif] = useState(null);
+  const [activeMessage, setActiveMessage] = useState(null);
 
   // ========= SESSION AUTO LOGOUT =========
   useEffect(() => {
@@ -516,65 +519,8 @@ function ClientProfilePageInner({ userId }) {
               </span>
             </div>
             {/* Notifications */}
-            <div ref={notifRef} className="relative group cursor-pointer" onClick={() => setShowNotifMenu(v => !v)}>
-              <motion.button
-                type="button"
-                className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
-                tabIndex={0}
-                style={{ minWidth: 36, minHeight: 36 }}
-                onClick={() => setShowNotifMenu(v => !v)}
-                whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 250, damping: 18 }}
-              >
-                <FaBell
-                  className={`text-[27px] sm:text-[29px] lg:text-[32px] ${darkMode ? "text-emerald-300" : "text-emerald-400"} drop-shadow-lg transition-all duration-150`}
-                  style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
-                />
-                {notifications.some(n => !n.isRead) && (
-                  <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
-                    {notifications.filter(n => !n.isRead).length}
-                  </span>
-                )}
-              </motion.button>
-              {notifications.some(n => !n.isRead) && (
-                <span className="absolute -top-2 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full px-1 shadow">
-                  {notifications.filter(n => !n.isRead).length}
-                </span>
-              )}
-              <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
-                {lang === "ar" ? "الإشعارات" : "Notifications"}
-              </span>
-              {showNotifMenu && (
-                <div className={`absolute top-10 right-0 w-72 shadow-xl rounded-lg p-4 z-50 ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}>
-                  <div className="font-bold text-emerald-700 mb-3">{lang === "ar" ? "الإشعارات" : "Notifications"}</div>
-                  {notifications.length === 0 ? (
-                    <div className="text-gray-400 text-center">{lang === "ar" ? "لا توجد إشعارات" : "No notifications"}</div>
-                  ) : (
-                    <ul className="space-y-2 max-h-60 overflow-y-auto">
-                      {notifications.map((notif, idx) => (
-                        <li
-                          key={notif.notificationId || idx}
-                          className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
-                          onClick={() => markNotifAsRead(notif.notificationId)}
-                          title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء" : "Mark as read")}
-                          style={{ transition: "opacity 0.2s" }}
-                        >
-                          <div className="font-bold text-emerald-600">{notif.title}</div>
-                          <div className="text-gray-500">{notif.body}</div>
-                          <div className="text-gray-400 text-[10px] mt-1">
-                            {notif.timestamp ? new Date(notif.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US") : ""}
-                          </div>
-                          {!notif.isRead && (
-                            <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-[10px] rounded-full">{lang === "ar" ? "جديد" : "New"}</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </div>
+            <NotificationWidget userId={client.userId} lang={lang} darkMode={darkMode} />
+
             {/* Messages */}
             <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
               <motion.button
