@@ -115,6 +115,9 @@ export default function ServiceProfileCard({
   const [showDetailTable, setShowDetailTable] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
 
+  // Popover خارج الكارت عند hover مباشرة (تفاصيل الخدمة)
+  const [showPopover, setShowPopover] = useState(false);
+
   useEffect(() => {
     let ignore = false;
     async function doTranslation() {
@@ -193,47 +196,31 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // جدول التفاصيل في نافذة خارج الكارت (يظهر عند الوقوف الطويل)
-  function renderDetailsTable() {
+  // نافذة التفاصيل Popover خارج الكارت عند hover (تظهر فورًا)
+  function renderPopover() {
     return (
-      <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
-        style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
-        tabIndex={0}
-        onClick={() => setShowDetailTable(false)}
-      >
-        <div
-          className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
-          style={{ minWidth: 250, maxWidth: 380 }}
-          onClick={e => e.stopPropagation()} // يمنع إغلاق النافذة عند الضغط داخلها
-        >
-          <button
-            onClick={() => setShowDetailTable(false)}
-            className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-            title={lang === "ar" ? "إغلاق" : "Close"}
-            style={{ cursor: "pointer" }}
-          >×</button>
-          <div className="text-lg font-bold text-emerald-700 mb-2 text-center">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-7 z-50 flex flex-col items-center pointer-events-none">
+        <div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-emerald-400
+          p-4 w-[310px] max-w-[95vw] max-h-[340px] overflow-y-auto text-sm pointer-events-auto">
+          <h3 className="text-lg font-extrabold text-emerald-700 mb-2 text-center">
             {lang === "en"
               ? (name_en || translatedName || name || "")
               : (name || name_en || "")}
-          </div>
-          <div className="text-gray-700 text-xs whitespace-pre-line mb-3">
+          </h3>
+          <p className="text-base text-gray-900 text-center mb-2">
             {lang === "en"
               ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
               : (longDescription || longDescription_en || description || description_en || "")}
-          </div>
+          </p>
           {requiredDocs.length > 0 && (
-            <div className="mb-4">
-              <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
-                <FaFileAlt /> {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
-              </div>
-              <ul className="list-inside list-disc text-gray-700 text-[13px] pl-2 space-y-0.5 max-w-full mb-2">
-                {requiredDocs.map((doc, i) => (
-                  <li key={i}>{doc}</li>
+            <>
+              <span className="font-bold text-emerald-500 text-sm">{lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:</span>
+              <ul className="list-inside list-disc text-sm text-gray-700 mb-2 text-right">
+                {requiredDocs.map((doc, idx) => (
+                  <li key={idx}>{doc}</li>
                 ))}
               </ul>
-            </div>
+            </>
           )}
           <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
             <tbody>
@@ -268,7 +255,6 @@ export default function ServiceProfileCard({
               </tr>
             </tbody>
           </table>
-          {/* مدخلات الخدمة */}
           {repeatable && (
             <div className="flex flex-col items-center mb-2 w-full">
               <label className="text-xs font-bold text-gray-600 mb-1">
@@ -290,21 +276,23 @@ export default function ServiceProfileCard({
     );
   }
 
-  // ظهور جدول التفاصيل بعد الوقوف 2 ثانية
+  // ظهور جدول التفاصيل بعد الوقوف 2 ثانية (نافذة كبيرة وسط الشاشة)
   function handleMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
+    setShowPopover(true); // يظهر Popover فورًا
     setHoverTimeout(
       setTimeout(() => {
-        setShowDetailTable(true);
-      }, 2000) // ثانيتين بالضبط
+        setShowDetailTable(true); // بعد 2 ثانية تظهر نافذة التفاصيل الكبيرة
+      }, 2000)
     );
   }
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
+    setShowPopover(false);
     setShowDetailTable(false);
   }
 
-  // باقي الكارت زي ماهو بالضبط بدون وصف ولا مستندات داخله
+  // الكارت الأساسي
   return (
     <div
       className={`
@@ -332,9 +320,14 @@ export default function ServiceProfileCard({
       role="button"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onTouchStart={() => setShowDetailTable(true)}
-      onTouchEnd={() => setShowDetailTable(false)}
+      onTouchStart={() => { setShowPopover(true); setShowDetailTable(true); }}
+      onTouchEnd={() => { setShowPopover(false); setShowDetailTable(false); }}
     >
+      {/* نافذة التفاصيل الصغيرة Popover خارج الكارت عند hover */}
+      {showPopover && renderPopover()}
+      {/* نافذة التفاصيل الكبيرة وسط الشاشة بعد 2 ثانية */}
+      {showDetailTable && renderDetailsTable()}
+
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
         <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[36px] cursor-help">
@@ -533,8 +526,6 @@ export default function ServiceProfileCard({
           </button>
         )}
       </div>
-      {/* نافذة التفاصيل خارج الكارت عند الوقوف 2 ثانية */}
-      {showDetailTable && renderDetailsTable()}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
