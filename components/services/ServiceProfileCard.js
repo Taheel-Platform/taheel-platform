@@ -785,7 +785,7 @@ export default function ServiceProfileCard({
               cursor-pointer
               ${!canPay ? "opacity-40 pointer-events-none" : ""}
             `}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: "pointer", fontSize: "14px", padding: "10px 0" }}
             disabled={!canPay}
           >
             {lang === "ar" ? "ادفع الآن" : "Pay Now"}
@@ -805,7 +805,7 @@ export default function ServiceProfileCard({
                 cursor-pointer
                 ${!canPay ? "opacity-40 pointer-events-none" : ""}
               `}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: "pointer", fontSize: "13px", padding: "8px 0" }}
               disabled={!canPay}
               title={
                 lang === "ar"
