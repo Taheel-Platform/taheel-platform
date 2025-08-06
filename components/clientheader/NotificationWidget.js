@@ -11,39 +11,40 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
   const [activeNotif, setActiveNotif] = useState(null);
   const menuRef = useRef();
 
-  useEffect(() => {
-    async function fetchNotifications() {
-      if (!userId) return;
-      const notifsSnap = await getDocs(
-        query(collection(firestore, "notifications"), where("targetId", "==", userId))
-      );
-      let clientNotifs = notifsSnap.docs.map(d => d.data());
-      // تصفية الإشعارات الأقدم من 15 يومًا
-      const now = new Date();
-      const filteredNotifs = clientNotifs.filter(n => {
-        if (!n.timestamp) return true;
+  // جلب الإشعارات مع فلترة كل 15 يوم
+  const fetchNotifications = async () => {
+    if (!userId) return;
+    const notifsSnap = await getDocs(
+      query(collection(firestore, "notifications"), where("targetId", "==", userId))
+    );
+    let clientNotifs = notifsSnap.docs.map(d => d.data());
+    // تصفية الإشعارات الأقدم من 15 يومًا
+    const now = new Date();
+    const filteredNotifs = clientNotifs.filter(n => {
+      if (!n.timestamp) return true;
+      const notifDate = new Date(n.timestamp);
+      const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
+      return diffDays <= 15;
+    });
+    // حذف الإشعارات القديمة من الفايرستور (اختياري)
+    for (const n of clientNotifs) {
+      if (n.timestamp) {
         const notifDate = new Date(n.timestamp);
         const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
-        return diffDays <= 15;
-      });
-      // (اختياري) حذف الإشعارات الأقدم نهائيًا من قاعدة البيانات
-      for (const n of clientNotifs) {
-        if (n.timestamp) {
-          const notifDate = new Date(n.timestamp);
-          const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
-          if (diffDays > 15 && n.notificationId) {
-            try {
-              await deleteDoc(doc(firestore, "notifications", n.notificationId));
-            } catch (e) {/* ignore errors */}
-          }
+        if (diffDays > 15 && n.notificationId) {
+          try {
+            await deleteDoc(doc(firestore, "notifications", n.notificationId));
+          } catch (e) {/* ignore errors */}
         }
       }
-      filteredNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-      setNotifications(filteredNotifs);
     }
-    fetchNotifications();
-  }, [userId]);
+    filteredNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    setNotifications(filteredNotifs);
+  };
 
+  useEffect(() => { fetchNotifications(); }, [userId]);
+
+  // إغلاق المنيو عند الضغط خارجها
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -55,14 +56,24 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMenu]);
 
-async function markNotifAsRead(notifId) {
-  await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
-  setNotifications(nots => nots.map(n =>
-    n.notificationId === notifId ? { ...n, isRead: true } : n
-  ));
-}
+  // تمييز كمقروء + تحديث القائمة فوراً
+  async function markNotifAsRead(notifId) {
+    await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
+    setNotifications(nots => nots.map(n =>
+      n.notificationId === notifId ? { ...n, isRead: true } : n
+    ));
+  }
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // حركة رنين للجرس عند فتح المنيو
+  const bellVariants = {
+    initial: { rotate: 0 },
+    ringing: {
+      rotate: [0, -25, 25, -20, 15, -10, 0],
+      transition: { duration: 0.8, ease: "easeInOut" }
+    }
+  };
 
   return (
     <div className="relative" ref={menuRef}>
@@ -73,16 +84,23 @@ async function markNotifAsRead(notifId) {
         style={{ minWidth: 36, minHeight: 36 }}
         title={lang === "ar" ? "الإشعارات" : "Notifications"}
         onClick={() => setShowMenu(v => !v)}
-        whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.15)" }}
+        whileHover={{ scale: 1.18, filter: "brightness(1.15)" }} // بدون تدوير عادي هنا
         whileTap={{ scale: 0.97 }}
         transition={{ type: "spring", stiffness: 250, damping: 18 }}
       >
-        <FaBell
-          className={`text-[26px] sm:text-[28px] lg:text-[32px] ${darkMode ? "text-emerald-300" : "text-emerald-400"} drop-shadow-lg transition-all duration-150`}
-          style={{
-            filter: "drop-shadow(0 2px 7px #10b98188)"
-          }}
-        />
+        {/* جرس مع حركة رنين عند فتح المنيو */}
+        <motion.span
+          variants={bellVariants}
+          animate={showMenu ? "ringing" : "initial"}
+          style={{ display: "inline-block" }}
+        >
+          <FaBell
+            className={`text-[26px] sm:text-[28px] lg:text-[32px] ${darkMode ? "text-emerald-300" : "text-emerald-400"} drop-shadow-lg transition-all duration-150`}
+            style={{
+              filter: "drop-shadow(0 2px 7px #10b98188)"
+            }}
+          />
+        </motion.span>
         {unreadCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[11px] font-bold rounded-full px-[6px] py-[2px] shadow border-2 border-white/80">
             {unreadCount}
@@ -107,10 +125,10 @@ async function markNotifAsRead(notifId) {
                   <li
                     key={notif.notificationId || idx}
                     className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
-                    onClick={() => {
-  if (!notif.isRead) markNotifAsRead(notif.notificationId);
-  setActiveNotif(notif);
-}}
+                    onClick={async () => {
+                      if (!notif.isRead) await markNotifAsRead(notif.notificationId);
+                      setActiveNotif({ ...notif, isRead: true });
+                    }}
                     title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء وفتح التفاصيل" : "Mark as read and view details")}
                     style={{ transition: "opacity 0.2s" }}
                   >
