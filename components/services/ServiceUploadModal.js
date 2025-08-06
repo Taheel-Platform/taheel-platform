@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes } from "react-icons/fa";
+import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 
 export default function ServiceUploadModal({
   open,
@@ -15,12 +15,10 @@ export default function ServiceUploadModal({
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   function handleFileChange(e) {
     setError("");
     setMsg("");
-    setUploadSuccess(false);
     const file = e.target.files[0];
     if (!file) {
       setSelectedFile(null);
@@ -39,7 +37,6 @@ export default function ServiceUploadModal({
     e.preventDefault();
     setError("");
     setMsg("");
-    setUploadSuccess(false);
     if (!selectedFile) {
       setError(lang === "ar" ? "يجب اختيار ملف PDF" : "Please select a PDF file.");
       return;
@@ -74,7 +71,6 @@ export default function ServiceUploadModal({
         );
         setSelectedFile(null);
         fileRef.current.value = null;
-        setUploadSuccess(true);
 
         // حفظ بيانات الملف مؤقتاً للأب
         if (setUploadedDocs) {
@@ -85,6 +81,10 @@ export default function ServiceUploadModal({
           };
           setUploadedDocs({ ...(uploadedDocs || {}), main: fileObj });
         }
+
+        setTimeout(() => {
+          onClose && onClose();
+        }, 700); // يغلق المدوال تلقائيًا بعد النجاح (يمكنك التعديل حسب رغبتك)
       } else {
         setError(
           data?.error ||
@@ -119,8 +119,8 @@ export default function ServiceUploadModal({
 
         {/* أيقونة PDF وسطية */}
         <div className="flex flex-col items-center mb-2">
-          <div className="bg-cyan-200 rounded-full p-3 mb-2 shadow-sm">
-            <FaFilePdf className="text-3xl text-cyan-700 drop-shadow" />
+          <div className={`bg-cyan-200 rounded-full p-3 mb-2 shadow-sm flex items-center justify-center ${uploading ? "animate-spin" : ""}`}>
+            {uploading ? <FaSpinner className="text-3xl text-cyan-700 drop-shadow animate-spin" /> : <FaFilePdf className="text-3xl text-cyan-700 drop-shadow" />}
           </div>
           <div className="font-extrabold text-cyan-800 text-md text-center">
             {lang === "ar" ? "رفع مستند PDF" : "Upload PDF Document"}
@@ -158,7 +158,7 @@ export default function ServiceUploadModal({
               accept="application/pdf"
               className="hidden"
               onChange={handleFileChange}
-              disabled={uploading || uploadSuccess}
+              disabled={uploading}
             />
             {selectedFile && (
               <div className="mt-1 text-xs text-emerald-700 font-bold truncate max-w-[90%] flex flex-col gap-1">
@@ -168,16 +168,21 @@ export default function ServiceUploadModal({
           </label>
           <button
             type="submit"
-            disabled={uploading || !selectedFile || uploadSuccess}
+            disabled={uploading || !selectedFile}
             className={`w-full py-2 rounded-full font-black shadow transition text-base mt-1
-              ${uploading || !selectedFile || uploadSuccess
+              ${uploading || !selectedFile
                 ? "bg-cyan-200 text-white cursor-not-allowed"
                 : "bg-emerald-500 hover:bg-emerald-700 text-white cursor-pointer"}
             `}
             style={{ fontSize: "1rem" }}
           >
             {uploading
-              ? (lang === "ar" ? "جاري الرفع..." : "Uploading...")
+              ? (
+                <>
+                  <FaSpinner className="animate-spin mr-2" />
+                  {lang === "ar" ? "جاري الرفع..." : "Uploading..."}
+                </>
+              )
               : (lang === "ar" ? "رفع الملف" : "Upload File")}
           </button>
           {error && (
