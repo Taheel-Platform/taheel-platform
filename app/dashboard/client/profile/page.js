@@ -33,7 +33,7 @@ import {
 } from "firebase/firestore";
 import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
-import NotificationWidget from "./clientheader/NotificationWidget";
+import NotificationWidget from "@/components/clientheader/NotificationWidget";
 
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
