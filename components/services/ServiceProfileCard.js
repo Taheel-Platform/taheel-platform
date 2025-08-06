@@ -102,6 +102,7 @@ export default function ServiceProfileCard({
   const [uploadedDocs, setUploadedDocs] = useState({});
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
+  const [currentDocName, setCurrentDocName] = useState("");
 
   // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
   const [showTooltip, setShowTooltip] = useState(false);
@@ -168,6 +169,7 @@ export default function ServiceProfileCard({
   }
   function closeDocsModal() {
     setShowDocsModal(false);
+    setCurrentDocName(""); // حماية إضافية: تصفير اسم المستند بعد غلق المدوال
   }
   function handleDocsUploaded(newDocs) {
     setUploadedDocs(newDocs);
@@ -243,7 +245,6 @@ export default function ServiceProfileCard({
     );
   }
 
-  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة وليس الكارت كله
   function handleNameMouseEnter() {
     setShowTooltip(true);
   }
@@ -251,7 +252,6 @@ export default function ServiceProfileCard({
     setShowTooltip(false);
   }
 
-  // حساب حجم الخط المناسب لاسم الخدمة حسب الطول
   function getServiceNameFontSize() {
     const nameStr =
       lang === "en"
@@ -418,76 +418,76 @@ export default function ServiceProfileCard({
           </div>
         )}
         {/* رفع المستندات */}
-{requireUpload && (
-  <div className="w-full flex flex-col max-w-full mt-1 mb-1">
-    {requiredDocs.map((docName, idx) => (
-      <div key={idx} className="mb-2">
-        <button
-          className="w-full py-1 rounded-full font-black shadow text-xs transition
-            bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
-            hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
-            hover:scale-105 duration-150
-            focus:outline-none focus:ring-2 focus:ring-cyan-400
-            cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCurrentDocName(docName); // متغير state في الكارت
-            openDocsModal();
-          }}
-        >
-          {uploadedDocs[docName]
-            ? (lang === "ar" ? `تعديل ${docName}` : `Edit ${docName}`)
-            : (lang === "ar" ? `رفع ${docName}` : `Upload ${docName}`)}
-        </button>
-        {/* عرض اسم المستند المرفوع ورابطه */}
-        {uploadedDocs[docName] && (
-          <div className="text-xs text-emerald-700 font-bold mt-1 text-center">
-            {lang === "ar" ? "تم رفع المستند: " : "Uploaded: "}
-            <a
-              href={uploadedDocs[docName].url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline text-emerald-800 font-bold"
-            >
-              {uploadedDocs[docName].name}
-            </a>
+        {requireUpload && (
+          <div className="w-full flex flex-col max-w-full mt-1 mb-1">
+            {requiredDocs.map((docName, idx) => (
+              <div key={idx} className="mb-2">
+                <button
+                  className="w-full py-1 rounded-full font-black shadow text-xs transition
+                    bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
+                    hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
+                    hover:scale-105 duration-150
+                    focus:outline-none focus:ring-2 focus:ring-cyan-400
+                    cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentDocName(docName);
+                    openDocsModal();
+                  }}
+                >
+                  {uploadedDocs[docName]
+                    ? (lang === "ar" ? `تعديل ${docName}` : `Edit ${docName}`)
+                    : (lang === "ar" ? `رفع ${docName}` : `Upload ${docName}`)}
+                </button>
+                {/* عرض اسم المستند المرفوع ورابطه */}
+                {uploadedDocs[docName] && (
+                  <div className="text-xs text-emerald-700 font-bold mt-1 text-center">
+                    {lang === "ar" ? "تم رفع المستند: " : "Uploaded: "}
+                    <a
+                      href={uploadedDocs[docName].url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-emerald-800 font-bold"
+                    >
+                      {uploadedDocs[docName].name}
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
-      </div>
-    ))}
-  </div>
-)}
-<ServiceUploadModal
-  open={showDocsModal}
-  onClose={closeDocsModal}
-  currentDocName={currentDocName}
-  uploadedDocs={uploadedDocs}
-  setUploadedDocs={handleDocsUploaded}
-  userId={userId}
-  lang={lang}
-  service={{ serviceId, name: name }}
-/>
-{/* زرار التقديم دايما ظاهر في الأسفل */}
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    openPaymentModal();
-  }}
-  className={`
-    w-full py-1 rounded-full font-black shadow text-xs transition
-    bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
-    hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-    hover:scale-105 duration-150
-    focus:outline-none focus:ring-2 focus:ring-emerald-400
-    cursor-pointer
-    ${!canPay ? "opacity-40 pointer-events-none" : ""}
-    mt-1
-  `}
-  style={{ cursor: "pointer" }}
-  disabled={!canPay}
->
-  {lang === "ar" ? "تقدم الآن" : "Apply Now"}
-</button>
+        <ServiceUploadModal
+          open={showDocsModal}
+          onClose={closeDocsModal}
+          currentDocName={currentDocName}
+          uploadedDocs={uploadedDocs}
+          setUploadedDocs={handleDocsUploaded}
+          userId={userId}
+          lang={lang}
+          service={{ serviceId, name: name }}
+        />
+        {/* زرار التقديم دايما ظاهر في الأسفل */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            openPaymentModal();
+          }}
+          className={`
+            w-full py-1 rounded-full font-black shadow text-xs transition
+            bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+            hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+            hover:scale-105 duration-150
+            focus:outline-none focus:ring-2 focus:ring-emerald-400
+            cursor-pointer
+            ${!canPay ? "opacity-40 pointer-events-none" : ""}
+            mt-1
+          `}
+          style={{ cursor: "pointer" }}
+          disabled={!canPay}
+        >
+          {lang === "ar" ? "تقدم الآن" : "Apply Now"}
+        </button>
       </div>
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
