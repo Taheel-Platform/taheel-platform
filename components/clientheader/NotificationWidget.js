@@ -14,11 +14,13 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
   // جلب الإشعارات (كل إشعار أحدث من 15 يوم فقط)
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
-    const notifsSnap = await getDocs(
-      query(collection(firestore, "notifications"), where("targetId", "==", userId))
-    );
-    let clientNotifs = notifsSnap.docs.map(d => d.data());
-    const now = new Date();
+const notifsSnap = await getDocs(
+  query(collection(firestore, "notifications"), where("targetId", "==", userId))
+);
+let clientNotifs = notifsSnap.docs.map(d => ({
+  ...d.data(),
+  notificationId: d.id   // استخدم document id الحقيقى
+}));
     // فلترة للإشعارات الحديثة فقط
     const filtered = clientNotifs.filter(n => {
       if (!n.timestamp) return true;
