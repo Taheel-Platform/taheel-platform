@@ -420,43 +420,47 @@ export default function ServiceProfileCard({
         {/* رفع المستندات */}
 {requireUpload && (
   <div className="w-full flex flex-col max-w-full mt-1 mb-1">
-    <button
-      className="w-full py-1 rounded-full font-black shadow text-xs transition
-        bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
-        hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
-        hover:scale-105 duration-150
-        focus:outline-none focus:ring-2 focus:ring-cyan-400
-        cursor-pointer"
-      style={{ cursor: "pointer" }}
-      onClick={(e) => {
-        e.stopPropagation();
-        openDocsModal();
-      }}
-    >
-      {uploadedDocs.main
-        ? (lang === "ar" ? "تعديل المستند" : "Edit Document")
-        : (lang === "ar" ? "رفع المستند" : "Upload Document")}
-    </button>
-    {/* عرض اسم المستند المرفوع ورابطه */}
-    {uploadedDocs.main && (
-      <div className="text-xs text-emerald-700 font-bold mt-1 text-center">
-        {lang === "ar" ? "تم رفع المستند: " : "Uploaded: "}
-        <a
-          href={uploadedDocs.main.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline text-emerald-800 font-bold"
+    {requiredDocs.map((docName, idx) => (
+      <div key={idx} className="mb-2">
+        <button
+          className="w-full py-1 rounded-full font-black shadow text-xs transition
+            bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
+            hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
+            hover:scale-105 duration-150
+            focus:outline-none focus:ring-2 focus:ring-cyan-400
+            cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCurrentDocName(docName); // متغير state في الكارت
+            openDocsModal();
+          }}
         >
-          {uploadedDocs.main.name}
-        </a>
+          {uploadedDocs[docName]
+            ? (lang === "ar" ? `تعديل ${docName}` : `Edit ${docName}`)
+            : (lang === "ar" ? `رفع ${docName}` : `Upload ${docName}`)}
+        </button>
+        {/* عرض اسم المستند المرفوع ورابطه */}
+        {uploadedDocs[docName] && (
+          <div className="text-xs text-emerald-700 font-bold mt-1 text-center">
+            {lang === "ar" ? "تم رفع المستند: " : "Uploaded: "}
+            <a
+              href={uploadedDocs[docName].url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-emerald-800 font-bold"
+            >
+              {uploadedDocs[docName].name}
+            </a>
+          </div>
+        )}
       </div>
-    )}
+    ))}
   </div>
 )}
 <ServiceUploadModal
   open={showDocsModal}
   onClose={closeDocsModal}
-  requiredDocs={requiredDocs}
+  currentDocName={currentDocName}
   uploadedDocs={uploadedDocs}
   setUploadedDocs={handleDocsUploaded}
   userId={userId}

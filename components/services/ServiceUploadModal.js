@@ -1,6 +1,21 @@
 import { useRef, useState } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 
+/**
+ * ServiceUploadModal يدعم رفع مستند واحد لكل مرة مع اسم ديناميكي للمستند.
+ * يجب أن يتم تمرير currentDocName من الأب ليعرف أي مستند يتم رفعه.
+ * 
+ * props:
+ * - open: هل المدوال مفتوح
+ * - onClose: دالة إغلاق المدوال
+ * - service: بيانات الخدمة
+ * - userId: رقم المستخدم
+ * - lang: اللغة
+ * - setUploadedDocs: دالة تحديث المستندات في الأب
+ * - uploadedDocs: المستندات المرفوعة حاليًا
+ * - currentDocName: اسم المستند الجاري رفعه (جديد!)
+ */
+
 export default function ServiceUploadModal({
   open,
   onClose,
@@ -9,6 +24,7 @@ export default function ServiceUploadModal({
   lang = "ar",
   setUploadedDocs,
   uploadedDocs,
+  currentDocName, // اسم المستند الجاري رفعه
 }) {
   const fileRef = useRef();
   const [uploading, setUploading] = useState(false);
@@ -72,14 +88,14 @@ export default function ServiceUploadModal({
         setSelectedFile(null);
         fileRef.current.value = null;
 
-        // حفظ بيانات الملف مؤقتاً للأب
-        if (setUploadedDocs) {
+        // حفظ بيانات الملف مؤقتاً للأب باسم المستند الجاري رفعه
+        if (setUploadedDocs && currentDocName) {
           const fileObj = {
             name: selectedFile.name,
             url: data.url,
             type: "application/pdf",
           };
-          setUploadedDocs({ ...(uploadedDocs || {}), main: fileObj });
+          setUploadedDocs({ ...(uploadedDocs || {}), [currentDocName]: fileObj });
         }
 
         setTimeout(() => {
@@ -117,13 +133,13 @@ export default function ServiceUploadModal({
           <FaTimes />
         </button>
 
-        {/* أيقونة PDF وسطية */}
+        {/* أيقونة PDF وسطية وعلامة التحميل */}
         <div className="flex flex-col items-center mb-2">
           <div className={`bg-cyan-200 rounded-full p-3 mb-2 shadow-sm flex items-center justify-center ${uploading ? "animate-spin" : ""}`}>
             {uploading ? <FaSpinner className="text-3xl text-cyan-700 drop-shadow animate-spin" /> : <FaFilePdf className="text-3xl text-cyan-700 drop-shadow" />}
           </div>
           <div className="font-extrabold text-cyan-800 text-md text-center">
-            {lang === "ar" ? "رفع مستند PDF" : "Upload PDF Document"}
+            {lang === "ar" ? `رفع مستند ${currentDocName || "PDF"}` : `Upload ${currentDocName || "PDF"} Document`}
           </div>
           <div className="text-xs text-gray-500 text-center mt-0.5 mb-0.5 max-w-xs truncate">
             {service?.name}
@@ -132,8 +148,8 @@ export default function ServiceUploadModal({
 
         <div className="text-xs text-gray-600 text-center mb-2 px-1 max-w-[90%]">
           {lang === "ar"
-            ? "يمكنك رفع ملف PDF واحد فقط."
-            : "You can upload only one PDF file."}
+            ? "يرجى رفع ملف PDF فقط لهذا المستند."
+            : "Please upload only a PDF file for this document."}
         </div>
 
         <form onSubmit={handleUpload} className="flex flex-col items-center w-full gap-2 mt-1">
