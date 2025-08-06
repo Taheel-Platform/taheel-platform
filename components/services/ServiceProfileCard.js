@@ -100,7 +100,7 @@ export default function ServiceProfileCard({
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [showCoinDiscountModal, setShowCoinDiscountModal] = useState(false);
+  const [showCoinDiscountModal, setShowCoinDiscountModal] = useState(false); // لم يعد مستخدم (زرار الكوينات للخصم تم إزالته)
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -184,12 +184,6 @@ export default function ServiceProfileCard({
   }
   function openPaymentModal() {
     setShowPayModal(true);
-    setShowCoinDiscountModal(false);
-    setPayMsg("");
-  }
-  function openCoinDiscountModal() {
-    setShowCoinDiscountModal(true);
-    setShowPayModal(false);
     setPayMsg("");
   }
 
@@ -504,34 +498,6 @@ export default function ServiceProfileCard({
         >
           {lang === "ar" ? "ادفع الآن" : "Pay Now"}
         </button>
-        {Number(coinsBalance) >= 100 && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openCoinDiscountModal();
-            }}
-            className={`
-              w-full py-1.5 rounded-full font-black shadow text-base transition
-              bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 text-white
-              hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-200/90
-              hover:scale-105 duration-150
-              focus:outline-none focus:ring-2 focus:ring-yellow-400
-              cursor-pointer
-              ${!canPay ? "opacity-40 pointer-events-none" : ""}
-            `}
-            style={{ cursor: "pointer" }}
-            disabled={!canPay}
-            title={
-              lang === "ar"
-                ? "يمكنك خصم حتى 10% من رسوم الطباعة باستخدام الكوينات المتاحة لديك"
-                : "You can use your available coins to get up to 10% off the printing fee"
-            }
-          >
-            {lang === "ar"
-              ? "استخدم الكوينات للخصم (حتى 10% من رسوم الطباعة)"
-              : "Use coins for discount (up to 10% of printing fee)"}
-          </button>
-        )}
       </div>
       {/* نافذة التفاصيل خارج الكارت عند الوقوف 2 ثانية */}
       {showDetailTable && renderDetailsTable()}
