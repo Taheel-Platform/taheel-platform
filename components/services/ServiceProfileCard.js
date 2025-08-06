@@ -74,8 +74,8 @@ export default function ServiceProfileCard({
   description_en,
   price,
   printingFee = 0,
-  tax, // الضريبة (يمكن أن تأتي من الداتا مباشرة)
-  clientPrice, // السعر النهائي للعميل (يمكن أن تأتي من الداتا مباشرة)
+  tax,
+  clientPrice,
   duration,
   requiredDocuments = [],
   coins = 0,
@@ -100,9 +100,7 @@ export default function ServiceProfileCard({
     allowPaperCount, pricePerPage, userEmail, longDescription, longDescription_en
   });
 
-  // المستندات المطلوبة
   const requiredDocs = requiredDocuments || [];
-
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
@@ -114,47 +112,38 @@ export default function ServiceProfileCard({
   const [translatedName, setTranslatedName] = useState("");
   const [translatedDescription, setTranslatedDescription] = useState("");
   const [translatedLongDescription, setTranslatedLongDescription] = useState("");
-
-  // رفع المستندات
   const [uploadedDocs, setUploadedDocs] = useState({});
   const [showDocsModal, setShowDocsModal] = useState(false);
-
-  // عدد الأوراق
   const [paperCount, setPaperCount] = useState(1);
-
-  // جدول التفاصيل يظهر عند الوقوف فترة طويلة
   const [showDetailTable, setShowDetailTable] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState(null);
-
-  // Popover للوصف المطول
   const [showDescPopover, setShowDescPopover] = useState(false);
-  
-useEffect(() => {
-  let ignore = false;
-  async function doTranslation() {
-    if (lang === "en") {
-      if (!name_en && name) {
-        const tname = await translateText(name, "en");
-        console.log("Translated name:", tname);
-        if (!ignore) setTranslatedName(tname);
-      }
-      if (!description_en && description) {
-        const tdesc = await translateText(description, "en");
-        console.log("Translated desc:", tdesc);
-        if (!ignore) setTranslatedDescription(tdesc);
-      }
-      if (!longDescription_en && longDescription) {
-        const tlong = await translateText(longDescription, "en");
-        console.log("Translated longDesc:", tlong);
-        if (!ignore) setTranslatedLongDescription(tlong);
+
+  // Tooltip Popover خارج الكارت عند hover
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    async function doTranslation() {
+      if (lang === "en") {
+        if (!name_en && name) {
+          const tname = await translateText(name, "en");
+          if (!ignore) setTranslatedName(tname);
+        }
+        if (!description_en && description) {
+          const tdesc = await translateText(description, "en");
+          if (!ignore) setTranslatedDescription(tdesc);
+        }
+        if (!longDescription_en && longDescription) {
+          const tlong = await translateText(longDescription, "en");
+          if (!ignore) setTranslatedLongDescription(tlong);
+        }
       }
     }
-  }
-  doTranslation();
-  return () => { ignore = true; };
-}, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
+    doTranslation();
+    return () => { ignore = true; };
+  }, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
 
-  // جلب بيانات المستخدم
   useEffect(() => {
     if (!userId) return;
     const fetchUser = async () => {
@@ -171,18 +160,13 @@ useEffect(() => {
     fetchUser();
   }, [userId]);
 
-  // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
-  // السعر الأصلي للخدمة مضروب في الكمية
   const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
-  // رسوم الطباعة مضروبة في عدد الأوراق
   const printingTotal = (Number(printingFee) || 0) * basePaperCount;
-  // الضريبة: من الحقل tax إن وجد، أو احتسابها من رسوم الطباعة
   const taxTotal = typeof tax !== "undefined"
     ? Number(tax) * basePaperCount
     : +(Number(printingFee) * 0.05 * basePaperCount).toFixed(2);
-  // السعر النهائي للعميل: من الحقل clientPrice إن وجد، أو الحساب اليدوي
   const totalServicePrice =
     typeof clientPrice !== "undefined"
       ? Number(clientPrice) * baseServiceCount
@@ -194,17 +178,11 @@ useEffect(() => {
     baseServiceCount, basePaperCount
   });
 
-  // التحقق من رفع كل المستندات المطلوبة
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
-
-  // التحقق من تحديد عدد الأوراق
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
-
-  // شرط تفعيل الدفع
   const canPay = allDocsUploaded && isPaperCountReady;
 
-  // مودال المستندات
   function openDocsModal() {
     setShowDocsModal(true);
   }
@@ -215,8 +193,6 @@ useEffect(() => {
     setUploadedDocs(newDocs);
     closeDocsModal();
   }
-
-  // مودالات الدفع
   function openPaymentModal() {
     setShowPayModal(true);
     setShowCoinDiscountModal(false);
@@ -228,7 +204,6 @@ useEffect(() => {
     setPayMsg("");
   }
 
-  // إرسال إشعار
   async function sendNotification({ userId, orderNumber, orderName }) {
     try {
       await addDoc(collection(firestore, "notifications"), {
@@ -248,7 +223,6 @@ useEffect(() => {
     } catch (err) {}
   }
 
-  // إرسال إيميل
   async function sendOrderEmail({ to, orderNumber, serviceName, price }) {
     try {
       await fetch("/api/sendOrderEmail", {
@@ -264,88 +238,76 @@ useEffect(() => {
     } catch (err) {}
   }
 
-async function handlePayment(method, withCoinDiscount = false) {
-  setIsPaying(true);
-  setPayMsg("");
-  try {
-    let currentCoins = Number(coinsBalance) || 0;
-    let currentWallet = Number(wallet) || 0;
-    let amountToPay = totalServicePrice;
-    let discount = 0;
+  async function handlePayment(method, withCoinDiscount = false) {
+    setIsPaying(true);
+    setPayMsg("");
+    try {
+      let currentCoins = Number(coinsBalance) || 0;
+      let currentWallet = Number(wallet) || 0;
+      let amountToPay = totalServicePrice;
+      let discount = 0;
 
-    if (withCoinDiscount) {
-      // 1. احسب الحد الأقصى للخصم المسموح (10% من رسوم الطباعة فقط)
-      const maxDiscountDirham = printingTotal * 0.10;
-      const maxDiscountCoins = Math.floor(maxDiscountDirham * 100); // عدد الكوينات اللي يقدر يستخدمها
+      if (withCoinDiscount) {
+        const maxDiscountDirham = printingTotal * 0.10;
+        const maxDiscountCoins = Math.floor(maxDiscountDirham * 100);
+        const coinsToUse = Math.min(currentCoins, maxDiscountCoins);
 
-      // 2. الكوينات اللي يقدر العميل يستخدمها (لا تتجاوز رصيده ولا الحد الأعلى)
-      const coinsToUse = Math.min(currentCoins, maxDiscountCoins);
-
-      if (coinsToUse < 1) {
-        setPayMsg(
-          <span className="text-red-600 font-bold">
-            {lang === "ar" ? "رصيد الكوينات غير كافي للخصم" : "Not enough coins for discount"}
-          </span>
-        );
-        setIsPaying(false);
-        return;
-      }
-
-      discount = (coinsToUse * 0.01);
-      amountToPay = amountToPay - discount;
-
-      // خصم الكوينات من رصيد العميل
-      await updateDoc(userRef, { coins: currentCoins - coinsToUse });
-      setCoinsBalance(currentCoins - coinsToUse);
-      if (typeof setCoinsBalance === "function") {
+        if (coinsToUse < 1) {
+          setPayMsg(
+            <span className="text-red-600 font-bold">
+              {lang === "ar" ? "رصيد الكوينات غير كافي للخصم" : "Not enough coins for discount"}
+            </span>
+          );
+          setIsPaying(false);
+          return;
+        }
+        discount = (coinsToUse * 0.01);
+        amountToPay = amountToPay - discount;
+        await updateDoc(userRef, { coins: currentCoins - coinsToUse });
         setCoinsBalance(currentCoins - coinsToUse);
-      }
-      currentCoins = currentCoins - coinsToUse;
-    } else {
-      // إضافة كوينات الخدمة لرصيد العميل
-      const newCoins = currentCoins + coins * baseServiceCount;
-      await updateDoc(userRef, { coins: newCoins });
-      setCoinsBalance(newCoins);
-      if (typeof setCoinsBalance === "function") {
+        if (typeof setCoinsBalance === "function") {
+          setCoinsBalance(currentCoins - coinsToUse);
+        }
+        currentCoins = currentCoins - coinsToUse;
+      } else {
+        const newCoins = currentCoins + coins * baseServiceCount;
+        await updateDoc(userRef, { coins: newCoins });
         setCoinsBalance(newCoins);
+        if (typeof setCoinsBalance === "function") {
+          setCoinsBalance(newCoins);
+        }
+        currentCoins = newCoins;
       }
-      currentCoins = newCoins;
-    }
 
-// الدفع من المحفظة
-if (method === "wallet") {
-  if (isNaN(currentWallet) || currentWallet <= 0) {
-    setPayMsg(
-      <span className="text-red-600 font-bold">
-        {lang === "ar"
-          ? "المحفظة فارغة، الرجاء إضافة رصيد في المحفظة."
-          : "Wallet is empty, please add balance to your wallet."}
-      </span>
-    );
-    setIsPaying(false);
-    return;
-  }
-  if (currentWallet < amountToPay) {
-    setPayMsg(
-      <span className="text-red-600 font-bold">
-        {lang === "ar"
-          ? "رصيدك في المحفظة غير كافي، الرجاء إضافة رصيد في المحفظة."
-          : "Insufficient wallet balance, please add balance to your wallet."}
-      </span>
-    );
-    setIsPaying(false);
-    return;
-  }
-  await updateDoc(userRef, { walletBalance: currentWallet - amountToPay });
-  setWallet(currentWallet - amountToPay);
-}
+      if (method === "wallet") {
+        if (isNaN(currentWallet) || currentWallet <= 0) {
+          setPayMsg(
+            <span className="text-red-600 font-bold">
+              {lang === "ar"
+                ? "المحفظة فارغة، الرجاء إضافة رصيد في المحفظة."
+                : "Wallet is empty, please add balance to your wallet."}
+            </span>
+          );
+          setIsPaying(false);
+          return;
+        }
+        if (currentWallet < amountToPay) {
+          setPayMsg(
+            <span className="text-red-600 font-bold">
+              {lang === "ar"
+                ? "رصيدك في المحفظة غير كافي، الرجاء إضافة رصيد في المحفظة."
+                : "Insufficient wallet balance, please add balance to your wallet."}
+            </span>
+          );
+          setIsPaying(false);
+          return;
+        }
+        await updateDoc(userRef, { walletBalance: currentWallet - amountToPay });
+        setWallet(currentWallet - amountToPay);
+      }
 
-      // Gateway code here if needed
-
-      // === إنشاء الطلب بعد الدفع الناجح ===
       const orderNumber = generateOrderNumber();
 
-      // إضافة الطلب في Collection "requests"
       await addDoc(collection(firestore, "requests"), {
         trackingNumber: orderNumber,
         orderNumber: orderNumber,
@@ -424,7 +386,6 @@ if (method === "wallet") {
 
   const canUseCoinDiscount = Number(coinsBalance) >= 100;
 
-  // ترجمة عناوين تفاصيل السعر
   const labels = {
     total: lang === "ar" ? "الإجمالي" : "Total",
     service: lang === "ar" ? "سعر الخدمة" : "Service Price",
@@ -440,105 +401,101 @@ if (method === "wallet") {
     more: lang === "ar" ? "تفاصيل أكثر" : "More Details",
   };
 
-  // اسم الخدمة والوصف حسب اللغة
   const displayName = lang === "en"
-  ? (name_en || translatedName || name || "")
-  : (name || name_en || "");
+    ? (name_en || translatedName || name || "")
+    : (name || name_en || "");
 
-const displayDescription = lang === "en"
-  ? (description_en || translatedDescription || description || "")
-  : (description || description_en || "");
+  const displayDescription = lang === "en"
+    ? (description_en || translatedDescription || description || "")
+    : (description || description_en || "");
 
-const displayLongDescription = lang === "en"
-  ? (longDescription_en || translatedLongDescription || longDescription || "")
-  : (longDescription || longDescription_en || "");
+  const displayLongDescription = lang === "en"
+    ? (longDescription_en || translatedLongDescription || longDescription || "")
+    : (longDescription || longDescription_en || "");
 
-  // تفاصيل السعر في جدول (جدول التفاصيل عند الوقوف الطويل أو الضغط على زر التفاصيل)
-function renderDetailsTable() {
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
-      style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
-      tabIndex={0}
-      onClick={() => setShowDetailTable(false)}
-    >
+  function renderDetailsTable() {
+    return (
       <div
-        className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
-        style={{ minWidth: 250, maxWidth: 380 }}
-        onClick={e => e.stopPropagation()} // يمنع إغلاق النافذة عند الضغط داخلها
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30"
+        style={{ direction: lang === "ar" ? "rtl" : "ltr" }}
+        tabIndex={0}
+        onClick={() => setShowDetailTable(false)}
       >
-        <button
-          onClick={() => setShowDetailTable(false)}
-          className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
-          title={lang === "ar" ? "إغلاق" : "Close"}
-          style={{ cursor: "pointer" }}
-        >×</button>
-        <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
-          <tbody>
-            <tr>
-              <td>{labels.service}</td>
-              <td>
-                {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                {repeatable ? ` × ${quantity}` : ""}
-              </td>
-            </tr>
-            <tr>
-              <td>
-                {labels.printing}
-                {allowPaperCount ? ` (${labels.perPaper})` : ""}
-              </td>
-              <td>
-                {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                {allowPaperCount ? ` × ${paperCount}` : ""}
-              </td>
-            </tr>
-            <tr>
-              <td>{labels.tax}</td>
-              <td>
-                {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
-              </td>
-            </tr>
-            <tr>
-              <td className="font-extrabold text-emerald-900">{labels.total}</td>
-              <td className="font-extrabold text-emerald-900">
-                {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div className="text-gray-700 text-xs whitespace-pre-line mb-1">
-          {displayLongDescription || displayDescription}
-        </div>
-        {requiredDocs.length > 0 && (
-          <div className="mt-2">
-            <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
-              <FaFileAlt /> {labels.documents}
-            </div>
-            <ul className="list-inside list-disc text-gray-700 text-[12px] pl-2 space-y-0.5 max-w-full mb-2">
-              {requiredDocs.map((doc, i) => (
-                <li key={i}>{doc}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <button
-          onClick={() => setShowDetailTable(false)}
-          className="w-full py-1.5 mt-2 rounded-full font-bold shadow text-base transition
-                bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
-                hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-                hover:scale-105 duration-150
-                focus:outline-none focus:ring-2 focus:ring-emerald-400
-                cursor-pointer"
+        <div
+          className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
+          style={{ minWidth: 250, maxWidth: 380 }}
+          onClick={e => e.stopPropagation()}
         >
-          {labels.hideDetails}
-        </button>
+          <button
+            onClick={() => setShowDetailTable(false)}
+            className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2"
+            title={lang === "ar" ? "إغلاق" : "Close"}
+            style={{ cursor: "pointer" }}
+          >×</button>
+          <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
+            <tbody>
+              <tr>
+                <td>{labels.service}</td>
+                <td>
+                  {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                  {repeatable ? ` × ${quantity}` : ""}
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  {labels.printing}
+                  {allowPaperCount ? ` (${labels.perPaper})` : ""}
+                </td>
+                <td>
+                  {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                  {allowPaperCount ? ` × ${paperCount}` : ""}
+                </td>
+              </tr>
+              <tr>
+                <td>{labels.tax}</td>
+                <td>
+                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td className="font-extrabold text-emerald-900">{labels.total}</td>
+                <td className="font-extrabold text-emerald-900">
+                  {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="text-gray-700 text-xs whitespace-pre-line mb-1">
+            {displayLongDescription || displayDescription}
+          </div>
+          {requiredDocs.length > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
+                <FaFileAlt /> {labels.documents}
+              </div>
+              <ul className="list-inside list-disc text-gray-700 text-[12px] pl-2 space-y-0.5 max-w-full mb-2">
+                {requiredDocs.map((doc, i) => (
+                  <li key={i}>{doc}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <button
+            onClick={() => setShowDetailTable(false)}
+            className="w-full py-1.5 mt-2 rounded-full font-bold shadow text-base transition
+                  bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+                  hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+                  hover:scale-105 duration-150
+                  focus:outline-none focus:ring-2 focus:ring-emerald-400
+                  cursor-pointer"
+          >
+            {labels.hideDetails}
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-
-  // ظهور جدول التفاصيل بعد الوقوف 1.5 ثانية
   function handleMouseEnter() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setHoverTimeout(
@@ -546,13 +503,14 @@ function renderDetailsTable() {
         setShowDetailTable(true);
       }, 1500)
     );
+    setShowTooltip(true); // Tooltip يظهر فوراً عند hover
   }
   function handleMouseLeave() {
     if (hoverTimeout) clearTimeout(hoverTimeout);
     setShowDetailTable(false);
+    setShowTooltip(false);
   }
 
-  // الوصف المطول Popover
   const descText = displayLongDescription || displayDescription || "";
 
   return (
@@ -577,9 +535,34 @@ function renderDetailsTable() {
       role="button"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onTouchStart={() => setShowDetailTable(true)}
-      onTouchEnd={() => setShowDetailTable(false)}
+      onTouchStart={() => { setShowDetailTable(true); setShowTooltip(true); }}
+      onTouchEnd={() => { setShowDetailTable(false); setShowTooltip(false); }}
     >
+      {/* Tooltip خارج الكارت */}
+      {showTooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 -top-8 z-50 flex flex-col items-center pointer-events-none">
+          <div className="bg-white text-gray-900 rounded-xl shadow-2xl border border-emerald-400 p-4 w-[320px] max-w-[95vw] max-h-[70vh] overflow-y-auto text-sm transition-all pointer-events-auto">
+            <div className="font-bold text-emerald-700 text-lg mb-2 text-center">{displayName}</div>
+            <div className="mb-2 text-gray-700 text-base text-center">
+              {descText}
+            </div>
+            {requiredDocs.length > 0 && (
+              <>
+                <span className="font-bold text-emerald-500 text-sm">{lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}:</span>
+                <ul className="list-inside list-disc text-sm text-gray-700 mb-2 text-right">
+                  {requiredDocs.map((doc, idx) => (
+                    <li key={idx}>{doc}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <div className="mt-2 font-bold text-gray-600 text-xs">
+              {lang === "ar" ? "السعر النهائى:" : "Total Price:"} {clientPrice || price || 0} {lang === "ar" ? "د.إ" : "AED"}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* الكوينات */}
       <div className="absolute top-4 left-4 flex items-center group/coins z-10">
         <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[36px] cursor-help">
@@ -635,7 +618,6 @@ function renderDetailsTable() {
               <FaInfoCircle /> {labels.more}
             </button>
           )}
-          {/* Popover للوصف المطول */}
           {showDescPopover && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
@@ -676,10 +658,6 @@ function renderDetailsTable() {
                 className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
               />
             </div>
-            {/* جدول مبسط للسعر */}
-            {console.log("[CARD TABLE]", {
-              servicePriceTotal, printingTotal, taxTotal, totalServicePrice
-            })}
             <table className="w-full text-xs text-gray-700 mb-1">
               <tbody>
                 <tr>
@@ -710,7 +688,6 @@ function renderDetailsTable() {
             </table>
           </div>
         </div>
-        {/* عدد مرات الخدمة */}
         {repeatable && (
           <div className="flex flex-col items-center mb-2 w-full">
             <label className="text-xs font-bold text-gray-600 mb-1">
@@ -729,7 +706,6 @@ function renderDetailsTable() {
             />
           </div>
         )}
-        {/* عدد الأوراق */}
         {allowPaperCount && (
           <div className="flex flex-col items-center mb-2 w-full">
             <label className="text-xs font-bold text-gray-600 mb-1">
@@ -750,7 +726,6 @@ function renderDetailsTable() {
             />
           </div>
         )}
-        {/* المستندات المطلوبة */}
         {requireUpload && (
           <div className="my-1 w-full flex flex-col max-w-full">
             <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
@@ -788,7 +763,6 @@ function renderDetailsTable() {
           </div>
         )}
 
-        {/* مودال رفع المستندات */}
         <ServiceUploadModal
           open={showDocsModal}
           onClose={closeDocsModal}
@@ -800,7 +774,6 @@ function renderDetailsTable() {
           service={{ serviceId, name: displayName }}
         />
 
-        {/* أزرار الدفع */}
         <div className="mt-auto w-full flex flex-col gap-2">
           <button
             onClick={(e) => {
@@ -821,37 +794,36 @@ function renderDetailsTable() {
           >
             {lang === "ar" ? "ادفع الآن" : "Pay Now"}
           </button>
-{canUseCoinDiscount && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      openCoinDiscountModal();
-    }}
-    className={`
-      w-full py-1.5 rounded-full font-black shadow text-base transition
-      bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 text-white
-      hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-200/90
-      hover:scale-105 duration-150
-      focus:outline-none focus:ring-2 focus:ring-yellow-400
-      cursor-pointer
-      ${!canPay ? "opacity-40 pointer-events-none" : ""}
-    `}
-    style={{ cursor: "pointer" }}
-    disabled={!canPay}
-    title={
-      lang === "ar"
-        ? "يمكنك خصم حتى 10% من رسوم الطباعة باستخدام الكوينات المتاحة لديك"
-        : "You can use your available coins to get up to 10% off the printing fee"
-    }
-  >
-    {lang === "ar"
-      ? "استخدم الكوينات للخصم (حتى 10% من رسوم الطباعة)"
-      : "Use coins for discount (up to 10% of printing fee)"}
-  </button>
-)}
+          {canUseCoinDiscount && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openCoinDiscountModal();
+              }}
+              className={`
+                w-full py-1.5 rounded-full font-black shadow text-base transition
+                bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-400 text-white
+                hover:from-yellow-500 hover:to-yellow-600 hover:shadow-yellow-200/90
+                hover:scale-105 duration-150
+                focus:outline-none focus:ring-2 focus:ring-yellow-400
+                cursor-pointer
+                ${!canPay ? "opacity-40 pointer-events-none" : ""}
+              `}
+              style={{ cursor: "pointer" }}
+              disabled={!canPay}
+              title={
+                lang === "ar"
+                  ? "يمكنك خصم حتى 10% من رسوم الطباعة باستخدام الكوينات المتاحة لديك"
+                  : "You can use your available coins to get up to 10% off the printing fee"
+              }
+            >
+              {lang === "ar"
+                ? "استخدم الكوينات للخصم (حتى 10% من رسوم الطباعة)"
+                : "Use coins for discount (up to 10% of printing fee)"}
+            </button>
+          )}
         </div>
       </div>
-      {/* جدول التفاصيل إذا ضغط أو وقف فترة طويلة */}
       {showDetailTable && renderDetailsTable()}
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
