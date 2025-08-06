@@ -8,8 +8,6 @@ import {
   FaUser,
   FaTag,
   FaCoins,
-  FaCheck,
-  FaInfoCircle,
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
@@ -100,7 +98,6 @@ export default function ServiceProfileCard({
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [showCoinDiscountModal, setShowCoinDiscountModal] = useState(false); // لم يعد مستخدم (زرار الكوينات للخصم تم إزالته)
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -187,7 +184,7 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // جدول التفاصيل في نافذة خارج الكارت (يظهر عند الوقوف الطويل)
+  // نافذة التفاصيل خارج الكارت منسقة وتعرض كل البيانات مهما كانت
   function renderDetailsTable() {
     return (
       <div
@@ -197,9 +194,9 @@ export default function ServiceProfileCard({
         onClick={() => setShowDetailTable(false)}
       >
         <div
-          className="bg-white rounded-xl shadow-2xl border border-emerald-200 max-w-md w-full p-4 relative"
-          style={{ minWidth: 250, maxWidth: 380 }}
-          onClick={e => e.stopPropagation()} // يمنع إغلاق النافذة عند الضغط داخلها
+          className="bg-white rounded-3xl shadow-2xl border border-emerald-300 max-w-lg w-full p-6 relative overflow-y-auto"
+          style={{ minWidth: 280, maxWidth: 430, maxHeight: '80vh' }}
+          onClick={e => e.stopPropagation()}
         >
           <button
             onClick={() => setShowDetailTable(false)}
@@ -207,61 +204,74 @@ export default function ServiceProfileCard({
             title={lang === "ar" ? "إغلاق" : "Close"}
             style={{ cursor: "pointer" }}
           >×</button>
-          <div className="text-lg font-bold text-emerald-700 mb-2 text-center">
-            {lang === "en"
-              ? (name_en || translatedName || name || "")
-              : (name || name_en || "")}
+          {/* اسم الخدمة وتصنيفها */}
+          <div className="flex flex-col items-center mb-3">
+            <div className={`flex items-center gap-2 px-3 py-1 text-sm font-black rounded-full shadow ${style.badge} ${style.text}`}>
+              {style.icon()}
+              <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
+            </div>
+            <h3 className="text-2xl font-extrabold text-emerald-700 text-center mt-2 mb-1 break-words">
+              {lang === "en"
+                ? (name_en || translatedName || name || "")
+                : (name || name_en || "")}
+            </h3>
           </div>
-          <div className="text-gray-700 text-xs whitespace-pre-line mb-3">
+          {/* الوصف الكامل */}
+          <div className="mb-2 text-gray-700 text-base whitespace-pre-line text-center font-medium break-words">
             {lang === "en"
               ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
               : (longDescription || longDescription_en || description || description_en || "")}
           </div>
+          {/* المستندات المطلوبة */}
           {requiredDocs.length > 0 && (
             <div className="mb-4">
-              <div className="flex items-center gap-1 font-bold text-emerald-700 text-xs mb-0.5">
-                <FaFileAlt /> {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
-              </div>
-              <ul className="list-inside list-disc text-gray-700 text-[13px] pl-2 space-y-0.5 max-w-full mb-2">
+              <span className="block font-bold text-emerald-600 mb-1 text-base text-center">
+                <FaFileAlt className="inline mr-1" />
+                {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
+              </span>
+              <ul className="list-inside list-disc text-base text-gray-700 mx-auto w-fit text-center space-y-1 mb-2">
                 {requiredDocs.map((doc, i) => (
                   <li key={i}>{doc}</li>
                 ))}
               </ul>
             </div>
           )}
-          <table className="w-full text-xs md:text-sm text-emerald-900 font-bold mb-2">
-            <tbody>
-              <tr>
-                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-                <td>
-                  {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                  {repeatable ? ` × ${quantity}` : ""}
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  {lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}
-                  {allowPaperCount ? ` (${lang === "ar" ? "لكل ورقة" : "per page"})` : ""}
-                </td>
-                <td>
-                  {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
-                  {allowPaperCount ? ` × ${paperCount}` : ""}
-                </td>
-              </tr>
-              <tr>
-                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
-                <td>
-                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-extrabold text-emerald-900">{lang === "ar" ? "الإجمالي" : "Total"}</td>
-                <td className="font-extrabold text-emerald-900">
-                  {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* جدول السعر كامل */}
+          <div className="mb-4">
+            <table className="w-full text-sm text-emerald-900 font-bold border border-emerald-200 rounded-xl shadow mb-2 bg-emerald-50 overflow-hidden">
+              <tbody>
+                <tr>
+                  <td className="p-2">{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+                  <td className="p-2 text-right">
+                    {Number(price) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                    {repeatable ? ` × ${quantity}` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="p-2">
+                    {lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}
+                    {allowPaperCount ? ` (${lang === "ar" ? "لكل ورقة" : "per page"})` : ""}
+                  </td>
+                  <td className="p-2 text-right">
+                    {Number(printingFee) || 0} {lang === "ar" ? "د.إ" : "AED"}
+                    {allowPaperCount ? ` × ${paperCount}` : ""}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="p-2">{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
+                  <td className="p-2 text-right">
+                    {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="font-extrabold text-emerald-900 p-2">{lang === "ar" ? "الإجمالي" : "Total"}</td>
+                  <td className="font-extrabold text-emerald-900 p-2 text-right">
+                    {totalServicePrice} {lang === "ar" ? "د.إ" : "AED"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           {/* مدخلات الخدمة */}
           {repeatable && (
             <div className="flex flex-col items-center mb-2 w-full">
@@ -279,6 +289,7 @@ export default function ServiceProfileCard({
               <span className="font-bold">{paperCount}</span>
             </div>
           )}
+          {/* أضف هنا أي بيانات إضافية تريدها للنافذة! */}
         </div>
       </div>
     );
