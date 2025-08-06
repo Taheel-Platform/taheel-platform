@@ -17,7 +17,11 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     const notifsSnap = await getDocs(
       query(collection(firestore, "notifications"), where("targetId", "==", userId))
     );
-    let clientNotifs = notifsSnap.docs.map(d => d.data());
+    // استخدم document id الحقيقي
+    let clientNotifs = notifsSnap.docs.map(d => ({
+      ...d.data(),
+      notificationId: d.id
+    }));
     const now = new Date();
     // فلترة للإشعارات الحديثة فقط
     const filtered = clientNotifs.filter(n => {
