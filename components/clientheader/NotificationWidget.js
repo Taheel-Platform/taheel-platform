@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FaBell } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
@@ -11,38 +11,34 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
   const [activeNotif, setActiveNotif] = useState(null);
   const menuRef = useRef();
 
-  // جلب الإشعارات مع فلترة كل 15 يوم
-  const fetchNotifications = async () => {
+  // جلب الإشعارات (كل إشعار أحدث من 15 يوم فقط)
+  const fetchNotifications = useCallback(async () => {
     if (!userId) return;
     const notifsSnap = await getDocs(
       query(collection(firestore, "notifications"), where("targetId", "==", userId))
     );
     let clientNotifs = notifsSnap.docs.map(d => d.data());
-    // تصفية الإشعارات الأقدم من 15 يومًا
     const now = new Date();
-    const filteredNotifs = clientNotifs.filter(n => {
+    // فلترة للإشعارات الحديثة فقط
+    const filtered = clientNotifs.filter(n => {
       if (!n.timestamp) return true;
       const notifDate = new Date(n.timestamp);
-      const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
-      return diffDays <= 15;
+      return (now - notifDate) / (1000 * 60 * 60 * 24) <= 15;
     });
-    // حذف الإشعارات القديمة من الفايرستور (اختياري)
+    // حذف إشعارات قديمة من الفايرستور (اختياري)
     for (const n of clientNotifs) {
       if (n.timestamp) {
         const notifDate = new Date(n.timestamp);
-        const diffDays = (now - notifDate) / (1000 * 60 * 60 * 24);
-        if (diffDays > 15 && n.notificationId) {
-          try {
-            await deleteDoc(doc(firestore, "notifications", n.notificationId));
-          } catch (e) {/* ignore errors */}
+        if ((now - notifDate) / (1000 * 60 * 60 * 24) > 15 && n.notificationId) {
+          try { await deleteDoc(doc(firestore, "notifications", n.notificationId)); } catch {}
         }
       }
     }
-    filteredNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-    setNotifications(filteredNotifs);
-  };
+    filtered.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    setNotifications(filtered);
+  }, [userId]);
 
-  useEffect(() => { fetchNotifications(); }, [userId]);
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   // إغلاق المنيو عند الضغط خارجها
   useEffect(() => {
@@ -56,7 +52,7 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMenu]);
 
-  // تمييز كمقروء + تحديث القائمة فوراً
+  // تمييز كمقروء وتحديث القائمة فوراً
   async function markNotifAsRead(notifId) {
     await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
     setNotifications(nots => nots.map(n =>
@@ -66,12 +62,12 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // حركة رنين للجرس عند فتح المنيو
+  // حركة رنين الجرس يمين وشمال عند فتح المنيو فقط
   const bellVariants = {
     initial: { rotate: 0 },
     ringing: {
-      rotate: [0, -25, 25, -20, 15, -10, 0],
-      transition: { duration: 0.8, ease: "easeInOut" }
+      rotate: [0, -30, 30, -25, 25, -15, 15, -7, 7, 0],
+      transition: { duration: 0.9, ease: "easeInOut" }
     }
   };
 
@@ -84,11 +80,10 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
         style={{ minWidth: 36, minHeight: 36 }}
         title={lang === "ar" ? "الإشعارات" : "Notifications"}
         onClick={() => setShowMenu(v => !v)}
-        whileHover={{ scale: 1.18, filter: "brightness(1.15)" }} // بدون تدوير عادي هنا
+        whileHover={{ scale: 1.18, filter: "brightness(1.15)" }}
         whileTap={{ scale: 0.97 }}
         transition={{ type: "spring", stiffness: 250, damping: 18 }}
       >
-        {/* جرس مع حركة رنين عند فتح المنيو */}
         <motion.span
           variants={bellVariants}
           animate={showMenu ? "ringing" : "initial"}
@@ -96,9 +91,7 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
         >
           <FaBell
             className={`text-[26px] sm:text-[28px] lg:text-[32px] ${darkMode ? "text-emerald-300" : "text-emerald-400"} drop-shadow-lg transition-all duration-150`}
-            style={{
-              filter: "drop-shadow(0 2px 7px #10b98188)"
-            }}
+            style={{ filter: "drop-shadow(0 2px 7px #10b98188)" }}
           />
         </motion.span>
         {unreadCount > 0 && (
@@ -124,13 +117,16 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
                 {notifications.map((notif, idx) => (
                   <li
                     key={notif.notificationId || idx}
-                    className={`text-xs border-b pb-2 cursor-pointer ${notif.isRead ? "opacity-70" : "font-bold text-emerald-900"}`}
+                    className={`text-xs border-b pb-2 cursor-pointer transition-all
+                      ${notif.isRead
+                        ? "opacity-70 font-normal text-gray-600"
+                        : "font-bold text-emerald-900"
+                      }`}
                     onClick={async () => {
                       if (!notif.isRead) await markNotifAsRead(notif.notificationId);
                       setActiveNotif({ ...notif, isRead: true });
                     }}
                     title={notif.isRead ? "" : (lang === "ar" ? "اضغط لتمييز كمقروء وفتح التفاصيل" : "Mark as read and view details")}
-                    style={{ transition: "opacity 0.2s" }}
                   >
                     <div className="font-bold text-emerald-600">{notif.title}</div>
                     <div className="text-gray-600">{notif.body}</div>
