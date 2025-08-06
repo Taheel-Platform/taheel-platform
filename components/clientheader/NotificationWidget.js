@@ -11,7 +11,6 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
   const [activeNotif, setActiveNotif] = useState(null);
   const menuRef = useRef();
 
-  // جلب الإشعارات
   useEffect(() => {
     async function fetchNotifications() {
       if (!userId) return;
@@ -25,7 +24,6 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     fetchNotifications();
   }, [userId]);
 
-  // غلق المنيو عند الضغط خارجها
   useEffect(() => {
     function handleClickOutside(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -37,7 +35,6 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showMenu]);
 
-  // تمييز كمقروء
   async function markNotifAsRead(notifId) {
     await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
     setNotifications(nots => nots.map(n =>
@@ -109,7 +106,6 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
                 ))}
               </ul>
             )}
-            {/* نافذة التفاصيل */}
             <AnimatePresence>
               {activeNotif && (
                 <motion.div
