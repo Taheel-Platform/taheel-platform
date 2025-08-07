@@ -21,9 +21,9 @@ export default function ServicePayModal({
   const [msgSuccess, setMsgSuccess] = useState(false);
 
   // حسابات الكوينات
-  const maxCoinDiscount = Math.floor(printingFee * 0.1 * 1000);
+  const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
   const coinDiscount = useCoins ? Math.min(coinsBalance, maxCoinDiscount) : 0;
-  const coinDiscountValue = coinDiscount / 1000;
+  const coinDiscountValue = coinDiscount / 100;
   const finalPrice = totalPrice - coinDiscountValue;
   const willGetCashback = !useCoins;
 
