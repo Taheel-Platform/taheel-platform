@@ -304,7 +304,7 @@ function MyOrdersSection({ lang = "ar" }) {
   if (!client) return null;
 
   // استخرج المرفقات الأساسية من حقول العميل
-  const attachments = client.documents
+const attachments = client.documents
     ? Object.values(client.documents).filter(att => att && att.fileUrl)
     : [];
 
@@ -314,7 +314,6 @@ function MyOrdersSection({ lang = "ar" }) {
         ...glassStyle,
         padding: "18px 16px",
         maxWidth: 350,
-        minWidth: 0,
         borderRadius: "16px",
       }}
       className="mb-2 rounded-xl shadow border w-full relative"
@@ -332,15 +331,9 @@ function MyOrdersSection({ lang = "ar" }) {
           alt={client.name}
           className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
         />
-        <div
-          className="text-base font-bold text-blue-900"
-          style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
-        >
-          {client.name}
-        </div>
+        <div className="text-base font-bold text-blue-900" style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}>{client.name}</div>
         <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
       </div>
-
       <div className="mt-2">
         <div className="font-bold text-blue-900 text-sm mb-2">مرفقات العميل:</div>
         {attachments.length > 0 ? (
