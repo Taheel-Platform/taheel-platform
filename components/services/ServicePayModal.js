@@ -134,6 +134,7 @@ export default function ServicePayModal({
   }
 
   if (!open) return null;
+  const payBtnCursor = isPaying ? "wait" : "pointer";
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-center items-center bg-black/40 backdrop-blur-sm">
