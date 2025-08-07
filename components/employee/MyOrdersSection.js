@@ -302,52 +302,65 @@ function MyOrdersSection({ lang = "ar" }) {
 
   function renderClientCard(client) {
   if (!client) return null;
-  console.log("client.documents:", client.documents);
 
-  // دعم url و fileUrl
+  // دعم كل أنواع المرفقات
   const attachments = client.documents && typeof client.documents === "object"
-    ? Object.values(client.documents).filter(att => att && (att.url || att.fileUrl))
+    ? Object.entries(client.documents).filter(([key, att]) => att && (att.url || att.fileUrl))
     : [];
 
   return (
-    <div style={{ ...glassStyle, padding: "18px 16px", maxWidth: 350, borderRadius: "16px" }} className="mb-2 rounded-xl shadow border w-full relative">
-      <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold" onClick={() => setShowClientCard(false)}>
+    <div style={{
+      ...glassStyle,
+      padding: "24px 18px",
+      maxWidth: 430,
+      borderRadius: "22px",
+      minWidth: "280px",
+      boxShadow: "0 8px 40px 0 rgba(33,150,243,0.19)"
+    }} className="mb-2 rounded-xl shadow border w-full relative">
+      <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-emerald-700 font-bold"
+        onClick={() => setShowClientCard(false)}>
         <MdClose />
       </button>
-      <div className="flex flex-col items-center mb-3">
-        <img src={client.profilePic || "/default-avatar.png"} alt={client.name} className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover" />
-        <div className="text-base font-bold text-blue-900" style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}>{client.name}</div>
-        <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
+      <div className="flex flex-col items-center mb-4">
+        <img src={client.profilePic || "/default-avatar.png"} alt={client.name}
+          className="w-16 h-16 rounded-full border-2 border-emerald-200 shadow mb-2 object-cover" />
+        <div className="text-lg font-extrabold text-emerald-900"
+          style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>{client.name}</div>
+        <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
       </div>
       <div className="mt-2">
-        <div className="font-bold text-blue-900 text-sm mb-2">مرفقات العميل:</div>
+        <div className="font-extrabold text-emerald-900 text-base mb-2 text-center">مرفقات العميل:</div>
         {attachments.length > 0 ? (
-          <div className="flex flex-wrap gap-4 justify-center">
-            {attachments.map((doc, i) => {
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {attachments.map(([key, doc], i) => {
               const fileLink = doc.fileUrl || doc.url;
+              const isImage = fileLink && fileLink.match(/\.(jpg|jpeg|png|gif)$/i);
               return (
-                <div key={i} className="flex flex-col items-center p-2 rounded bg-blue-50 border mb-2 w-[90px]">
-                  <div className="font-semibold text-blue-900 text-xs mb-1">{doc.docType || "مرفق"}</div>
-                  {fileLink && fileLink.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                    <a href={fileLink} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={fileLink}
-                        alt={doc.docType}
-                        style={{ width: 65, height: 65, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc", marginBottom: 3 }}
-                      />
+                <div key={i} className="flex flex-col items-center rounded-xl bg-gradient-to-br from-emerald-50 via-blue-50 to-white border shadow p-2"
+                  style={{ minWidth: "110px", maxWidth: "140px" }}>
+                  <div className="font-bold text-emerald-800 text-xs mb-1" title={doc.docType || key}>
+                    {doc.docType || key}
+                  </div>
+                  {isImage ? (
+                    <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
+                      <img src={fileLink} alt={doc.docType || key}
+                        style={{
+                          width: 70, height: 70, objectFit: "cover", borderRadius: 10,
+                          border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
+                        }} />
                     </a>
                   ) : (
-                    <a
-                      href={fileLink}
-                      target="_blank"
-                      download
-                      rel="noopener noreferrer"
-                      className="bg-blue-200 px-2 py-1 rounded text-blue-900 font-bold text-xs hover:bg-blue-300 border flex items-center gap-1"
-                      style={{ cursor: "pointer", marginBottom: 4 }}
-                    >
-                      تحميل <span style={{fontSize:"1.1em"}}>⬇️</span>
+                    <a href={fileLink} target="_blank" download rel="noopener noreferrer"
+                      className="flex flex-col items-center justify-center bg-blue-50 rounded-lg border border-emerald-100 p-3 hover:bg-blue-100"
+                      style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
+                      title="تحميل الملف">
+                      <span style={{ fontSize: "2em", color: "#1976d2" }}>📄</span>
+                      <span className="text-[11px] font-bold text-blue-900 mt-1">تحميل</span>
                     </a>
                   )}
+                  <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
+                    {fileLink?.split("/").pop()?.slice(0, 18) || ""}
+                  </span>
                 </div>
               );
             })}
