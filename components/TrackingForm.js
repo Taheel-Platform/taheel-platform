@@ -149,14 +149,15 @@ function TrackingTimeline({ timeline, isArabic }) {
 }
 
 function normalizeTrackingNum(str) {
-  return String(str || "").replace(/[\s\-]/g, "").toUpperCase();
+  return String(str || "").replace(/\s/g, "").toUpperCase();
 }
 
 // جلب الطلبات من Firestore وليس RTDB
 async function getRequestByTrackingNumber(trackingNumber) {
-  const normalizedInput = normalizeTrackingNum(trackingNumber);
+  // لا تزيل الشرطات
+  const normalizedInput = String(trackingNumber || "").replace(/\s/g, "").toUpperCase();
 
-  // اسم المستند هو رقم التراك نفسه
+  // اسم المستند هو رقم التراك نفسه بالضبط
   const docRef = doc(firestore, "requests", normalizedInput);
   const snap = await getDoc(docRef);
 
