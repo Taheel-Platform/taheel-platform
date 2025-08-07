@@ -304,18 +304,9 @@ function MyOrdersSection({ lang = "ar" }) {
   if (!client) return null;
 
   // استخرج المرفقات الأساسية من حقول العميل
-  const mainAttachments = Object.entries(client)
-    .filter(([key, value]) =>
-      value &&
-      typeof value === "object" &&
-      value.docType &&
-      value.url
-    )
-    .map(([key, value]) => ({
-      type: value.docType || key,
-      url: value.url,
-      uploadedAt: value.uploadedAt || "",
-    }));
+  const attachments = client.documents
+    ? Object.values(client.documents).filter(att => att && att.fileUrl)
+    : [];
 
   return (
     <div style={{ ...glassStyle, padding: "18px 16px", maxWidth: 350, borderRadius: "16px" }} className="mb-2 rounded-xl shadow border w-full relative">
@@ -329,30 +320,30 @@ function MyOrdersSection({ lang = "ar" }) {
       </div>
       <div className="mt-2">
         <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
-        {mainAttachments.length > 0 ? (
+        {attachments.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {mainAttachments.map((doc, i) => (
+            {attachments.map((doc, i) => (
               <div key={i} className="flex flex-col items-center">
-                {/* لو الرابط صورة اعرضها، لو ملف اعرض زر تحميل */}
-                {doc.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                {/* صورة أو زر تحميل */}
+                {doc.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                   <img
-                    src={doc.url}
-                    alt={doc.type}
+                    src={doc.fileUrl}
+                    alt={doc.docType}
                     style={{ width: 65, height: 65, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc", marginBottom: 3 }}
                   />
                 ) : (
                   <a
-                    href={doc.url}
+                    href={doc.fileUrl}
                     target="_blank"
                     download
                     rel="noopener noreferrer"
                     className="bg-blue-100 px-2 py-1 rounded text-blue-900 font-bold text-xs hover:bg-blue-200 border flex items-center gap-1"
                     style={{ cursor: "pointer", marginBottom: 4 }}
                   >
-                    تحميل {doc.type} <span style={{fontSize:"1.1em"}}>⬇️</span>
+                    تحميل {doc.docType} <span style={{fontSize:"1.1em"}}>⬇️</span>
                   </a>
                 )}
-                <span className="text-xs text-gray-700">{doc.type}</span>
+                <span className="text-xs text-gray-700">{doc.docType}</span>
               </div>
             ))}
           </div>
