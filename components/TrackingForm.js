@@ -1,6 +1,4 @@
 "use client";
-export const dynamic = "force-dynamic";
-import { Suspense } from "react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,7 +10,7 @@ import {
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc } from "firebase/firestore";
-import { GlobalLoader } from '@/components/GlobalLoader'
+import { GlobalLoader } from '@/components/GlobalLoader';
 
 const statusStepsList = [
   { key: "submitted", labelEn: "Submitted", labelAr: "تقديم الطلب", color: "#22c55e", icon: FaEnvelopeOpenText },
@@ -39,43 +37,33 @@ function buildTimeline(statusHistory = []) {
   });
 }
 
-function normalizeTrackingNum(str) {
-  return String(str || "").replace(/[\s\-]/g, "").toUpperCase();
-}
-
-async function getRequestByTrackingNumber(trackingNumber) {
-  const normalizedInput = normalizeTrackingNum(trackingNumber);
-  const docRef = doc(firestore, "requests", normalizedInput);
-  const snap = await getDoc(docRef);
-
-  if (!snap.exists()) return null;
-  return snap.data();
-}
-
-// ====== Input component with fixed format REQ-000-0000 ======
+// ========== Input with auto-format ==========
 function TrackingNumInput({ value, onChange, lang }) {
   // value: only digits (max 7)
-  const handleChange = (e) => {
+  function handleChange(e) {
     let raw = e.target.value.replace(/[^0-9]/g, "");
     if (raw.length > 7) raw = raw.slice(0, 7);
     onChange(raw);
-  };
-
-  // Automatically add dash after 3 digits
-  let display = value;
-  if (display.length > 3) {
-    display = display.slice(0, 3) + '-' + display.slice(3, 7);
   }
-  // Show as REQ-XXX-XXXX, fill underscores if not enough digits
-  let fullDisplay = "REQ-___-____";
-  if (display.length > 0) {
-    // Fill entered numbers in place of underscores
-    const numbers = value.padEnd(7, "_");
-    fullDisplay = `REQ-${numbers.slice(0, 3)}-${numbers.slice(3, 7)}`;
+
+  // Format as REQ-XXX-XXXX while typing:
+  let formatted = "REQ-";
+  if (value.length > 0) {
+    formatted += value.slice(0, 3);
+    if (value.length > 3) {
+      formatted += "-" + value.slice(3, 7);
+    } else {
+      formatted += value.length < 3 ? "_".repeat(3 - value.length) : "";
+    }
+    if (value.length < 7) {
+      formatted += "_".repeat(7 - value.length);
+    }
+  } else {
+    formatted += "___-____";
   }
 
   return (
-    <div className="flex items-center gap-2 w-full justify-center">
+    <div className="flex flex-col items-center w-full">
       <input
         type="text"
         inputMode="numeric"
@@ -88,9 +76,23 @@ function TrackingNumInput({ value, onChange, lang }) {
         aria-label={lang === "ar" ? "أدخل 7 أرقام الطلب" : "Enter 7 digits"}
         style={{ letterSpacing: "0.14em" }}
       />
-      <span className="text-xs text-gray-400 ml-2 select-none">{fullDisplay}</span>
+      <span className="mt-2 text-lg text-gray-700 font-bold select-none">{formatted}</span>
     </div>
   );
+}
+
+// ====== Main TrackingForm ======
+function normalizeTrackingNum(str) {
+  return String(str || "").replace(/[\s\-]/g, "").toUpperCase();
+}
+
+async function getRequestByTrackingNumber(trackingNumber) {
+  const normalizedInput = normalizeTrackingNum(trackingNumber);
+  const docRef = doc(firestore, "requests", normalizedInput);
+  const snap = await getDoc(docRef);
+
+  if (!snap.exists()) return null;
+  return snap.data();
 }
 
 function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
@@ -262,15 +264,4 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
   );
 }
 
-import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
-
-function AttendanceSection(props) {
-  return (
-    <Suspense fallback={null}>
-      <AttendanceSectionInner {...props} />
-    </Suspense>
-  );
-}
-
 export default TrackingForm;
-export { AttendanceSection };
