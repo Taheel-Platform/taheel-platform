@@ -285,78 +285,65 @@ const newOrders = orders
   }
 
   // ----------- بطاقة العميل -----------
-  function renderClientCard(client) {
-    if (!client) return null;
-    return (
-      <div
-        style={{
-          ...glassStyle,
-          padding: "18px 16px",
-          maxWidth: 350,
-          minWidth: 0,
-          borderRadius: "16px",
-        }}
-        className="mb-2 rounded-xl shadow border w-full relative"
+function renderClientCard(client) {
+  if (!client) return null;
+  return (
+    <div
+      style={{
+        ...glassStyle,
+        padding: "18px 16px",
+        maxWidth: 350,
+        minWidth: 0,
+        borderRadius: "16px",
+      }}
+      className="mb-2 rounded-xl shadow border w-full relative"
+    >
+      <button
+        style={{ cursor: "pointer" }}
+        className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold"
+        onClick={() => setShowClientCard(false)}
       >
-        <button
-          style={{ cursor: "pointer" }}
-          className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold"
-          onClick={() => setShowClientCard(false)}
+        <MdClose />
+      </button>
+      <div className="flex flex-col items-center">
+        <img
+          src={client.profilePic || "/default-avatar.png"}
+          alt={client.name}
+          className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
+        />
+        <div
+          className="text-base font-bold text-blue-900"
+          style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
         >
-          <MdClose />
-        </button>
-        <div className="flex flex-col items-center">
-          <img
-            src={client.profilePic || "/default-avatar.png"}
-            alt={client.name}
-            className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
-          />
-          <div
-            className="text-base font-bold text-blue-900"
-            style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
-          >
-            {client.name}
-          </div>
-          <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
-          <div className="mt-2 mb-1 flex flex-wrap justify-center gap-1 text-xs font-semibold">
-            <span
-              style={{ background: "#e3f3ff" }}
-              className="text-blue-800 px-1.5 py-0.5 rounded"
-            >
-              {client.email}
-            </span>
-            <span
-              style={{ background: "#e3f3ff" }}
-              className="text-blue-800 px-1.5 py-0.5 rounded"
-            >
-              {client.phone}
-            </span>
-          </div>
+          {client.name}
         </div>
-        <div className="mt-2">
-          <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
-          {Array.isArray(client.documents) && client.documents.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {client.documents.map((doc, i) => (
-                <a
-                  key={i}
-                  href={doc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-gray-100 px-2 py-0.5 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
-                  style={{ cursor: "pointer" }}
-                >
-                  {doc.type}
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-gray-400 text-xs">لا يوجد مرفقات</div>
-          )}
-        </div>
+        <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
+        {/* تم حذف رقم الهاتف والإيميل حفاظاً على الخصوصية */}
       </div>
-    );
-  }
+      <div className="mt-2">
+        <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
+        {Array.isArray(client.documents) && client.documents.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {client.documents.map((doc, i) => (
+              <a
+                key={i}
+                href={doc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-gray-100 px-2 py-0.5 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
+                style={{ cursor: "pointer" }}
+              >
+                {doc.type}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="text-gray-400 text-xs">لا يوجد مرفقات</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
   // ----------- تفاصيل الطلب -----------
   function renderOrderDetails(order) {
