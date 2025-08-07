@@ -71,16 +71,16 @@ async function handlePayment() {
     });
 
     // تسجيل الطلب في requests
-    await addDoc(collection(firestore, "requests"), {
-      requestId: orderNumber,
-      clientId: userId,
-      serviceName,
-      paidAmount: finalPrice,
-      coinsUsed: useCoins ? coinDiscountValue : 0,
-      coinsGiven: willGetCashback ? cashbackCoins : 0,
-      createdAt: new Date().toISOString(),
-      status: "paid"
-    });
+    await setDoc(doc(firestore, "requests", orderNumber), {
+  requestId: orderNumber,
+  clientId: userId,
+  serviceName,
+  paidAmount: finalPrice,
+  coinsUsed: useCoins ? coinDiscountValue : 0,
+  coinsGiven: willGetCashback ? cashbackCoins : 0,
+  createdAt: new Date().toISOString(),
+  status: "paid"
+});
 
     // إرسال الإيميل الرسمي للعميل
     await fetch("/api/sendOrderEmail", {
