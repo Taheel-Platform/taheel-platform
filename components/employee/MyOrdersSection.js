@@ -568,15 +568,15 @@ const newOrders = orders
       style={{cursor:"pointer"}}
       onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
     >
-<div className="font-bold text-blue-900">
-  {order.serviceName || service?.name || order.serviceId}
-</div>
-<div className="text-xs text-gray-500 font-mono">
-  رقم الطلب: {order.requestId}
-</div>
-<div className="text-xs text-gray-800 font-bold">
-  {client?.name || order.clientId}
-</div>
+      <div className="font-bold text-blue-900">
+        {order.serviceName || service?.name || order.serviceId}
+      </div>
+      <div className="text-xs text-gray-500 font-mono">
+        رقم الطلب: {order.requestId}
+      </div>
+      <div className="text-xs text-gray-800 font-bold">
+        {client?.name || order.clientId}
+      </div>
       <div className="text-xs mt-1 text-gray-600 font-bold">
         <span className="font-bold">منذ: </span>
         {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
