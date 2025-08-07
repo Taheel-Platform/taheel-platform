@@ -109,6 +109,24 @@ export default function ServiceProfileCard({
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
 
+async function fetchUser() {
+  if (!userId) return;
+  try {
+    const userRef = doc(firestore, "users", userId);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      setWallet(Number(data.walletBalance ?? 0));
+      setCoinsBalance(Number(data.coins ?? 0));
+    }
+  } catch (err) {}
+}
+
+useEffect(() => {
+  fetchUser();
+}, [userId]);
+
+
   useEffect(() => {
     let ignore = false;
     async function doTranslation() {
@@ -130,22 +148,6 @@ export default function ServiceProfileCard({
     doTranslation();
     return () => { ignore = true; };
   }, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
-
-  useEffect(() => {
-    if (!userId) return;
-    const fetchUser = async () => {
-      try {
-        const userRef = doc(firestore, "users", userId);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          setWallet(Number(data.walletBalance ?? 0));
-          setCoinsBalance(Number(data.coins ?? 0));
-        }
-      } catch (err) {}
-    };
-    fetchUser();
-  }, [userId]);
 
   // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
