@@ -273,6 +273,7 @@ async function handlePayment() {
             <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
           )}
         </button>
+        
         {/* رسائل الدفع */}
         {payMsg && (
           <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
