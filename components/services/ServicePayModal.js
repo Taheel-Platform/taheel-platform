@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
@@ -77,10 +77,10 @@ async function handlePayment() {
   serviceName,
   paidAmount: finalPrice,
   coinsUsed: useCoins ? coinDiscountValue : 0,
-  coinsGiven: willGetCashback ? cashbackCoins : 0,
   createdAt: new Date().toISOString(),
   status: "paid"
-});
+});oinsGiven: willGetCashback ? cashbackCoins : 0,
+  c
 
     // إرسال الإيميل الرسمي للعميل
     await fetch("/api/sendOrderEmail", {
