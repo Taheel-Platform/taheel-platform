@@ -37,64 +37,72 @@ export default function ServicePayModal({
   const willGetCashback = !useCoins;
 
   // دفع المحفظة
-  async function handlePayment() {
-    setIsPaying(true);
-    setPayMsg("");
-    setMsgSuccess(false);
-    try {
-      const response = await fetch("/api/pay-wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: finalPrice,
-          useCoins,
-          coinDiscountValue,
-          serviceName,
-          userId,
-          userEmail,
-        }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setMsgSuccess(true);
-        setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-
-        // توليد رقم تتبع بعد نجاح الدفع
-        const orderNumber = generateOrderNumber();
-
-        // إضافة الإشعار هنا
-        await addDoc(collection(firestore, "notifications"), {
-          targetId: userId,
-          title: lang === "ar" ? "تم الدفع" : "Payment Successful",
-          body: lang === "ar"
-            ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
-            : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
-          timestamp: new Date().toISOString(),
-          isRead: false
-        });
-
-        // إرسال الإيميل الرسمي للعميل
-        await fetch("/api/sendOrderEmail", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: userEmail,
-            orderNumber,
-            serviceName,
-            price: finalPrice.toFixed(2)
-          }),
-        });
-
-        setTimeout(() => onClose(), 1200);
-      } else {
-        setPayMsg(result.error || (lang === "ar" ? "خطأ أثناء الدفع." : "Payment failed."));
-      }
-    } catch (e) {
-      setPayMsg(lang === "ar" ? "حدث خطأ في الاتصال." : "Server error.");
-    } finally {
+async function handlePayment() {
+  setIsPaying(true);
+  setPayMsg("");
+  setMsgSuccess(false);
+  try {
+    // تحقق من رصيد المحفظة أولاً
+    if (userWallet < finalPrice) {
+      setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
       setIsPaying(false);
+      return;
     }
+
+    // خصم المبلغ من رصيد المحفظة
+    const userRef = doc(firestore, "users", userId);
+    await updateDoc(userRef, {
+      walletBalance: userWallet - finalPrice
+    });
+
+    // توليد رقم تتبع بعد نجاح الدفع
+    const orderNumber = generateOrderNumber();
+
+    // إضافة الإشعار هنا
+    await addDoc(collection(firestore, "notifications"), {
+      targetId: userId,
+      title: lang === "ar" ? "تم الدفع" : "Payment Successful",
+      body: lang === "ar"
+        ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
+        : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+      timestamp: new Date().toISOString(),
+      isRead: false
+    });
+
+    // تسجيل الطلب في requests
+    await addDoc(collection(firestore, "requests"), {
+      requestId: orderNumber,
+      clientId: userId,
+      serviceName,
+      paidAmount: finalPrice,
+      coinsUsed: useCoins ? coinDiscountValue : 0,
+      coinsGiven: willGetCashback ? cashbackCoins : 0,
+      createdAt: new Date().toISOString(),
+      status: "paid"
+    });
+
+    // إرسال الإيميل الرسمي للعميل
+    await fetch("/api/sendOrderEmail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: userEmail,
+        orderNumber,
+        serviceName,
+        price: finalPrice.toFixed(2)
+      }),
+    });
+
+    setMsgSuccess(true);
+    setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+    setTimeout(() => onClose(), 1200);
+
+  } catch (e) {
+    setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
+  } finally {
+    setIsPaying(false);
   }
+}
 
   // دفع بوابة
   async function handleGatewayRedirect() {
