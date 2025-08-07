@@ -303,10 +303,10 @@ function MyOrdersSection({ lang = "ar" }) {
   function renderClientCard(client) {
   if (!client) return null;
 
-  // استخرج المرفقات الأساسية من حقول العميل
-const attachments = client.documents
-    ? Object.values(client.documents).filter(att => att && att.fileUrl)
-    : [];
+// استخرج المرفقات الأساسية من حقول العميل
+const attachments = client.documents && typeof client.documents === "object"
+  ? Object.values(client.documents).filter(att => att && att.fileUrl)
+  : [];
 
   return (
     <div
@@ -443,18 +443,27 @@ const attachments = client.documents
             <div className="flex flex-col gap-1 text-xs">
               <div><b>الجوال:</b> {client?.phone}</div>
               <div><b>الإيميل:</b> {client?.email}</div>
-              <div className="flex flex-wrap gap-1">
-                <b>مرفقات:</b>{" "}
-                {Array.isArray(client?.documents) && client.documents.length > 0
-                  ? client.documents.map((doc, i) => (
-                    <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer"
-                      className="bg-gray-200 px-2 py-0.5 rounded text-blue-800 font-bold text-[11px] hover:bg-blue-100 border"
-                      style={{ cursor: "pointer" }}
-                    >
-                      {doc.type}
-                    </a>
-                  )) : <span className="text-gray-400">لا يوجد</span>}
-              </div>
+<div className="flex flex-wrap gap-1">
+  <b>مرفقات:</b>{" "}
+  {client?.documents && typeof client.documents === "object" && Object.values(client.documents).length > 0
+    ? (
+      Object.values(client.documents).map((doc, i) =>
+        doc.fileUrl ? (
+          <a key={i}
+            href={doc.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-bold text-[11px] hover:bg-blue-200 border flex items-center gap-1"
+            style={{ cursor: "pointer", marginBottom: 4 }}
+          >
+            {doc.docType || "مرفق"} <span style={{fontSize:"1.1em"}}>⬇️</span>
+          </a>
+        ) : null
+      )
+    )
+    : <span className="text-gray-400">لا يوجد</span>
+  }
+</div>
             </div>
           </div>
 
