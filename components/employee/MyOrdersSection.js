@@ -176,11 +176,11 @@ function MyOrdersSection({ lang = "ar" }) {
   });
 
   // الطلبات الغير مسندة لأي موظف (الجديدة) - تظهر في السايدبار فقط
-  const newOrders = orders
-    .filter((o) =>
-      (o.status === "new" || !o.status) &&
-      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
-    )
+const newOrders = orders
+  .filter((o) =>
+    (["new", "paid"].includes(o.status)) &&
+    (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
+  )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // الطلبات المسندة للموظف الحالي فقط (تظهر بالجدول)
