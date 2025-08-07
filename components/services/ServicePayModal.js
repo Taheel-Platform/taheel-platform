@@ -71,16 +71,16 @@ async function handlePayment() {
     });
 
     // تسجيل الطلب في requests
-    await setDoc(doc(firestore, "requests", orderNumber), {
+await setDoc(doc(firestore, "requests", orderNumber), {
   requestId: orderNumber,
   clientId: userId,
   serviceName,
   paidAmount: finalPrice,
   coinsUsed: useCoins ? coinDiscountValue : 0,
+  coinsGiven: willGetCashback ? cashbackCoins : 0, // ← كان ناقص!
   createdAt: new Date().toISOString(),
   status: "paid"
-});oinsGiven: willGetCashback ? cashbackCoins : 0,
-  c
+});
 
     // إرسال الإيميل الرسمي للعميل
     await fetch("/api/sendOrderEmail", {
