@@ -184,12 +184,11 @@ export default function ServiceProfileCard({
 function renderTooltip() {
   return (
     <div
-      className="absolute z-50 left-1/2 -translate-x-1/2 -top-6 flex flex-col items-center pointer-events-none"
+      className="fixed z-[200] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
       style={{
-        minWidth: 250,
-        maxWidth: 340,
+        minWidth: 280,
+        maxWidth: 380,
         boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
-        // لا تحتاج pointerEvents: "none" هنا إذا أضفت الكلاس!
       }}
     >
       <div
