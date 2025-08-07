@@ -452,7 +452,7 @@ function renderTooltip() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            openPaymentModal();
+            setShowPayModal(true); // يفتح مدوال الدفع
           }}
           className={`
             w-full py-1 rounded-full font-black shadow text-xs transition
@@ -470,6 +470,20 @@ function renderTooltip() {
           {lang === "ar" ? "تقدم الآن" : "Apply Now"}
         </button>
       </div>
+      {/* مدوال الدفع */}
+              <ServicePayModal
+  open={showPayModal}
+  onClose={() => setShowPayModal(false)}
+  serviceName={name}
+  totalPrice={totalServicePrice}
+  printingFee={printingTotal}
+  coinsBalance={coinsBalance}
+  cashbackCoins={coins}
+  userWallet={wallet}
+  lang={lang}
+  handlePayment={handlePayment} // دالة تنفيذ الدفع (محفظة)
+  onGatewayRedirect={handleGatewayRedirect} // دالة تحويل لبوابة دفع
+/>
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
