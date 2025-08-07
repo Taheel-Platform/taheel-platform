@@ -4,6 +4,7 @@ import { FaWallet } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 
 // خيارات الشحن والكوينات المجانية
 const rechargeOptions = [
@@ -56,6 +57,17 @@ export default function WalletWidget({
 
       await updateDoc(userRef, { walletBalance: currentWallet + amount });
       await updateDoc(userRef, { coins: currentCoins + coinsBonus });
+
+            // 👈 هنا أضف كود النوتفكيشن بعد نجاح الشحن
+      await addDoc(collection(firestore, "notifications"), {
+        targetId: userId,
+        title: lang === "ar" ? "تم شحن المحفظة" : "Wallet Recharged",
+        body: lang === "ar"
+          ? `تم شحن محفظتك بـ${amount} درهم، وتم إضافة ${coinsBonus} كوين مكافأة!`
+          : `Your wallet was recharged with ${amount} AED and you received ${coinsBonus} bonus coins!`,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      });
 
       updateLocalBalances(currentWallet + amount, currentCoins + coinsBonus);
 

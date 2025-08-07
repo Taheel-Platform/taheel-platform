@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { FaBell } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
-import { getDocs, query, collection, where, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { getDocs, query, collection, where, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function NotificationWidget({ userId, lang = "ar", darkMode = false }) {
   const [notifications, setNotifications] = useState([]);

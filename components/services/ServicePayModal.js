@@ -1,5 +1,14 @@
 import { useState } from "react";
 import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { collection, addDoc } from "firebase/firestore";
+import { firestore } from "@/lib/firebase.client";
+
+// دالة توليد رقم تتبع بالشكل المطلوب
+function generateOrderNumber() {
+  const part1 = Math.floor(100 + Math.random() * 900);
+  const part2 = Math.floor(100 + Math.random() * 900);
+  return `REQ-${part1}-${part2}`;
+}
 
 export default function ServicePayModal({
   open,
@@ -49,6 +58,33 @@ export default function ServicePayModal({
       if (result.success) {
         setMsgSuccess(true);
         setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+
+        // توليد رقم تتبع بعد نجاح الدفع
+        const orderNumber = generateOrderNumber();
+
+        // إضافة الإشعار هنا
+        await addDoc(collection(firestore, "notifications"), {
+          targetId: userId,
+          title: lang === "ar" ? "تم الدفع" : "Payment Successful",
+          body: lang === "ar"
+            ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
+            : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+          timestamp: new Date().toISOString(),
+          isRead: false
+        });
+
+        // إرسال الإيميل الرسمي للعميل
+        await fetch("/api/sendOrderEmail", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: userEmail,
+            orderNumber,
+            serviceName,
+            price: finalPrice.toFixed(2)
+          }),
+        });
+
         setTimeout(() => onClose(), 1200);
       } else {
         setPayMsg(result.error || (lang === "ar" ? "خطأ أثناء الدفع." : "Payment failed."));
