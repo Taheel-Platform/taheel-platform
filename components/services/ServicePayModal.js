@@ -248,6 +248,7 @@ export default function ServicePayModal({
             focus:outline-none focus:ring-2 focus:ring-emerald-400
             ${isPaying ? "opacity-40" : ""}
           `}
+          style={{ cursor: payBtnCursor }}
         >
           {isPaying ? (
             <span className="flex items-center justify-center gap-2 text-xs">
