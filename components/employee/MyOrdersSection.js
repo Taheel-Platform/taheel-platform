@@ -6,11 +6,11 @@ import {
   onSnapshot,
   updateDoc,
   addDoc,
+  getDocs,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 import {
-  MdClose, MdEmail, MdWhatsapp, MdNotificationsActive,
-  MdPerson
+  MdClose, MdEmail, MdWhatsapp, MdNotificationsActive, MdPerson
 } from "react-icons/md";
 import {
   FaUserTie, FaUserAlt, FaBuilding, FaUserCheck, FaUserSlash
@@ -49,7 +49,6 @@ const btnHover = {
   background: "linear-gradient(90deg,#21cbf3,#2196f3)",
   boxShadow: "0 4px 24px rgba(33,203,243,0.14)",
 };
-// -----------------------
 
 const statusIcons = {
   new: "🆕",
@@ -103,6 +102,8 @@ function MyOrdersSection({ lang = "ar" }) {
   const notifAudioRef = useRef();
   const [currentEmployee, setCurrentEmployee] = useState({ userId: null, name: "موظف" });
   const [lastNewOrdersCount, setLastNewOrdersCount] = useState(0);
+  const [clientDocs, setClientDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -176,11 +177,11 @@ function MyOrdersSection({ lang = "ar" }) {
   });
 
   // الطلبات الغير مسندة لأي موظف (الجديدة) - تظهر في السايدبار فقط
-const newOrders = orders
-  .filter((o) =>
-    (["new", "paid"].includes(o.status)) &&
-    (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
-  )
+  const newOrders = orders
+    .filter((o) =>
+      (["new", "paid"].includes(o.status)) &&
+      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
+    )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // الطلبات المسندة للموظف الحالي فقط (تظهر بالجدول)
@@ -285,78 +286,92 @@ const newOrders = orders
   }
 
   // ----------- بطاقة العميل -----------
-function renderClientCard(client) {
-  if (!client) return null;
-  return (
-    <div
-      style={{
-        ...glassStyle,
-        padding: "18px 16px",
-        maxWidth: 350,
-        minWidth: 0,
-        borderRadius: "16px",
-      }}
-      className="mb-2 rounded-xl shadow border w-full relative"
-    >
-      <button
-        style={{ cursor: "pointer" }}
-        className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold"
-        onClick={() => setShowClientCard(false)}
+  const handleShowClientCard = async (client) => {
+    setShowClientCard(client);
+    setLoadingDocs(true);
+    try {
+      const docsSnap = await getDocs(collection(db, "users", client.userId, "documents"));
+      const docsArr = [];
+      docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
+      setClientDocs(docsArr);
+    } catch (e) {
+      setClientDocs([]);
+    }
+    setLoadingDocs(false);
+  };
+
+  function renderClientCard(client) {
+    if (!client) return null;
+    return (
+      <div
+        style={{
+          ...glassStyle,
+          padding: "18px 16px",
+          maxWidth: 350,
+          minWidth: 0,
+          borderRadius: "16px",
+        }}
+        className="mb-2 rounded-xl shadow border w-full relative"
       >
-        <MdClose />
-      </button>
-      <div className="flex flex-col items-center">
-        <img
-          src={client.profilePic || "/default-avatar.png"}
-          alt={client.name}
-          className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
-        />
-        <div
-          className="text-base font-bold text-blue-900"
-          style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
+        <button
+          style={{ cursor: "pointer" }}
+          className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold"
+          onClick={() => setShowClientCard(false)}
         >
-          {client.name}
-        </div>
-        <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
-        {/* لا تعرض الهاتف أو الإيميل نهائيًا */}
-      </div>
-      <div className="mt-2">
-        <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
-        {Array.isArray(client.documents) && client.documents.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {client.documents.map((doc, i) => (
-              <div key={i} className="flex flex-col items-center">
-                {/* لو الملف صورة اعرضها بشكل مباشر */}
-                {doc.url && doc.type && (
-                  doc.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                    <img
-                      src={doc.url}
-                      alt={doc.type}
-                      style={{ width: 65, height: 65, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc", marginBottom: 3 }}
-                    />
-                  ) : (
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-gray-100 px-2 py-1 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
-                      style={{ cursor: "pointer", marginBottom: 4 }}
-                    >
-                      {doc.type} 📄
-                    </a>
-                  )
-                )}
-                <span className="text-xs text-gray-700">{doc.type}</span>
-              </div>
-            ))}
+          <MdClose />
+        </button>
+        <div className="flex flex-col items-center">
+          <img
+            src={client.profilePic || "/default-avatar.png"}
+            alt={client.name}
+            className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
+          />
+          <div
+            className="text-base font-bold text-blue-900"
+            style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
+          >
+            {client.name}
           </div>
-        ) : (
-          <div className="text-gray-400 text-xs">لا يوجد مرفقات</div>
-        )}
+          <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
+        </div>
+        <div className="mt-2">
+          <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
+          {loadingDocs ? (
+            <div className="text-gray-400 text-xs">جاري التحميل...</div>
+          ) : clientDocs.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {clientDocs.map((doc, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  {doc.url && doc.type && (
+                    doc.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                      <img
+                        src={doc.url}
+                        alt={doc.type}
+                        style={{ width: 65, height: 65, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc", marginBottom: 3 }}
+                      />
+                    ) : (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-gray-100 px-2 py-1 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
+                        style={{ cursor: "pointer", marginBottom: 4 }}
+                      >
+                        {doc.type} 📄
+                      </a>
+                    )
+                  )}
+                  <span className="text-xs text-gray-700">{doc.type}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-xs">لا يوجد مرفقات</div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // ----------- تفاصيل الطلب -----------
   function renderOrderDetails(order) {
@@ -556,46 +571,46 @@ function renderClientCard(client) {
           {newOrders.length === 0 && (
             <div className="text-center text-gray-400 mt-6">لا يوجد طلبات جديدة</div>
           )}
-{newOrders.map((order) => {
-  const client = clients[order.clientId];
-  const service = services[order.serviceId];
-  const created = order.createdAt ? new Date(order.createdAt) : null;
-  const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
-  return (
-    <div
-      key={order.requestId}
-      className="bg-blue-50 mb-3 rounded-lg p-3 shadow hover:bg-blue-100"
-      style={{cursor:"pointer"}}
-      onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
-    >
-      <div className="font-bold text-blue-900">
-        {order.serviceName || service?.name || order.serviceId}
-      </div>
-      <div className="text-xs text-gray-500 font-mono">
-        رقم الطلب: {order.requestId}
-      </div>
-      <div className="text-xs text-gray-800 font-bold">
-        {client?.name || order.clientId}
-      </div>
-      <div className="text-xs mt-1 text-gray-600 font-bold">
-        <span className="font-bold">منذ: </span>
-        {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
-      </div>
-      <button
-        style={btnStyle}
-        onMouseOver={e=>Object.assign(e.target.style,btnHover)}
-        onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
-        className="mt-2"
-        onClick={async (e) => {
-          e.stopPropagation();
-          await acceptOrder(order);
-        }}
-      >
-        قبول الطلب
-      </button>
-    </div>
-  );
-})}
+          {newOrders.map((order) => {
+            const client = clients[order.clientId];
+            const service = services[order.serviceId];
+            const created = order.createdAt ? new Date(order.createdAt) : null;
+            const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
+            return (
+              <div
+                key={order.requestId}
+                className="bg-blue-50 mb-3 rounded-lg p-3 shadow hover:bg-blue-100"
+                style={{cursor:"pointer"}}
+                onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
+              >
+                <div className="font-bold text-blue-900">
+                  {order.serviceName || service?.name || order.serviceId}
+                </div>
+                <div className="text-xs text-gray-500 font-mono">
+                  رقم الطلب: {order.requestId}
+                </div>
+                <div className="text-xs text-gray-800 font-bold">
+                  {client?.name || order.clientId}
+                </div>
+                <div className="text-xs mt-1 text-gray-600 font-bold">
+                  <span className="font-bold">منذ: </span>
+                  {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
+                </div>
+                <button
+                  style={btnStyle}
+                  onMouseOver={e=>Object.assign(e.target.style,btnHover)}
+                  onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
+                  className="mt-2"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await acceptOrder(order);
+                  }}
+                >
+                  قبول الطلب
+                </button>
+              </div>
+            );
+          })}
         </div>
         <audio ref={notifAudioRef} src="/sounds/new-order.mp3" preload="auto" />
       </div>
@@ -698,7 +713,7 @@ function renderClientCard(client) {
                     <span
                       className="text-blue-700 font-bold underline hover:text-blue-900"
                       style={{cursor:"pointer"}}
-                      onClick={e => { e.stopPropagation(); setShowClientCard(client); }}
+                      onClick={e => { e.stopPropagation(); handleShowClientCard(client); }}
                     >
                       {client?.name || o.clientId}
                     </span>
@@ -753,7 +768,7 @@ function renderClientCard(client) {
               تغيير حالة الطلب
             </div>
             <div className="mb-3">هل أنت متأكد أنك تريد تعيين هذه الحالة للطلب؟ سيتم إرسال إشعار تلقائي للعميل.</div>
-            <div className="flex gap-3 w-full">
+            <div className="flex gap-3 و-full">
               <button style={btnStyle} onMouseOver={e=>Object.assign(e.target.style,btnHover)} onMouseOut={e=>Object.assign(e.target.style,btnStyle)} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
               <button style={{...btnStyle, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
             </div>
