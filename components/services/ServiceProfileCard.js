@@ -10,6 +10,7 @@ import {
   FaCoins,
 } from "react-icons/fa";
 import ServiceUploadModal from "./ServiceUploadModal";
+import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
 
 function generateOrderNumber() {
