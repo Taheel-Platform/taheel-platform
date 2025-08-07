@@ -302,7 +302,7 @@ function MyOrdersSection({ lang = "ar" }) {
 
   function renderClientCard(client) {
   if (!client) return null;
-
+  console.log("client.documents:", client.documents);
 // استخرج المرفقات الأساسية من حقول العميل
 const attachments = client.documents && typeof client.documents === "object"
   ? Object.values(client.documents).filter(att => att && att.fileUrl)
