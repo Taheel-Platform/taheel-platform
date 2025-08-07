@@ -686,8 +686,8 @@ const newOrders = orders
                   style={{cursor:"pointer"}}
                   onClick={() => setSelected(o)}
                 >
-                  <td className="font-mono font-bold text-blue-800">{o.trackingNumber || o.requestId}</td>
-                  <td className="text-blue-900 font-extrabold">{service?.name || o.serviceId}</td>
+                  <td className="font-mono font-bold text-blue-800">{o.requestId}</td>
+                  <td className="text-blue-900 font-extrabold">{o.serviceName || service?.name || o.serviceId}</td>
                   <td>
                     <span
                       className="text-blue-700 font-bold underline hover:text-blue-900"
