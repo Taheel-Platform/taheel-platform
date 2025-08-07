@@ -318,23 +318,36 @@ function renderClientCard(client) {
           {client.name}
         </div>
         <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
-        {/* تم حذف رقم الهاتف والإيميل حفاظاً على الخصوصية */}
+        {/* لا تعرض الهاتف أو الإيميل نهائيًا */}
       </div>
       <div className="mt-2">
         <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
         {Array.isArray(client.documents) && client.documents.length > 0 ? (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-2">
             {client.documents.map((doc, i) => (
-              <a
-                key={i}
-                href={doc.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-gray-100 px-2 py-0.5 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
-                style={{ cursor: "pointer" }}
-              >
-                {doc.type}
-              </a>
+              <div key={i} className="flex flex-col items-center">
+                {/* لو الملف صورة اعرضها بشكل مباشر */}
+                {doc.url && doc.type && (
+                  doc.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                    <img
+                      src={doc.url}
+                      alt={doc.type}
+                      style={{ width: 65, height: 65, objectFit: "cover", borderRadius: 8, border: "1px solid #ccc", marginBottom: 3 }}
+                    />
+                  ) : (
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-gray-100 px-2 py-1 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
+                      style={{ cursor: "pointer", marginBottom: 4 }}
+                    >
+                      {doc.type} 📄
+                    </a>
+                  )
+                )}
+                <span className="text-xs text-gray-700">{doc.type}</span>
+              </div>
             ))}
           </div>
         ) : (
