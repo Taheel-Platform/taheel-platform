@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import { collection, addDoc } from "firebase/firestore";
 import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 
@@ -273,7 +272,7 @@ async function handlePayment() {
             <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
           )}
         </button>
-        
+
         {/* رسائل الدفع */}
         {payMsg && (
           <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
