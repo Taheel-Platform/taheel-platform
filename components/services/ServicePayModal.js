@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import { collection, addDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
+import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -22,6 +23,7 @@ export default function ServicePayModal({
   lang = "ar",
   userId,
   userEmail,
+  onPaid // <<< أضف هذا هنا!
 }) {
   const [useCoins, setUseCoins] = useState(false);
   const [payMethod, setPayMethod] = useState("wallet");
@@ -95,6 +97,9 @@ async function handlePayment() {
 
     setMsgSuccess(true);
     setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+    if (typeof onPaid === "function") {
+  onPaid();
+}
     setTimeout(() => onClose(), 1200);
 
   } catch (e) {
