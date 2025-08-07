@@ -318,43 +318,22 @@ function MyOrdersSection({ lang = "ar" }) {
     }));
 
   return (
-    <div
-      style={{
-        ...glassStyle,
-        padding: "18px 16px",
-        maxWidth: 350,
-        minWidth: 0,
-        borderRadius: "16px",
-      }}
-      className="mb-2 rounded-xl shadow border w-full relative"
-    >
-      <button
-        style={{ cursor: "pointer" }}
-        className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold"
-        onClick={() => setShowClientCard(false)}
-      >
+    <div style={{ ...glassStyle, padding: "18px 16px", maxWidth: 350, borderRadius: "16px" }} className="mb-2 rounded-xl shadow border w-full relative">
+      <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-gray-900 font-bold" onClick={() => setShowClientCard(false)}>
         <MdClose />
       </button>
       <div className="flex flex-col items-center">
-        <img
-          src={client.profilePic || "/default-avatar.png"}
-          alt={client.name}
-          className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover"
-        />
-        <div
-          className="text-base font-bold text-blue-900"
-          style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}
-        >
-          {client.name}
-        </div>
+        <img src={client.profilePic || "/default-avatar.png"} alt={client.name} className="w-14 h-14 rounded-full border-2 border-blue-100 shadow mb-2 object-cover" />
+        <div className="text-base font-bold text-blue-900" style={{ textShadow: "0 1px 0 #fff, 0 1px 2px #555" }}>{client.name}</div>
         <div className="text-gray-700 font-mono font-semibold text-xs">{client.userId}</div>
       </div>
       <div className="mt-2">
-        <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل الأساسية:</div>
+        <div className="font-bold text-gray-800 mb-1 text-xs">مرفقات العميل:</div>
         {mainAttachments.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {mainAttachments.map((doc, i) => (
               <div key={i} className="flex flex-col items-center">
+                {/* لو الرابط صورة اعرضها، لو ملف اعرض زر تحميل */}
                 {doc.url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                   <img
                     src={doc.url}
@@ -365,11 +344,12 @@ function MyOrdersSection({ lang = "ar" }) {
                   <a
                     href={doc.url}
                     target="_blank"
+                    download
                     rel="noopener noreferrer"
-                    className="bg-gray-100 px-2 py-1 rounded text-blue-800 font-bold text-xs hover:bg-blue-50 border"
+                    className="bg-blue-100 px-2 py-1 rounded text-blue-900 font-bold text-xs hover:bg-blue-200 border flex items-center gap-1"
                     style={{ cursor: "pointer", marginBottom: 4 }}
                   >
-                    {doc.type} 📄
+                    تحميل {doc.type} <span style={{fontSize:"1.1em"}}>⬇️</span>
                   </a>
                 )}
                 <span className="text-xs text-gray-700">{doc.type}</span>
@@ -377,7 +357,7 @@ function MyOrdersSection({ lang = "ar" }) {
             ))}
           </div>
         ) : (
-          <div className="text-gray-400 text-xs">لا يوجد مرفقات أساسية</div>
+          <div className="text-gray-400 text-xs">لا يوجد مرفقات</div>
         )}
       </div>
     </div>
