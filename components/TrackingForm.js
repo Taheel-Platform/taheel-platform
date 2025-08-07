@@ -11,7 +11,7 @@ import {
   FaCheckCircle,
 } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { GlobalLoader } from '@/components/GlobalLoader'
 
 const statusStepsList = [
@@ -39,170 +39,106 @@ function buildTimeline(statusHistory = []) {
   });
 }
 
-// شريط تتبع احترافي - الشريط في المنتصف، الأيقونات فوق الشريط بمسافة، الكلام تحت الشريط
-function TrackingTimeline({ timeline, isArabic }) {
-  const activeIdx = timeline.findIndex(s => s.active);
-  const stepsCount = timeline.length;
-  // الشريط يبدأ من أول دائرة (تم تقديم الطلب) وينتهي عند الحالة الحالية فقط
-  const progressPercent = stepsCount > 1 ? (activeIdx / (stepsCount - 1)) * 100 : 0;
-
-  return (
-    <div className="w-full max-w-xl mx-auto flex flex-col items-center select-none pb-4">
-      {/* الخط الخلفي */}
-      <div className="relative w-full h-[60px] flex items-center justify-center">
-        {/* الخط الرمادي */}
-        <div
-          className="absolute left-0 right-0 top-1/2 transform -translate-y-1/2 h-[4px] rounded-full bg-gray-300 z-0"
-          style={{ boxShadow: "0 2px 8px #0001" }}
-        />
-        {/* الخط المتحرك من أول دائرة حتى الحالية */}
-        <motion.div
-          className="absolute left-0 top-1/2 transform -translate-y-1/2 h-[4px] rounded-full z-10"
-          style={{
-            background: "linear-gradient(90deg,#22c55e,#0ea5e9,#facc15,#10b981)",
-            width: "100%",
-          }}
-          initial={{ width: 0 }}
-          animate={{
-            width: `${progressPercent}%`
-          }}
-          transition={{ duration: 1, type: "spring" }}
-        />
-        {/* الأيقونات فوق الخط بمسافة واضحة وصغيرة */}
-        <div className="flex w-full justify-between items-center z-20 relative">
-          {timeline.map((step, idx) => {
-            const Icon = step.icon;
-            let iconBg = "#fff";
-            let iconBorder = "#e5e7eb";
-            let iconColor = "#bdbdbd";
-            let iconShadow = "0 1px 4px #0001";
-            if (step.done) {
-              iconBg = "#f0fdf4";
-              iconBorder = step.color;
-              iconColor = step.color;
-            }
-            if (step.active) {
-              iconBg = step.color;
-              iconBorder = step.color;
-              iconColor = "#fff";
-              iconShadow = `0 0 0 5px ${step.color}22`;
-            }
-            return (
-              <motion.div
-                key={step.key}
-                initial={{ scale: 1 }}
-                animate={step.active ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                transition={step.active
-                  ? { repeat: Infinity, duration: 1, ease: "easeInOut" }
-                  : { duration: 0.2 }}
-                className="flex flex-col items-center"
-                style={{ zIndex: 20 }}
-              >
-                <div
-                  className="flex items-center justify-center rounded-full border-2"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    marginBottom: 21, // تباعد واضح عن الخط
-                    background: iconBg,
-                    borderColor: iconBorder,
-                    color: iconColor,
-                    boxShadow: iconShadow,
-                  }}
-                >
-                  <Icon size={15} color={iconColor} />
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-      {/* التسميات تحت الخط بالكامل */}
-      <div className="w-full flex flex-row items-start justify-between mt-1 px-1">
-        {timeline.map((step, idx) => (
-          <div
-            key={step.key}
-            className="flex flex-col items-center min-w-[50px] max-w-[90px]"
-          >
-            <span
-              className="font-medium text-center"
-              style={{
-                color: step.active
-                  ? step.color
-                  : step.done
-                  ? step.color
-                  : "#bdbdbd",
-                fontWeight: step.active ? 700 : 500,
-                fontSize: 13,
-                opacity: step.show ? 1 : 0.6,
-                lineHeight: "1.2",
-                marginTop: 0,
-              }}
-            >
-              {isArabic ? step.labelAr : step.labelEn}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function normalizeTrackingNum(str) {
   return String(str || "").replace(/[\s\-]/g, "").toUpperCase();
 }
 
 async function getRequestByTrackingNumber(trackingNumber) {
   const normalizedInput = normalizeTrackingNum(trackingNumber);
+  const docRef = doc(firestore, "requests", normalizedInput);
+  const snap = await getDoc(docRef);
 
-  // جلب الطلبات من Firestore وليس RTDB
-  const q = query(
-    collection(firestore, "requests"),
-    where("trackingNumber", "==", normalizedInput)
-  );
-  const snap = await getDocs(q);
-
-  if (snap.empty) return null;
-  // يفترض أن trackingNumber فريد، لذا نأخذ أول نتيجة فقط
-  const found = snap.docs[0].data();
-  return found;
+  if (!snap.exists()) return null;
+  return snap.data();
 }
 
-// إذا لم يكن لديك normalizedTrackingNumber في كل مستند، يمكن استخدم جلب جميع الطلبات ثم البحث، لكن يفضل حفظ normalizedTrackingNumber عند الانشاء أو التعديل.
+// ====== Input component with fixed format REQ-000-0000 ======
+function TrackingNumInput({ value, onChange, lang }) {
+  // value: only digits (max 7)
+  const handleChange = (e) => {
+    let raw = e.target.value.replace(/[^0-9]/g, "");
+    if (raw.length > 7) raw = raw.slice(0, 7);
+    onChange(raw);
+  };
+
+  // Automatically add dash after 3 digits
+  let display = value;
+  if (display.length > 3) {
+    display = display.slice(0, 3) + '-' + display.slice(3, 7);
+  }
+  // Show as REQ-XXX-XXXX, fill underscores if not enough digits
+  let fullDisplay = "REQ-___-____";
+  if (display.length > 0) {
+    // Fill entered numbers in place of underscores
+    const numbers = value.padEnd(7, "_");
+    fullDisplay = `REQ-${numbers.slice(0, 3)}-${numbers.slice(3, 7)}`;
+  }
+
+  return (
+    <div className="flex items-center gap-2 w-full justify-center">
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={value}
+        onChange={handleChange}
+        maxLength={7}
+        className="w-32 text-center font-mono border border-gray-300 rounded bg-gray-50 shadow focus:border-emerald-500 transition text-lg tracking-widest"
+        placeholder={lang === "ar" ? "أدخل رقم الطلب" : "Enter request number"}
+        aria-label={lang === "ar" ? "أدخل 7 أرقام الطلب" : "Enter 7 digits"}
+        style={{ letterSpacing: "0.14em" }}
+      />
+      <span className="text-xs text-gray-400 ml-2 select-none">{fullDisplay}</span>
+    </div>
+  );
+}
 
 function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
-  const [trackingInput, setTrackingInput] = useState('');
+  const [trackingDigits, setTrackingDigits] = useState('');
   const [trackingError, setTrackingError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [trackingResult, setTrackingResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  const t = (ar, en) => (isArabic ? ar : en);
+
+  // رقم الطلب النهائي
+  const formattedTrackingNum = `REQ-${trackingDigits.slice(0,3)}-${trackingDigits.slice(3,7)}`;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (trackingInput.trim() === '') {
-      setTrackingError(LANG[lang].enterTrackNum);
+    if (trackingDigits.length !== 7) {
+      setTrackingError(
+        isArabic
+          ? "يرجى إدخال رقم طلب صحيح (3 أرقام + 4 أرقام)"
+          : "Please enter a valid request number (3 digits + 4 digits)"
+      );
+      setTrackingResult(null);
       return;
     }
     setTrackingError('');
     setIsLoading(true);
-
-    // البحث باستخدام normalizedTrackingNumber
-    const found = await getRequestByTrackingNumber(trackingInput.trim());
-    setIsLoading(false);
-    if (!found) {
-      setTrackingError(isArabic ? "لم يتم العثور على هذا الطلب." : "Request not found.");
+    setTrackingResult(null);
+    try {
+      const found = await getRequestByTrackingNumber(formattedTrackingNum);
+      setIsLoading(false);
+      if (!found) {
+        setTrackingError(isArabic ? "لم يتم العثور على هذا الطلب." : "Request not found.");
+        setTrackingResult(null);
+        return;
+      }
+      setTrackingResult({
+        number: formattedTrackingNum,
+        statusHistory: found.statusHistory || [],
+        lastUpdate: found.lastUpdated || "",
+        staffNote: found.statusHistory?.at(-1)?.note || "",
+      });
+    } catch (err) {
+      setTrackingError(isArabic ? "حدث خطأ أثناء البحث." : "Error during search.");
       setTrackingResult(null);
-      return;
+      setIsLoading(false);
     }
-    setTrackingResult({
-      number: found.trackingNumber,
-      statusHistory: found.statusHistory || [],
-      lastUpdate: found.lastUpdated || "",
-      staffNote: found.statusHistory?.at(-1)?.note || "",
-    });
   };
-
-  const t = (ar, en) => (isArabic ? ar : en);
 
   return (
     <section className="w-full flex flex-col items-center justify-center">
@@ -210,15 +146,16 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
         {/* form */}
         <form
           onSubmit={handleSubmit}
-          className="flex flex-row items-center justify-center gap-2 my-6 w-full"
+          className="flex flex-col items-center justify-center gap-4 my-6 w-full"
           autoComplete="off"
           dir={isArabic ? "rtl" : "ltr"}
         >
+          <TrackingNumInput value={trackingDigits} onChange={setTrackingDigits} lang={lang} />
           <motion.button
             type="submit"
             disabled={isLoading}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-full font-semibold shadow-sm transition text-xs"
-            style={{ minWidth: 58, letterSpacing: "0.03em", cursor: "pointer" }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full font-semibold shadow-sm transition text-base"
+            style={{ minWidth: 90, cursor: isLoading ? "wait" : "pointer" }}
             whileHover={{
               scale: 1.09,
               boxShadow: "0px 4px 18px 0px #05966944",
@@ -241,22 +178,6 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
           >
             {LANG[lang].trackNow}
           </motion.button>
-          <input
-            type="text"
-            value={trackingInput}
-            onChange={e => {
-              setTrackingInput(e.target.value);
-              setTrackingError('');
-            }}
-            placeholder={LANG[lang].placeholder}
-            className="w-36 sm:w-52 py-1.5 px-3 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-400 shadow text-sm transition hover:border-emerald-600 hover:ring-emerald-600"
-            style={{ fontWeight: 500, cursor: "pointer" }}
-            inputMode="text"
-            autoComplete="off"
-            lang={isArabic ? "ar" : "en"}
-            onMouseOver={e => e.currentTarget.style.borderColor = "#059669"}
-            onMouseOut={e => e.currentTarget.style.borderColor = "#d1d5db"}
-          />
         </form>
         {trackingError && (
           <div className="mb-2">
@@ -264,8 +185,14 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
           </div>
         )}
 
+        {isLoading && (
+          <div className="w-full flex justify-center items-center py-8">
+            <GlobalLoader />
+          </div>
+        )}
+
         <AnimatePresence>
-          {trackingResult && (
+          {!isLoading && trackingResult && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
