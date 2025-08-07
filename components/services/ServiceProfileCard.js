@@ -439,16 +439,16 @@ function renderTooltip() {
 )}
           </div>
         )}
-        <ServiceUploadModal
-          open={showDocsModal}
-          onClose={closeDocsModal}
-          currentDocName={currentDocName}
-          uploadedDocs={uploadedDocs}
-          setUploadedDocs={handleDocsUploaded}
-          userId={userId}
-          lang={lang}
-          service={{ serviceId, name: name }}
-        />
+<ServiceUploadModal
+  open={showDocsModal}
+  onClose={closeDocsModal}
+  requiredDocs={requiredDocs} // هنا فقط!
+  uploadedDocs={uploadedDocs}
+  setUploadedDocs={handleDocsUploaded}
+  userId={userId}
+  lang={lang}
+  service={{ serviceId, name: name }}
+/>
         {/* زرار التقديم دايما ظاهر في الأسفل */}
         <button
           onClick={(e) => {
