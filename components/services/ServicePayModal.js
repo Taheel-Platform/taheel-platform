@@ -33,7 +33,6 @@ export default function ServicePayModal({
     setPayMsg("");
     setMsgSuccess(false);
     try {
-      // هنا اربط مع الـ backend حسب احتياجك
       const response = await fetch("/api/pay-wallet", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -49,13 +48,13 @@ export default function ServicePayModal({
       const result = await response.json();
       if (result.success) {
         setMsgSuccess(true);
-        setPayMsg(lang === "ar" ? "🎉 تم الدفع بنجاح! شكراً لاستخدامك منصة تأهيل." : "🎉 Payment successful! Thank you for using Taheel.");
-        setTimeout(() => onClose(), 1800);
+        setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+        setTimeout(() => onClose(), 1200);
       } else {
-        setPayMsg(result.error || (lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment failed."));
+        setPayMsg(result.error || (lang === "ar" ? "خطأ أثناء الدفع." : "Payment failed."));
       }
     } catch (e) {
-      setPayMsg(lang === "ar" ? "حدث خطأ في الاتصال بالخادم." : "Server error.");
+      setPayMsg(lang === "ar" ? "حدث خطأ في الاتصال." : "Server error.");
     } finally {
       setIsPaying(false);
     }
@@ -101,100 +100,104 @@ export default function ServicePayModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-center items-center bg-black/50 backdrop-blur-sm animated fade-in">
-      <div className="bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-3xl shadow-2xl border-2 border-emerald-200/80 px-6 pt-7 pb-4 max-w-lg w-full relative flex flex-col items-center animate-pop">
-        {/* زر إغلاق دائري أعلى يمين */}
+    <div className="fixed inset-0 z-[100] flex justify-center items-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-2xl shadow-xl border border-emerald-200 px-4 pt-4 pb-3 max-w-xs w-full relative flex flex-col items-center">
+        {/* زر إغلاق دائري */}
         <button
-          className="absolute top-3 right-4 bg-emerald-600 text-white rounded-full p-1 shadow hover:bg-emerald-700 transition"
+          className="absolute top-2 right-3 bg-emerald-600 text-white rounded-full p-1 shadow hover:bg-emerald-700 transition text-xs"
           onClick={onClose}
           aria-label={lang === "ar" ? "إغلاق" : "Close"}
         >
           ×
         </button>
         {/* عنوان الخدمة */}
-        <h2 className="text-emerald-800 font-extrabold text-xl mb-2 text-center drop-shadow-lg">
-          {lang === "ar" ? "دفع الخدمة" : "Service Payment"} <span className="block text-lg font-black text-emerald-600 mt-1">{serviceName}</span>
-        </h2>
-        {/* بيانات الدفع */}
-        <div className="w-full flex flex-col gap-1 bg-white/80 rounded-2xl border border-emerald-100 shadow p-3 mb-2 mt-1">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-gray-700">{lang === "ar" ? "إجمالي السعر:" : "Total price:"}</span>
-            <span className="font-black text-emerald-700 text-lg">{totalPrice.toFixed(2)} د.إ</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-gray-700">{lang === "ar" ? "رسوم الطباعة:" : "Printing Fee:"}</span>
-            <span className="text-emerald-700">{printingFee} د.إ</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-gray-700">{lang === "ar" ? "خصم الكوينات:" : "Coins Discount:"}</span>
-            <span className="text-yellow-600">
-              {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
-              {useCoins && (
-                <span className="ml-2 flex items-center"><FaCoins className="text-yellow-500" size={14} /> <span className="font-bold text-yellow-700 mx-1">{coinDiscount}</span></span>
-              )}
-            </span>
-          </div>
-          <div className="flex items-center justify-between font-extrabold text-lg mt-2">
-            <span className="text-emerald-800">{lang === "ar" ? "السعر النهائي:" : "Final price:"}</span>
-            <span className="text-emerald-900">{finalPrice.toFixed(2)} د.إ</span>
-          </div>
-        </div>
+        <div className="text-emerald-700 font-black text-base mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
+        <div className="font-bold text-emerald-900 text-sm mb-3 text-center">{serviceName}</div>
+        {/* جدول الأسعار */}
+        <table className="w-full text-xs text-gray-700 font-bold mb-2">
+          <tbody>
+            <tr>
+              <td>{lang === "ar" ? "إجمالي السعر" : "Total"}</td>
+              <td className="text-right">{totalPrice.toFixed(2)} د.إ</td>
+            </tr>
+            <tr>
+              <td>{lang === "ar" ? "رسوم الطباعة" : "Printing"}</td>
+              <td className="text-right">{printingFee} د.إ</td>
+            </tr>
+            <tr>
+              <td className="flex items-center gap-1">
+                <FaCoins className="text-yellow-500 mr-1" size={10} />
+                {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
+              </td>
+              <td className="text-right text-yellow-700">
+                {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
+              </td>
+            </tr>
+            <tr>
+              <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
+              <td className="font-extrabold text-emerald-800 text-right">{finalPrice.toFixed(2)} د.إ</td>
+            </tr>
+          </tbody>
+        </table>
         {/* خيار الكوينات */}
-        <div className="w-full flex flex-row items-center justify-between mb-2">
-          <label className="flex items-center gap-2 font-bold text-sm text-emerald-700 cursor-pointer">
+        <div className="w-full flex flex-row items-center justify-between mb-1">
+          <label className="flex items-center gap-1 font-bold text-xs text-emerald-700 cursor-pointer">
             <input
               type="checkbox"
               checked={useCoins}
               onChange={e => setUseCoins(e.target.checked)}
               disabled={coinsBalance < 1}
-              className="accent-yellow-500 scale-110"
+              className="accent-yellow-500 scale-90"
+              style={{ marginTop: 0 }}
             />
-            <FaCoins className="text-yellow-500" size={16} />
-            {lang === "ar" ? "استخدم الكوينات للخصم (حتى 10% من رسوم الطباعة)" : "Use coins for discount (up to 10% of printing fee)"}
+            <FaCoins className="text-yellow-500" size={12} />
+            {lang === "ar" ? "استخدم الكوينات (خصم حتى 10%)" : "Use coins (up to 10%)"}
           </label>
-          <span className="font-black text-yellow-700 text-sm">
-            {lang === "ar" ? "رصيدك:" : "Your coins:"} {coinsBalance} <span className="text-gray-700">({(coinsBalance/1000).toFixed(2)} د.إ)</span>
+          <span className="font-black text-yellow-700 text-xs">
+            {lang === "ar" ? "رصيدك:" : "Your coins:"} {coinsBalance}
           </span>
         </div>
         {/* طرق الدفع */}
-        <div className="w-full flex flex-row items-center justify-between mb-2">
-          <label className={`flex items-center gap-2 font-bold text-emerald-800 cursor-pointer ${userWallet < finalPrice ? "opacity-50" : ""}`}>
+        <div className="w-full flex flex-row items-center justify-between mb-1">
+          <label className={`flex items-center gap-1 font-bold text-emerald-800 text-xs cursor-pointer ${userWallet < finalPrice ? "opacity-60" : ""}`}>
             <input
               type="radio"
               checked={payMethod === "wallet"}
               onChange={() => setPayMethod("wallet")}
               disabled={userWallet < finalPrice}
-              className="accent-emerald-600 scale-110"
+              className="accent-emerald-600 scale-90"
+              style={{ marginTop: 0 }}
             />
-            <FaWallet className="text-emerald-600" size={18} />
+            <FaWallet className="text-emerald-600" size={12} />
             {lang === "ar" ? "المحفظة" : "Wallet"}
             <span className="text-gray-600 font-bold ml-2">{userWallet} د.إ</span>
           </label>
-          <label className="flex items-center gap-2 font-bold text-emerald-800 cursor-pointer">
+          <label className="flex items-center gap-1 font-bold text-emerald-800 text-xs cursor-pointer">
             <input
               type="radio"
               checked={payMethod === "gateway"}
               onChange={() => setPayMethod("gateway")}
-              className="accent-emerald-600 scale-110"
+              className="accent-emerald-600 scale-90"
+              style={{ marginTop: 0 }}
             />
-            <FaCreditCard className="text-emerald-600" size={18} />
-            {lang === "ar" ? "بوابة الدفع (فيزا/مدفوعات)" : "Payment Gateway"}
+            <FaCreditCard className="text-emerald-600" size={12} />
+            {lang === "ar" ? "بوابة الدفع" : "Gateway"}
           </label>
         </div>
         {/* كاش باك/مكافأة */}
-        <div className="w-full mb-2 text-center">
+        <div className="w-full mb-1 text-center">
           {willGetCashback ? (
-            <div className="flex flex-row items-center justify-center gap-1 text-yellow-700 font-bold text-sm">
-              <FaCoins className="text-yellow-500" size={16} />
+            <div className="flex flex-row items-center justify-center gap-1 text-yellow-700 font-bold text-xs">
+              <FaCoins className="text-yellow-500" size={12} />
               {lang === "ar"
-                ? `سيتم إضافة ${cashbackCoins} كوين كمكافأة بعد الدفع`
-                : `You will get ${cashbackCoins} coins as cashback after payment`}
+                ? `ستحصل على ${cashbackCoins} كوين مكافأة`
+                : `You'll get ${cashbackCoins} coins cashback`}
             </div>
           ) : (
-            <div className="text-gray-500 text-sm font-bold">
+            <div className="text-gray-500 text-xs font-bold">
               {lang === "ar"
-                ? "لن تحصل على كوينات كاش باك عند استخدام الكوينات للخصم"
-                : "No cashback if you use coins for discount"}
+                ? "لا مكافأة عند استخدام الكوينات"
+                : "No cashback if you use coins"}
             </div>
           )}
         </div>
@@ -202,7 +205,7 @@ export default function ServicePayModal({
         <button
           onClick={onPayClick}
           disabled={isPaying}
-          className={`w-full py-2 rounded-full font-black text-lg shadow-lg transition
+          className={`w-full py-1.5 rounded-full font-black text-base shadow-md transition
             bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 text-white
             hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
             hover:scale-105 duration-150
@@ -211,7 +214,7 @@ export default function ServicePayModal({
           `}
         >
           {isPaying ? (
-            <span className="flex items-center justify-center gap-2">
+            <span className="flex items-center justify-center gap-2 text-xs">
               <span className="animate-spin">🔄</span>
               {lang === "ar" ? "جاري الدفع..." : "Processing..."}
             </span>
@@ -221,13 +224,13 @@ export default function ServicePayModal({
         </button>
         {/* رسائل الدفع */}
         {payMsg && (
-          <div className={`mt-3 text-center font-bold text-base flex flex-row items-center justify-center gap-2 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
-            {msgSuccess ? <FaCheckCircle className="text-emerald-500" size={22} /> : <FaExclamationCircle className="text-red-400" size={20} />}
+          <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
+            {msgSuccess ? <FaCheckCircle className="text-emerald-500" size={16} /> : <FaExclamationCircle className="text-red-400" size={14} />}
             <span>{payMsg}</span>
           </div>
         )}
         {/* ديكور سفلي */}
-        <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-200/60 via-white/20 to-transparent blur-2xl opacity-80 pointer-events-none"></div>
+        <div className="absolute -bottom-5 right-0 left-0 w-full h-6 bg-gradient-to-t from-emerald-200/60 via-white/20 to-transparent blur-2xl opacity-80 pointer-events-none"></div>
       </div>
     </div>
   );
