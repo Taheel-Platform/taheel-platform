@@ -482,8 +482,8 @@ function renderTooltip() {
   cashbackCoins={coins}
   userWallet={wallet}
   lang={lang}
-  handlePayment={handlePayment} // دالة تنفيذ الدفع (محفظة)
-  onGatewayRedirect={handleGatewayRedirect} // دالة تحويل لبوابة دفع
+  userId={userId}
+  userEmail={userEmail}
 />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>

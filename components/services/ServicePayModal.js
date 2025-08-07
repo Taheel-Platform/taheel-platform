@@ -10,32 +10,79 @@ export default function ServicePayModal({
   cashbackCoins,
   userWallet,
   lang = "ar",
-  handlePayment,
-  onGatewayRedirect,
 }) {
   const [useCoins, setUseCoins] = useState(false);
-  const [payMethod, setPayMethod] = useState("wallet"); // أو "gateway"
-  // حساب الخصم بالكوينات (10% من رسوم الطباعة كحد أقصى)
-  const maxCoinDiscount = Math.floor(printingFee * 0.1 * 1000); // بالكوينات
+  const [payMethod, setPayMethod] = useState("wallet");
+  const [isPaying, setIsPaying] = useState(false);
+  const [payMsg, setPayMsg] = useState("");
+
+  const maxCoinDiscount = Math.floor(printingFee * 0.1 * 1000);
   const coinDiscount = useCoins ? Math.min(coinsBalance, maxCoinDiscount) : 0;
-  const coinDiscountValue = coinDiscount / 1000; // بالدرهم
+  const coinDiscountValue = coinDiscount / 1000;
 
-  // السعر النهائي بعد الخصم
-  const finalPrice =
-    totalPrice - coinDiscountValue;
-
-  // لن يحصل على الكاش باك لو استخدم الكوينات في الخصم
+  const finalPrice = totalPrice - coinDiscountValue;
   const willGetCashback = !useCoins;
 
-  // عند الدفع
-  async function onPayClick() {
+  // دالة دفع من المحفظة
+  async function handlePayment() {
+    setIsPaying(true);
+    setPayMsg("");
+    try {
+      const response = await fetch("/api/pay-wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: finalPrice,
+          useCoins,
+          coinDiscountValue,
+          serviceName,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+        setTimeout(() => onClose(), 1200);
+      } else {
+        setPayMsg(result.error || (lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment failed."));
+      }
+    } catch (e) {
+      setPayMsg(lang === "ar" ? "حدث خطأ في الاتصال بالخادم." : "Server error.");
+    } finally {
+      setIsPaying(false);
+    }
+  }
+
+  // دالة التحويل للبوابة
+  async function handleGatewayRedirect() {
+    setIsPaying(true);
+    setPayMsg("");
+    try {
+      const response = await fetch("/api/create-payment-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: finalPrice,
+          serviceName,
+        }),
+      });
+      const result = await response.json();
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
+      }
+    } catch (e) {
+      setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
+    } finally {
+      setIsPaying(false);
+    }
+  }
+
+  function onPayClick() {
     if (payMethod === "wallet") {
-      // ادفع من المحفظة مباشرة
-      await handlePayment({ useCoins, payMethod, coinDiscountValue });
-      onClose();
+      handlePayment();
     } else if (payMethod === "gateway") {
-      // حول لبوابة الدفع
-      onGatewayRedirect({ amount: finalPrice });
+      handleGatewayRedirect();
     }
   }
 
@@ -90,9 +137,10 @@ export default function ServicePayModal({
             ? `سيتم إضافة ${cashbackCoins} كوين لرصيدك بعد الدفع`
             : "لن تحصل على كوينات كاش باك عند استخدام الكوينات للخصم"}
         </div>
-        <button onClick={onPayClick}>
-          دفع الآن ({finalPrice.toFixed(2)} د.إ)
+        <button onClick={onPayClick} disabled={isPaying}>
+          {isPaying ? "جاري الدفع..." : `دفع الآن (${finalPrice.toFixed(2)} د.إ)`}
         </button>
+        {payMsg && <div className="mt-2 text-red-600">{payMsg}</div>}
       </div>
     </div>
   );
