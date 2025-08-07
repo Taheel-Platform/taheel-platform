@@ -556,40 +556,47 @@ const newOrders = orders
           {newOrders.length === 0 && (
             <div className="text-center text-gray-400 mt-6">لا يوجد طلبات جديدة</div>
           )}
-          {newOrders.map((order) => {
-            const client = clients[order.clientId];
-            const service = services[order.serviceId];
-            const created = order.createdAt ? new Date(order.createdAt) : null;
-            const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
-            return (
-              <div
-                key={order.requestId}
-                className="bg-blue-50 mb-3 rounded-lg p-3 shadow hover:bg-blue-100"
-                style={{cursor:"pointer"}}
-                onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
-              >
-                <div className="font-bold text-blue-900">{service?.name || order.serviceId}</div>
-                <div className="text-xs text-gray-800 font-bold">{client?.name || order.clientId}</div>
-                <div className="text-xs text-gray-500 font-mono">{order.trackingNumber || order.requestId}</div>
-                <div className="text-xs mt-1 text-gray-600 font-bold">
-                  <span className="font-bold">منذ: </span>
-                  {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
-                </div>
-                <button
-                  style={btnStyle}
-                  onMouseOver={e=>Object.assign(e.target.style,btnHover)}
-                  onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
-                  className="mt-2"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await acceptOrder(order);
-                  }}
-                >
-                  قبول الطلب
-                </button>
-              </div>
-            )
-          })}
+{newOrders.map((order) => {
+  const client = clients[order.clientId];
+  const service = services[order.serviceId];
+  const created = order.createdAt ? new Date(order.createdAt) : null;
+  const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
+  return (
+    <div
+      key={order.requestId}
+      className="bg-blue-50 mb-3 rounded-lg p-3 shadow hover:bg-blue-100"
+      style={{cursor:"pointer"}}
+      onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
+    >
+      <div className="font-bold text-blue-900">
+        {order.serviceName || service?.name || order.serviceId}
+      </div>
+      <div className="text-xs text-gray-500 font-mono">
+        {order.requestId}
+      </div>
+      {/* إذا أردت إبقاء اسم العميل */}
+      <div className="text-xs text-gray-800 font-bold">
+        {client?.name || order.clientId}
+      </div>
+      <div className="text-xs mt-1 text-gray-600 font-bold">
+        <span className="font-bold">منذ: </span>
+        {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
+      </div>
+      <button
+        style={btnStyle}
+        onMouseOver={e=>Object.assign(e.target.style,btnHover)}
+        onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
+        className="mt-2"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await acceptOrder(order);
+        }}
+      >
+        قبول الطلب
+      </button>
+    </div>
+  );
+})}
         </div>
         <audio ref={notifAudioRef} src="/sounds/new-order.mp3" preload="auto" />
       </div>
