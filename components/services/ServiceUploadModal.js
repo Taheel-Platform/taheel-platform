@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 
 export default function ServiceUploadModal({
@@ -8,14 +8,27 @@ export default function ServiceUploadModal({
   userId,
   lang = "ar",
   setUploadedDocs,
-  uploadedDocs,
-  requiredDocs = [], // قائمة المستندات المطلوبة
+  uploadedDocs = {},
+  requiredDocs = [],
 }) {
-  const fileRefs = useRef({}); // لكل مستند ref خاص به
+  const fileRefs = useRef({});
   const [uploading, setUploading] = useState({});
   const [msg, setMsg] = useState({});
   const [error, setError] = useState({});
   const [selectedFiles, setSelectedFiles] = useState({});
+
+  // يغلق المدوال تلقائياً إذا كل المستندات تم رفعها
+  useEffect(() => {
+    if (!open) return;
+    const allUploaded = requiredDocs.length > 0 && requiredDocs.every(
+      (docName) => uploadedDocs[docName]
+    );
+    if (allUploaded) {
+      setTimeout(() => {
+        onClose && onClose();
+      }, 800);
+    }
+  }, [uploadedDocs, requiredDocs, open, onClose]);
 
   if (!open) return null;
 
@@ -29,7 +42,10 @@ export default function ServiceUploadModal({
       return;
     }
     if (file.type !== "application/pdf") {
-      setError((prev) => ({ ...prev, [docName]: lang === "ar" ? "يرجى رفع ملف PDF فقط" : "Please upload a PDF file only." }));
+      setError((prev) => ({
+        ...prev,
+        [docName]: lang === "ar" ? "يرجى رفع ملف PDF فقط" : "Please upload a PDF file only.",
+      }));
       fileRefs.current[docName].value = null;
       setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
       return;
@@ -37,12 +53,16 @@ export default function ServiceUploadModal({
     setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
   }
 
+  // رفع ملف لمستند معين
   async function handleUpload(e, docName) {
     e.preventDefault();
     setError((prev) => ({ ...prev, [docName]: "" }));
     setMsg((prev) => ({ ...prev, [docName]: "" }));
     if (!selectedFiles[docName]) {
-      setError((prev) => ({ ...prev, [docName]: lang === "ar" ? "يجب اختيار ملف PDF" : "Please select a PDF file." }));
+      setError((prev) => ({
+        ...prev,
+        [docName]: lang === "ar" ? "يجب اختيار ملف PDF" : "Please select a PDF file.",
+      }));
       return;
     }
     setUploading((prev) => ({ ...prev, [docName]: true }));
@@ -63,7 +83,10 @@ export default function ServiceUploadModal({
       try {
         data = await res.json();
       } catch (jsonErr) {
-        setError((prev) => ({ ...prev, [docName]: lang === "ar" ? "استجابة غير صحيحة من السيرفر." : "Invalid server response." }));
+        setError((prev) => ({
+          ...prev,
+          [docName]: lang === "ar" ? "استجابة غير صحيحة من السيرفر." : "Invalid server response.",
+        }));
         setUploading((prev) => ({ ...prev, [docName]: false }));
         return;
       }
@@ -71,37 +94,41 @@ export default function ServiceUploadModal({
       if (res.ok && data.url) {
         setMsg((prev) => ({
           ...prev,
-          [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!"
+          [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!",
         }));
         setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
         fileRefs.current[docName].value = null;
-
-        // حفظ بيانات الملف مؤقتاً للأب باسم المستند الجاري رفعه
+        // حفظ بيانات الملف للأب باسم المستند الجاري رفعه
         if (setUploadedDocs) {
           const fileObj = {
-            name: data.originalName || selectedFiles[docName].name,
+            name: selectedFiles[docName].name,
             url: data.url,
             type: "application/pdf",
           };
-          setUploadedDocs((prev) => ({ ...(prev || uploadedDocs || {}), [docName]: fileObj }));
+          setUploadedDocs((prev) => ({
+            ...(prev || uploadedDocs || {}),
+            [docName]: fileObj,
+          }));
         }
       } else {
-        setError((prev) => ({ ...prev, [docName]: data?.error || (lang === "ar" ? "حدث خطأ أثناء رفع الملف." : "An error occurred during upload.") }));
+        setError((prev) => ({
+          ...prev,
+          [docName]: data?.error || (lang === "ar" ? "حدث خطأ أثناء رفع الملف." : "An error occurred during upload."),
+        }));
       }
     } catch (err) {
-      setError((prev) => ({ ...prev, [docName]: lang === "ar" ? "حدث خطأ أثناء رفع الملف." : "An error occurred during upload." }));
+      setError((prev) => ({
+        ...prev,
+        [docName]: lang === "ar" ? "حدث خطأ أثناء رفع الملف." : "An error occurred during upload.",
+      }));
     }
     setUploading((prev) => ({ ...prev, [docName]: false }));
-  }
-
-  // زر حفظ يغلق المدوال إذا كل الملفات المطلوبة تم رفعها
-  function handleFinish() {
-    onClose && onClose();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 backdrop-blur-[2px]">
       <div className="relative bg-gradient-to-br from-cyan-50 via-white to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-[96vw] max-w-sm border border-cyan-200 animate-fadeIn flex flex-col items-center">
+        {/* زر إغلاق */}
         <button
           className="absolute top-2 right-2 bg-gray-100 hover:bg-red-500 text-gray-400 hover:text-white rounded-full w-7 h-7 flex items-center justify-center text-base shadow transition"
           onClick={onClose}
@@ -199,11 +226,12 @@ export default function ServiceUploadModal({
             </div>
           ))}
         </form>
+        {/* زر إغلاق احتياطي */}
         <button
           className="mt-3 px-6 py-2 bg-emerald-500 text-white rounded font-bold"
-          onClick={handleFinish}
+          onClick={onClose}
         >
-          {lang === "ar" ? "تم" : "Done"}
+          {lang === "ar" ? "إغلاق" : "Close"}
         </button>
       </div>
     </div>
