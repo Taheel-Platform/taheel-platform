@@ -38,44 +38,52 @@ export default function ServiceUploadModal({
   return (
     <AnimatePresence>
       <motion.div
-        key="modal-backdrop"
-        className="fixed inset-0 z-50 flex justify-center items-center bg-gradient-to-br from-black/50 via-cyan-900/60 to-black/50 backdrop-blur-[2px]"
+        className="fixed inset-0 z-50 flex justify-center items-center bg-gradient-to-br from-black/70 via-cyan-900/60 to-black/70 backdrop-blur-[2px]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         <motion.div
-          key="modal-content"
-          className="relative bg-gradient-to-br from-white via-cyan-50 to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-[96vw] max-w-lg border border-cyan-300 flex flex-col items-center"
-          initial={{ scale: 0.9, opacity: 0, y: 40 }}
+          className="relative bg-gradient-to-br from-white via-cyan-50 to-cyan-100 rounded-3xl shadow-2xl px-8 py-10 w-[96vw] max-w-lg border border-cyan-200 flex flex-col items-center"
+          initial={{ scale: 0.95, opacity: 0, y: 40 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 40 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
-          style={{ overflow: "visible", maxHeight: "90vh" }}
+          exit={{ scale: 0.95, opacity: 0, y: 40 }}
+          transition={{ duration: 0.32, ease: "easeOut" }}
+          style={{ overflow: "visible", maxHeight: "92vh" }}
         >
-          {/* زر إغلاق */}
+          {/* اللوجو أعلى المدوال */}
+          <img
+            src="/logo3.png"
+            alt="Logo"
+            className="mb-3 w-20 h-20 object-contain rounded-full shadow-lg border-2 border-cyan-100"
+            draggable={false}
+            loading="eager"
+          />
+
+          {/* زر إغلاق احترافي */}
           <button
-            className="absolute top-3 right-3 bg-white/80 hover:bg-red-500 text-gray-400 hover:text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow-lg transition-all duration-200"
+            className="absolute top-4 right-4 bg-white/80 hover:bg-red-500 text-gray-500 hover:text-white rounded-full w-10 h-10 flex items-center justify-center text-2xl shadow-lg transition-all duration-200 cursor-pointer"
             onClick={onClose}
             title={lang === "ar" ? "إغلاق" : "Close"}
+            style={{ cursor: "pointer" }}
           >
             <FaTimes />
           </button>
 
-          <div className="font-extrabold text-cyan-900 text-xl text-center mb-2 tracking-tight">
+          <div className="font-extrabold text-cyan-900 text-2xl text-center mb-3 tracking-tight drop-shadow">
             {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload Required Documents"}
           </div>
-          <div className="text-sm text-gray-600 text-center mb-4 px-2 max-w-[90%]">
+          <div className="text-base text-gray-700 text-center mb-4 px-2 max-w-[95%] font-medium">
             {lang === "ar"
               ? "يرجى رفع ملف PDF فقط لكل مستند مطلوب."
               : "Please upload only a PDF file for each required document."}
           </div>
 
           {/* قائمة المستندات */}
-          <form className="flex flex-col items-center w-full gap-4">
+          <form className="flex flex-col items-center w-full gap-4 mt-1">
             {requiredDocs.map((docName, idx) => (
-              <div key={idx} className="w-full flex flex-col items-center p-3 rounded-xl border border-cyan-200 bg-white/70 shadow-md mb-1">
-                <div className="font-bold text-cyan-800 mb-2 text-base">{docName}</div>
+              <div key={idx} className="w-full flex flex-col items-center p-4 rounded-xl border border-cyan-200 bg-white/90 shadow mb-2">
+                <div className="font-bold text-cyan-800 mb-2 text-base text-center">{docName}</div>
                 <label
                   htmlFor={`pdf-upload-${idx}`}
                   className={`
@@ -84,7 +92,7 @@ export default function ServiceUploadModal({
                     ${selectedFiles[docName] ? "border-emerald-400 bg-emerald-50" : ""}
                   `}
                   tabIndex={0}
-                  style={{ minHeight: 70 }}
+                  style={{ minHeight: 70, cursor: "pointer" }}
                 >
                   <FaUpload className={`text-2xl mb-1 ${selectedFiles[docName] ? "text-emerald-700" : "text-cyan-400"}`} />
                   <span className={`font-bold text-base ${selectedFiles[docName] ? "text-emerald-800" : "text-cyan-700"}`}>
@@ -111,9 +119,9 @@ export default function ServiceUploadModal({
                   className={`w-full py-2 rounded-full font-black shadow-lg transition-all text-base mt-2
                     ${uploading[docName] || !selectedFiles[docName]
                       ? "bg-cyan-200 text-white cursor-not-allowed"
-                      : "bg-emerald-500 hover:bg-emerald-700 text-white cursor-pointer"}
+                      : "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white cursor-pointer"}
                   `}
-                  style={{ fontSize: "1.08rem" }}
+                  style={{ fontSize: "1rem", cursor: "pointer" }}
                   onClick={(e) => handleUpload(e, docName)}
                 >
                   {uploading[docName]
@@ -143,6 +151,7 @@ export default function ServiceUploadModal({
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline text-emerald-800 font-bold"
+                      style={{ cursor: "pointer" }}
                     >
                       {uploadedDocs[docName].name}
                     </a>
@@ -151,10 +160,22 @@ export default function ServiceUploadModal({
               </div>
             ))}
           </form>
-          {/* زر إغلاق احتياطي */}
+
+          {/* رسالة أمان البيانات */}
+          <div className="w-full text-center mt-7 mb-2 flex flex-col items-center gap-2">
+            <div className="text-sm text-cyan-800 font-semibold flex items-center justify-center">
+              <FaCheckCircle className="inline mr-2 text-emerald-500" />
+              {lang === "ar"
+                ? "جميع بياناتك مشفرة وآمنة ويتم حفظها بسرية تامة."
+                : "All your data is encrypted and securely stored."}
+            </div>
+          </div>
+
+          {/* زر إغلاق احتياطي احترافي */}
           <button
-            className="mt-6 px-8 py-3 bg-gradient-to-br from-emerald-500 to-cyan-500 text-white rounded-lg font-bold shadow-xl text-base hover:bg-emerald-700 transition-all duration-150"
+            className="mt-4 px-10 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-xl font-bold shadow-xl text-lg hover:from-emerald-700 hover:to-cyan-700 transition-all duration-150"
             onClick={onClose}
+            style={{ cursor: "pointer" }}
           >
             {lang === "ar" ? "إغلاق" : "Close"}
           </button>
