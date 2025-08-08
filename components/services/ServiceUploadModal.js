@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 import { updateDoc, doc } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client"; // تأكد أن هذا الاستيراد صحيح حسب مشروعك
 
 export default function ServiceUploadModal({
   open,
@@ -67,6 +68,8 @@ export default function ServiceUploadModal({
       return;
     }
     setUploading((prev) => ({ ...prev, [docName]: true }));
+    let fileObj = null;
+    let uploadedUrl = "";
     try {
       const formData = new FormData();
       formData.append("file", selectedFiles[docName]);
@@ -93,24 +96,45 @@ export default function ServiceUploadModal({
       }
 
       if (res.ok && data.url) {
+        fileObj = {
+          name: selectedFiles[docName].name,
+          url: data.url,
+          type: "application/pdf",
+        };
+        uploadedUrl = data.url;
         setMsg((prev) => ({
           ...prev,
           [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!",
         }));
-        setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
-        fileRefs.current[docName].value = null;
+
         // حفظ بيانات الملف للأب باسم المستند الجاري رفعه
         if (setUploadedDocs) {
-          const fileObj = {
-            name: selectedFiles[docName].name,
-            url: data.url,
-            type: "application/pdf",
-          };
           setUploadedDocs((prev) => ({
             ...(prev || uploadedDocs || {}),
             [docName]: fileObj,
           }));
         }
+
+        // حفظ بيانات الملف في الطلب المطلوب (Firestore)
+        // يجب أن يتم قبل تصفير selectedFiles لضمان وجود اسم الملف الصحيح
+        try {
+          await updateDoc(doc(db, "requests", service.requestId), {
+            [`attachments.${docName}`]: {
+              ...fileObj,
+              uploadedAt: new Date().toISOString(),
+            }
+          });
+        } catch (fireErr) {
+          setError((prev) => ({
+            ...prev,
+            [docName]: lang === "ar"
+              ? "تم رفع الملف لكن هناك مشكلة في حفظه بقاعدة البيانات."
+              : "File uploaded but failed to save in database.",
+          }));
+        }
+
+        setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
+        fileRefs.current[docName].value = null;
       } else {
         setError((prev) => ({
           ...prev,
@@ -124,17 +148,6 @@ export default function ServiceUploadModal({
       }));
     }
     setUploading((prev) => ({ ...prev, [docName]: false }));
-    
-    // حفظ بيانات الملف في الطلب المطلوب
-  await updateDoc(doc(db, "requests", service.requestId), {
-    [`attachments.${docName}`]: {
-      name: selectedFiles[docName].name,
-      url: data.url,
-      type: "application/pdf",
-      uploadedAt: new Date().toISOString(),
-    }
-  });
-
   }
 
   return (
