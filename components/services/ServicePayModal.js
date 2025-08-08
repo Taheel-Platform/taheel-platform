@@ -10,7 +10,6 @@ function generateOrderNumber() {
   return `REQ-${part1}-${part2}`;
 }
 
-console.log("بيانات المرفقات قبل الحفظ:", uploadedDocs);
 export default function ServicePayModal({
   open,
   onClose,
