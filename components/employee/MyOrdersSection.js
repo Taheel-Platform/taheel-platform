@@ -16,7 +16,6 @@ import {
   FaUserTie, FaUserAlt, FaBuilding, FaUserCheck, FaUserSlash
 } from "react-icons/fa";
 
-// ---- Custom styles ----
 const glassStyle = {
   background: "rgba(255,255,255,0.55)",
   backdropFilter: "blur(14px)",
@@ -152,13 +151,11 @@ function MyOrdersSection({ lang = "ar" }) {
     };
   }, []);
 
-  // Play sound automatically when new orders count increases
   useEffect(() => {
     if (notifAudioRef.current && lastNewOrdersCount !== null && newOrders.length > lastNewOrdersCount) {
       notifAudioRef.current.play();
     }
     setLastNewOrdersCount(newOrders.length);
-    // eslint-disable-next-line
   }, [orders]);
 
   function getOrderType(clientId) {
@@ -169,14 +166,12 @@ function MyOrdersSection({ lang = "ar" }) {
     return "other";
   }
 
-  // عدادات الحالات
   const statusCounts = {};
   orders.forEach((o) => {
     const s = o.status || "new";
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
-  // الطلبات الغير مسندة لأي موظف (الجديدة) - تظهر في السايدبار فقط
   const newOrders = orders
     .filter((o) =>
       (["new", "paid"].includes(o.status)) &&
@@ -184,7 +179,6 @@ function MyOrdersSection({ lang = "ar" }) {
     )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // الطلبات المسندة للموظف الحالي فقط (تظهر بالجدول)
   let filteredOrders = orders.filter((o) => o.assignedTo === currentEmployee.userId);
   filteredOrders = filteredOrders
     .filter((o) => {
@@ -210,7 +204,6 @@ function MyOrdersSection({ lang = "ar" }) {
     })
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // قبول الطلب الجديد
   async function acceptOrder(order) {
     await updateDoc(doc(db, "requests", order.requestId), {
       assignedTo: currentEmployee.userId,
@@ -219,7 +212,6 @@ function MyOrdersSection({ lang = "ar" }) {
     });
   }
 
-  // ----------- إشعار تلقائي عند تغيير الحالة -----------
   async function sendAutoNotification(order, newStatus) {
     const client = clients[order.clientId];
     if (!client) return;
@@ -237,7 +229,6 @@ function MyOrdersSection({ lang = "ar" }) {
     await addDoc(collection(db, "notifications"), notifData);
   }
 
-  // ----------- تأكيد تغيير الحالة -----------
   async function confirmChangeStatus() {
     if (!pendingStatus) return;
     const { order, newStatus, note } = pendingStatus;
@@ -264,7 +255,6 @@ function MyOrdersSection({ lang = "ar" }) {
     setPendingStatus(null);
   }
 
-  // ----------- إشعار مخصص -----------
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
     const client = clients[order.clientId];
@@ -285,7 +275,6 @@ function MyOrdersSection({ lang = "ar" }) {
     alert("تم إرسال الإشعار بنجاح!");
   }
 
-  // ----------- بطاقة العميل -----------
   const handleShowClientCard = async (client) => {
     setShowClientCard(client);
     setLoadingDocs(true);
@@ -300,98 +289,94 @@ function MyOrdersSection({ lang = "ar" }) {
     setLoadingDocs(false);
   };
 
-function renderClientCard(client) {
-  if (!client) return null;
+  function renderClientCard(client) {
+    if (!client) return null;
+    const attachments =
+      client.documents && typeof client.documents === "object"
+        ? Object.entries(client.documents).filter(
+            ([key, att]) =>
+              att &&
+              (
+                att.url ||
+                att.fileUrl ||
+                att.downloadUrl ||
+                att.imageUrl
+              )
+          )
+        : [];
+    const getFileLink = doc =>
+      doc.fileUrl ||
+      doc.url ||
+      doc.downloadUrl ||
+      doc.imageUrl ||
+      "";
 
-  // دعم كل أنواع المرفقات بقوة
-  const attachments =
-    client.documents && typeof client.documents === "object"
-      ? Object.entries(client.documents).filter(
-          ([key, att]) =>
-            att &&
-            (
-              att.url ||
-              att.fileUrl ||
-              att.downloadUrl ||
-              att.imageUrl
-            )
-        )
-      : [];
-
-  // دالة لجلب رابط الملف (أي مفتاح من الموجودين)
-  const getFileLink = doc =>
-    doc.fileUrl ||
-    doc.url ||
-    doc.downloadUrl ||
-    doc.imageUrl ||
-    "";
-
-  return (
-    <div style={{
-      ...glassStyle,
-      padding: "24px 18px",
-      maxWidth: 430,
-      borderRadius: "22px",
-      minWidth: "280px",
-      boxShadow: "0 8px 40px 0 rgba(33,150,243,0.19)"
-    }} className="mb-2 rounded-xl shadow border w-full relative">
-      <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-emerald-700 font-bold"
-        onClick={() => setShowClientCard(false)}>
-        <MdClose />
-      </button>
-      <div className="flex flex-col items-center mb-4">
-        <img src={client.profilePic || "/default-avatar.png"} alt={client.name}
-          className="w-16 h-16 rounded-full border-2 border-emerald-200 shadow mb-2 object-cover" />
-        <div className="text-lg font-extrabold text-emerald-900"
-          style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>{client.name}</div>
-        <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
-      </div>
-      <div className="mt-2">
-        <div className="font-extrabold text-emerald-900 text-base mb-2 text-center">مرفقات العميل:</div>
-        {attachments.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {attachments.map(([key, doc], i) => {
-              const fileLink = getFileLink(doc);
-              const isImage = fileLink && fileLink.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-              return (
-                <div key={i} className="flex flex-col items-center rounded-xl bg-gradient-to-br from-emerald-50 via-blue-50 to-white border shadow p-2"
-                  style={{ minWidth: "110px", maxWidth: "140px" }}>
-                  <div className="font-bold text-emerald-800 text-xs mb-1" title={doc.docType || key}>
-                    {doc.docType || key}
+    return (
+      <div style={{
+        ...glassStyle,
+        padding: "24px 18px",
+        maxWidth: 430,
+        borderRadius: "22px",
+        minWidth: "280px",
+        boxShadow: "0 8px 40px 0 rgba(33,150,243,0.19)"
+      }} className="mb-2 rounded-xl shadow border w-full relative">
+        <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-emerald-700 font-bold"
+          onClick={() => setShowClientCard(false)}>
+          <MdClose />
+        </button>
+        <div className="flex flex-col items-center mb-4">
+          <img src={client.profilePic || "/default-avatar.png"} alt={client.name}
+            className="w-16 h-16 rounded-full border-2 border-emerald-200 shadow mb-2 object-cover" />
+          <div className="text-lg font-extrabold text-emerald-900"
+            style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>{client.name}</div>
+          <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
+        </div>
+        <div className="mt-2">
+          <div className="font-extrabold text-emerald-900 text-base mb-2 text-center">مرفقات العميل:</div>
+          {attachments.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {attachments.map(([key, doc], i) => {
+                const fileLink = getFileLink(doc);
+                const isImage = fileLink && fileLink.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                return (
+                  <div key={i} className="flex flex-col items-center rounded-xl bg-gradient-to-br from-emerald-50 via-blue-50 to-white border shadow p-2"
+                    style={{ minWidth: "110px", maxWidth: "140px" }}>
+                    <div className="font-bold text-emerald-800 text-xs mb-1" title={doc.docType || key}>
+                      {doc.docType || key}
+                    </div>
+                    {isImage ? (
+                      <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
+                        <img src={fileLink} alt={doc.docType || key}
+                          style={{
+                            width: 70, height: 70, objectFit: "cover", borderRadius: 10,
+                            border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
+                          }} />
+                      </a>
+                    ) : (
+                      <a href={fileLink} target="_blank" download rel="noopener noreferrer"
+                        className="flex flex-col items-center justify-center bg-blue-50 rounded-lg border border-emerald-100 p-3 hover:bg-blue-100"
+                        style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
+                        title="تحميل الملف">
+                        <span style={{ fontSize: "2em", color: "#1976d2" }}>📄</span>
+                        <span className="text-[11px] font-bold text-blue-900 mt-1">تحميل</span>
+                      </a>
+                    )}
+                    <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
+                      {fileLink?.split("/").pop()?.slice(0, 18) || ""}
+                    </span>
                   </div>
-                  {isImage ? (
-                    <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
-                      <img src={fileLink} alt={doc.docType || key}
-                        style={{
-                          width: 70, height: 70, objectFit: "cover", borderRadius: 10,
-                          border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
-                        }} />
-                    </a>
-                  ) : (
-                    <a href={fileLink} target="_blank" download rel="noopener noreferrer"
-                      className="flex flex-col items-center justify-center bg-blue-50 rounded-lg border border-emerald-100 p-3 hover:bg-blue-100"
-                      style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
-                      title="تحميل الملف">
-                      <span style={{ fontSize: "2em", color: "#1976d2" }}>📄</span>
-                      <span className="text-[11px] font-bold text-blue-900 mt-1">تحميل</span>
-                    </a>
-                  )}
-                  <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
-                    {fileLink?.split("/").pop()?.slice(0, 18) || ""}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-gray-400 text-xs text-center py-6">
-            لا يوجد مرفقات لهذا العميل.
-          </div>
-        )}
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-xs text-center py-6">
+              لا يوجد مرفقات لهذا العميل.
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // ----------- تفاصيل الطلب -----------
   function renderOrderDetails(order) {
@@ -461,29 +446,84 @@ function renderClientCard(client) {
             <div className="flex flex-col gap-1 text-xs">
               <div><b>الجوال:</b> {client?.phone}</div>
               <div><b>الإيميل:</b> {client?.email}</div>
-<div className="flex flex-wrap gap-1">
-  <b>مرفقات:</b>{" "}
-  {client?.documents && typeof client.documents === "object" && Object.values(client.documents).length > 0
-    ? (
-      Object.values(client.documents).map((doc, i) =>
-        doc.fileUrl ? (
-          <a key={i}
-            href={doc.fileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-bold text-[11px] hover:bg-blue-200 border flex items-center gap-1"
-            style={{ cursor: "pointer", marginBottom: 4 }}
-          >
-            {doc.docType || "مرفق"} <span style={{fontSize:"1.1em"}}>⬇️</span>
-          </a>
-        ) : null
-      )
-    )
-    : <span className="text-gray-400">لا يوجد</span>
-  }
-</div>
+              <div className="flex flex-wrap gap-1">
+                <b>مرفقات:</b>{" "}
+                {client?.documents && typeof client.documents === "object" && Object.values(client.documents).length > 0
+                  ? (
+                    Object.values(client.documents).map((doc, i) =>
+                      doc.fileUrl ? (
+                        <a key={i}
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-blue-100 px-2 py-1 rounded text-blue-800 font-bold text-[11px] hover:bg-blue-200 border flex items-center gap-1"
+                          style={{ cursor: "pointer", marginBottom: 4 }}
+                        >
+                          {doc.docType || "مرفق"} <span style={{fontSize:"1.1em"}}>⬇️</span>
+                        </a>
+                      ) : null
+                    )
+                  )
+                  : <span className="text-gray-400">لا يوجد</span>
+                }
+              </div>
             </div>
           </div>
+
+          {/* --- مرفقات الطلب نفسه: عرض عالمي ومحترف --- */}
+          {order.attachments && Object.keys(order.attachments).length > 0 ? (
+            <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
+              <div className="font-bold text-cyan-900 text-base mb-3 text-center">
+                مرفقات الطلب
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(order.attachments).map(([docName, doc], i) => {
+                  // دعم كل أنواع الروابط والصيغ
+                  const fileLink = doc.url || doc.fileUrl || doc.downloadUrl || doc.imageUrl;
+                  const ext = (fileLink || "").split('.').pop()?.toLowerCase();
+                  const isImage = fileLink && /\.(jpg|jpeg|png|gif|webp)$/i.test(fileLink);
+                  return (
+                    <div key={i} className="flex flex-col items-center rounded-xl bg-white border border-cyan-200 shadow p-2"
+                      style={{ minWidth: "110px", maxWidth: "140px" }}>
+                      <div className="font-bold text-cyan-800 text-xs mb-1" title={doc.docType || docName}>
+                        {doc.docType || docName}
+                      </div>
+                      {isImage ? (
+                        <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
+                          <img src={fileLink} alt={doc.docType || docName}
+                            style={{
+                              width: 70, height: 70, objectFit: "cover", borderRadius: 10,
+                              border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
+                            }} />
+                        </a>
+                      ) : (
+                        <a
+                          href={fileLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center justify-center bg-cyan-50 rounded-lg border border-cyan-200 p-3 hover:bg-cyan-100"
+                          style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
+                          title="تحميل الملف"
+                        >
+                          <span style={{ fontSize: "2em", color: "#21cbf3" }}>
+                            {ext === "pdf" ? "📄" : "📎"}
+                          </span>
+                          <span className="text-[11px] font-bold text-cyan-900 mt-1">تحميل</span>
+                        </a>
+                      )}
+                      <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
+                        {doc.name ? doc.name.slice(0, 18) : (fileLink?.split("/").pop()?.slice(0, 18) || "")}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-gray-400 text-xs text-center py-6">
+              لا يوجد مرفقات لهذا الطلب.
+            </div>
+          )}
 
           {/* أزرار التواصل بدون الشات */}
           <div className="flex flex-wrap gap-2 items-center mt-2 mb-2">
@@ -502,13 +542,11 @@ function renderClientCard(client) {
                 <MdEmail /> إرسال إيميل
               </a>
             )}
-            {/* زر إشعار مخصص */}
             <button style={{...btnStyle, background:"linear-gradient(90deg,#ffb300,#ffd54f)", color:"#444"}} onClick={() => setShowNotifModal(true)}>
               <MdNotificationsActive /> إشعار مخصص
             </button>
           </div>
 
-          {/* تغيير الحالة */}
           <form
             onSubmit={e => {
               e.preventDefault();
@@ -532,7 +570,6 @@ function renderClientCard(client) {
             </button>
           </form>
 
-          {/* نافذة الإشعار المخصص */}
           {showNotifModal && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
               <div style={glassStyle} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
@@ -559,7 +596,6 @@ function renderClientCard(client) {
             </div>
           )}
 
-          {/* نافذة تأكيد تغيير الحالة */}
           {pendingStatus && (
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
               <div style={glassStyle} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
@@ -588,7 +624,6 @@ function renderClientCard(client) {
     );
   }
 
-  // ----------- سايدبار الطلبات الجديدة -----------
   function renderNewSidebar() {
     return (
       <div className={`fixed top-0 right-0 h-full z-50`} style={{...glassStyle, width:330, maxWidth:"100%", transition:"transform 0.3s", transform: newSidebarOpen ? "translateX(0)" : "translateX(100%)"}}>
@@ -646,7 +681,6 @@ function renderClientCard(client) {
     );
   }
 
-  // ----------- الصفحة الرئيسية -----------
   return (
     <div style={{fontFamily:"Cairo,Tajawal,Segoe UI,Arial", background:"linear-gradient(135deg,#e3f0ff 0%,#c9e6ff 100%) min-h-screen"}} className="relative p-4 md:p-8">
       <div style={{...glassStyle, background:"rgba(210,234,255,0.8)", color: "#114477", padding: "12px", borderRadius: "18px", marginBottom: "18px", fontWeight: 700}}>
@@ -783,7 +817,6 @@ function renderClientCard(client) {
           </div>
         </div>
       )}
-      {/* سايدبار الطلبات الجديدة */}
       {renderNewSidebar()}
       {pendingStatus && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
