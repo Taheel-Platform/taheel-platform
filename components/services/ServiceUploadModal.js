@@ -1,8 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 
-// لا تتعامل مع Firestore هنا إطلاقاً، فقط احفظ المستندات في uploadedDocs
-
 export default function ServiceUploadModal({
   open,
   onClose,
@@ -14,6 +12,7 @@ export default function ServiceUploadModal({
   requiredDocs = [],
 }) {
   const fileRefs = useRef({});
+  const modalRef = useRef(null);
   const [uploading, setUploading] = useState({});
   const [msg, setMsg] = useState({});
   const [error, setError] = useState({});
@@ -32,9 +31,20 @@ export default function ServiceUploadModal({
     }
   }, [uploadedDocs, requiredDocs, open, onClose]);
 
+  // إغلاق المودال عند الضغط خارج المودال
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e) {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        onClose && onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, onClose]);
+
   if (!open) return null;
 
-  // دالة تغيير الملف لكل مستند
   function handleFileChange(e, docName) {
     setError((prev) => ({ ...prev, [docName]: "" }));
     setMsg((prev) => ({ ...prev, [docName]: "" }));
@@ -55,7 +65,6 @@ export default function ServiceUploadModal({
     setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
   }
 
-  // رفع ملف لمستند معين وحفظه فقط في uploadedDocs (وليس في Firestore)
   async function handleUpload(e, docName) {
     e.preventDefault();
     setError((prev) => ({ ...prev, [docName]: "" }));
@@ -113,7 +122,6 @@ export default function ServiceUploadModal({
         setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
         fileRefs.current[docName].value = null;
 
-        // حفظ بيانات الملف في uploadedDocs (state)
         if (setUploadedDocs) {
           setUploadedDocs((prev) => ({
             ...(prev || uploadedDocs || {}),
@@ -137,7 +145,15 @@ export default function ServiceUploadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
-      <div className="relative bg-gradient-to-br from-cyan-50 via-white to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-[96vw] max-w-md border border-cyan-200 flex flex-col items-center animate-zoomIn" style={{ minHeight: "480px" }}>
+      <div
+        ref={modalRef}
+        className="relative bg-gradient-to-br from-cyan-50 via-white to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-full max-w-md border border-cyan-200 flex flex-col items-center animate-zoomIn"
+        style={{
+          maxHeight: "calc(100vh - 60px)",
+          minHeight: "340px",
+          overflowY: "auto"
+        }}
+      >
         {/* زر إغلاق */}
         <button
           className="absolute top-3 right-3 bg-gray-100 hover:bg-red-500 text-gray-400 hover:text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow transition duration-200"
@@ -147,7 +163,6 @@ export default function ServiceUploadModal({
           <FaTimes />
         </button>
 
-        {/* اللوجو */}
         <img
           src="/logo3.png"
           alt="Logo"
@@ -164,7 +179,6 @@ export default function ServiceUploadModal({
             : "Please upload only a PDF file for each required document."}
         </div>
 
-        {/* قائمة المستندات */}
         <form className="flex flex-col items-center w-full gap-3 mt-1 animate-fadeInUp">
           {requiredDocs.map((docName, idx) => (
             <div key={idx} className="w-full flex flex-col items-center p-3 rounded-xl border border-cyan-100 bg-cyan-50 shadow mb-2 transition-all duration-200 hover:shadow-lg">
