@@ -135,17 +135,9 @@ export default function ServiceUploadModal({
     setUploading((prev) => ({ ...prev, [docName]: false }));
   }
 
-  // حركة لطيفة للمودال (Fade & Scale)
-  // إضافة شعار في الأعلى
-  // تحسين شكل الأزرار والإطار
-  // تنبيه أن البيانات مشفرة في الأسفل
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all animate-fadeIn">
-      <div
-        className="relative bg-gradient-to-br from-cyan-50 via-white to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-[95vw] max-w-md border border-cyan-200 flex flex-col items-center
-          animate-zoomIn"
-        style={{ minHeight: "480px" }}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fadeIn">
+      <div className="relative bg-gradient-to-br from-cyan-50 via-white to-cyan-100 rounded-3xl shadow-2xl px-6 py-8 w-[96vw] max-w-md border border-cyan-200 flex flex-col items-center animate-zoomIn" style={{ minHeight: "480px" }}>
         {/* زر إغلاق */}
         <button
           className="absolute top-3 right-3 bg-gray-100 hover:bg-red-500 text-gray-400 hover:text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow transition duration-200"
