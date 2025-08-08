@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import ReactDOM from "react-dom";
 
 // لا تتعامل مع Firestore هنا إطلاقاً، فقط احفظ المستندات في uploadedDocs
 
@@ -134,11 +135,16 @@ export default function ServiceUploadModal({
     setUploading((prev) => ({ ...prev, [docName]: false }));
   }
 
-  return (
+  // Portal render
+  if (typeof window === "undefined") return null;
+  const modalRoot = document.getElementById("modal-root");
+  if (!modalRoot) return null;
+
+  return ReactDOM.createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex justify-center items-center bg-black/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[9999] flex justify-center items-center bg-black/40 backdrop-blur-[2px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -259,6 +265,7 @@ export default function ServiceUploadModal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    modalRoot
   );
 }
