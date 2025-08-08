@@ -10,6 +10,7 @@ function generateOrderNumber() {
   return `REQ-${part1}-${part2}`;
 }
 
+console.log("بيانات المرفقات قبل الحفظ:", uploadedDocs);
 export default function ServicePayModal({
   open,
   onClose,
@@ -68,6 +69,7 @@ async function handlePayment() {
     });
 
     // هنا أضف المستندات في الطلب
+    console.log("بيانات المرفقات قبل الحفظ:", uploadedDocs);
     await setDoc(doc(firestore, "requests", orderNumber), {
       requestId: orderNumber,
       clientId: userId,
