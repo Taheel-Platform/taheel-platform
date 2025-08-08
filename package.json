@@ -27,7 +27,7 @@
     "formdata-node": "^6.0.3",
     "formidable": "^3.5.4",
     "formidable-serverless": "^1.1.1",
-    "framer-motion": "^12.18.1",
+    "framer-motion": "^12.23.12",
     "google-gax": "^5.0.1",
     "motion": "^12.18.1",
     "next": "^15.3.3",
