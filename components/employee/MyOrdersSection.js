@@ -300,13 +300,31 @@ function MyOrdersSection({ lang = "ar" }) {
     setLoadingDocs(false);
   };
 
-  function renderClientCard(client) {
+function renderClientCard(client) {
   if (!client) return null;
 
-  // دعم كل أنواع المرفقات
-  const attachments = client.documents && typeof client.documents === "object"
-    ? Object.entries(client.documents).filter(([key, att]) => att && (att.url || att.fileUrl))
-    : [];
+  // دعم كل أنواع المرفقات بقوة
+  const attachments =
+    client.documents && typeof client.documents === "object"
+      ? Object.entries(client.documents).filter(
+          ([key, att]) =>
+            att &&
+            (
+              att.url ||
+              att.fileUrl ||
+              att.downloadUrl ||
+              att.imageUrl
+            )
+        )
+      : [];
+
+  // دالة لجلب رابط الملف (أي مفتاح من الموجودين)
+  const getFileLink = doc =>
+    doc.fileUrl ||
+    doc.url ||
+    doc.downloadUrl ||
+    doc.imageUrl ||
+    "";
 
   return (
     <div style={{
@@ -333,8 +351,8 @@ function MyOrdersSection({ lang = "ar" }) {
         {attachments.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {attachments.map(([key, doc], i) => {
-              const fileLink = doc.fileUrl || doc.url;
-              const isImage = fileLink && fileLink.match(/\.(jpg|jpeg|png|gif)$/i);
+              const fileLink = getFileLink(doc);
+              const isImage = fileLink && fileLink.match(/\.(jpg|jpeg|png|gif|webp)$/i);
               return (
                 <div key={i} className="flex flex-col items-center rounded-xl bg-gradient-to-br from-emerald-50 via-blue-50 to-white border shadow p-2"
                   style={{ minWidth: "110px", maxWidth: "140px" }}>
