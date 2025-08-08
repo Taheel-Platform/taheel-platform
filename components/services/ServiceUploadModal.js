@@ -55,7 +55,7 @@ export default function ServiceUploadModal({
     setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
   }
 
-  // رفع ملف لمستند معين
+  // رفع ملف لمستند معين وحفظه داخل وثيقة الطلب
   async function handleUpload(e, docName) {
     e.preventDefault();
     setError((prev) => ({ ...prev, [docName]: "" }));
@@ -69,7 +69,6 @@ export default function ServiceUploadModal({
     }
     setUploading((prev) => ({ ...prev, [docName]: true }));
     let fileObj = null;
-    let uploadedUrl = "";
     try {
       const formData = new FormData();
       formData.append("file", selectedFiles[docName]);
@@ -100,29 +99,16 @@ export default function ServiceUploadModal({
           name: selectedFiles[docName].name,
           url: data.url,
           type: "application/pdf",
+          uploadedAt: new Date().toISOString(),
+          userId,
+          serviceId: service.serviceId,
+          serviceName: service.name,
         };
-        uploadedUrl = data.url;
-        setMsg((prev) => ({
-          ...prev,
-          [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!",
-        }));
 
-        // حفظ بيانات الملف للأب باسم المستند الجاري رفعه
-        if (setUploadedDocs) {
-          setUploadedDocs((prev) => ({
-            ...(prev || uploadedDocs || {}),
-            [docName]: fileObj,
-          }));
-        }
-
-        // حفظ بيانات الملف في الطلب المطلوب (Firestore)
-        // يجب أن يتم قبل تصفير selectedFiles لضمان وجود اسم الملف الصحيح
+        // حفظ بيانات الملف كمرفق داخل وثيقة الطلب نفسها في حقل attachments
         try {
           await updateDoc(doc(db, "requests", service.requestId), {
-            [`attachments.${docName}`]: {
-              ...fileObj,
-              uploadedAt: new Date().toISOString(),
-            }
+            [`attachments.${docName}`]: fileObj
           });
         } catch (fireErr) {
           setError((prev) => ({
@@ -133,8 +119,18 @@ export default function ServiceUploadModal({
           }));
         }
 
+        setMsg((prev) => ({
+          ...prev,
+          [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!",
+        }));
         setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
         fileRefs.current[docName].value = null;
+        if (setUploadedDocs) {
+          setUploadedDocs((prev) => ({
+            ...(prev || uploadedDocs || {}),
+            [docName]: fileObj,
+          }));
+        }
       } else {
         setError((prev) => ({
           ...prev,
