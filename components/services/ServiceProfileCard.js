@@ -12,6 +12,7 @@ import {
 import ServiceUploadModal from "./ServiceUploadModal";
 import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
+import { createPortal } from "react-dom";
 
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
@@ -441,16 +442,21 @@ function renderTooltip() {
 )}
           </div>
         )}
-<ServiceUploadModal
-  open={showDocsModal}
-  onClose={closeDocsModal}
-  requiredDocs={requiredDocs} // هنا فقط!
-  uploadedDocs={uploadedDocs}
-  setUploadedDocs={handleDocsUploaded}
-  userId={userId}
-  lang={lang}
-  service={{ serviceId, name: name }}
-/>
+{typeof window !== "undefined" && showDocsModal &&
+  createPortal(
+    <ServiceUploadModal
+      open={showDocsModal}
+      onClose={closeDocsModal}
+      requiredDocs={requiredDocs}
+      uploadedDocs={uploadedDocs}
+      setUploadedDocs={handleDocsUploaded}
+      userId={userId}
+      lang={lang}
+      service={{ serviceId, name: name }}
+    />,
+    document.body
+  )
+}
         {/* زرار التقديم دايما ظاهر في الأسفل */}
         <button
           onClick={(e) => {
