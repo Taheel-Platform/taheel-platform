@@ -379,35 +379,35 @@ function MyOrdersSection({ lang = "ar" }) {
   }
 
   // ----------- تفاصيل الطلب -----------
-  function renderOrderDetails(order) {
-    if (!order) return null;
-    const client = clients[order.clientId];
-    const service = services[order.serviceId];
-    const assignedEmp = employees.find((e) => e.userId === order.assignedTo);
-    const now = new Date();
-    const created = order.createdAt ? new Date(order.createdAt) : null;
-    const minutesAgo = created ? Math.floor((now - created) / 60000) : null;
-    let notes = null;
-    if (Array.isArray(order.statusHistory)) {
-      const last = [...order.statusHistory].reverse().find(
-        (h) => h.status === order.status && h.note
-      );
-      notes = last && last.note ? last.note : null;
-    }
-    const whatsappLink = client?.phone ? `https://wa.me/${client.phone.replace(/^0/, "971")}` : null;
-    const mailtoLink = client?.email ? `mailto:${client.email}` : null;
+function renderOrderDetails(order) {
+  if (!order) return null;
+  const client = clients[order.clientId];
+  const service = services[order.serviceId];
+  const assignedEmp = employees.find((e) => e.userId === order.assignedTo);
+  const now = new Date();
+  const created = order.createdAt ? new Date(order.createdAt) : null;
+  const minutesAgo = created ? Math.floor((now - created) / 60000) : null;
+  let notes = null;
+  if (Array.isArray(order.statusHistory)) {
+    const last = [...order.statusHistory].reverse().find(
+      (h) => h.status === order.status && h.note
+    );
+    notes = last && last.note ? last.note : null;
+  }
+  const whatsappLink = client?.phone ? `https://wa.me/${client.phone.replace(/^0/, "971")}` : null;
+  const mailtoLink = client?.email ? `mailto:${client.email}` : null;
 
-    return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style={{padding: "10px"}}>
-        <div style={{
-          background: "rgba(255,255,255,0.90)",
-          borderRadius: "18px",
-          width: 370,
-          maxWidth: "98vw",
-          padding: "20px 10px",
-          boxShadow: "0 6px 32px 0 rgba(33,150,243,0.13)",
-          border: "1.5px solid #e3f4ff"
-        }}>
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style={{padding: "10px"}}>
+      <div style={{
+        background: "rgba(255,255,255,0.90)",
+        borderRadius: "18px",
+        width: 370,
+        maxWidth: "98vw",
+        padding: "20px 10px",
+        boxShadow: "0 6px 32px 0 rgba(33,150,243,0.13)",
+        border: "1.5px solid #e3f4ff"
+      }}>
           <div className="flex justify-between items-center mb-2">
             <div className="font-bold text-blue-800 text-lg">{service?.name || order.serviceId}</div>
             <button className="text-2xl text-gray-400 hover:text-gray-700 font-bold" style={{cursor: "pointer"}} onClick={() => setSelected(null)}>
@@ -471,59 +471,58 @@ function MyOrdersSection({ lang = "ar" }) {
           </div>
 
           {/* --- مرفقات الطلب نفسه: عرض عالمي ومحترف --- */}
-          {order.attachments && Object.keys(order.attachments).length > 0 ? (
-            <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
-              <div className="font-bold text-cyan-900 text-base mb-3 text-center">
-                مرفقات الطلب
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(order.attachments).map(([docName, doc], i) => {
-                  // دعم كل أنواع الروابط والصيغ
-                  const fileLink = doc.url || doc.fileUrl || doc.downloadUrl || doc.imageUrl;
-                  const ext = (fileLink || "").split('.').pop()?.toLowerCase();
-                  const isImage = fileLink && /\.(jpg|jpeg|png|gif|webp)$/i.test(fileLink);
-                  return (
-                    <div key={i} className="flex flex-col items-center rounded-xl bg-white border border-cyan-200 shadow p-2"
-                      style={{ minWidth: "110px", maxWidth: "140px" }}>
-                      <div className="font-bold text-cyan-800 text-xs mb-1" title={doc.docType || docName}>
-                        {doc.docType || docName}
-                      </div>
-                      {isImage ? (
-                        <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
-                          <img src={fileLink} alt={doc.docType || docName}
-                            style={{
-                              width: 70, height: 70, objectFit: "cover", borderRadius: 10,
-                              border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
-                            }} />
-                        </a>
-                      ) : (
-                        <a
-                          href={fileLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center justify-center bg-cyan-50 rounded-lg border border-cyan-200 p-3 hover:bg-cyan-100"
-                          style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
-                          title="تحميل الملف"
-                        >
-                          <span style={{ fontSize: "2em", color: "#21cbf3" }}>
-                            {ext === "pdf" ? "📄" : "📎"}
-                          </span>
-                          <span className="text-[11px] font-bold text-cyan-900 mt-1">تحميل</span>
-                        </a>
-                      )}
-                      <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
-                        {doc.name ? doc.name.slice(0, 18) : (fileLink?.split("/").pop()?.slice(0, 18) || "")}
-                      </span>
+                  {order.attachments && Object.keys(order.attachments).length > 0 ? (
+          <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
+            <div className="font-bold text-cyan-900 text-base mb-3 text-center">
+              مرفقات الطلب
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(order.attachments).map(([docName, doc], i) => {
+                const fileLink = doc.url || doc.fileUrl || doc.downloadUrl || doc.imageUrl;
+                const ext = (fileLink || "").split('.').pop()?.toLowerCase();
+                const isImage = fileLink && /\.(jpg|jpeg|png|gif|webp)$/i.test(fileLink);
+                return (
+                  <div key={i} className="flex flex-col items-center rounded-xl bg-white border border-cyan-200 shadow p-2"
+                    style={{ minWidth: "110px", maxWidth: "140px" }}>
+                    <div className="font-bold text-cyan-800 text-xs mb-1" title={doc.docType || docName}>
+                      {doc.docType || docName}
                     </div>
-                  );
-                })}
-              </div>
+                    {isImage ? (
+                      <a href={fileLink} target="_blank" rel="noopener noreferrer" title="عرض الصورة الأصلية">
+                        <img src={fileLink} alt={doc.docType || docName}
+                          style={{
+                            width: 70, height: 70, objectFit: "cover", borderRadius: 10,
+                            border: "1.5px solid #b9e4ff", boxShadow: "0 2px 8px #e0f7fa"
+                          }} />
+                      </a>
+                    ) : (
+                      <a
+                        href={fileLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-col items-center justify-center bg-cyan-50 rounded-lg border border-cyan-200 p-3 hover:bg-cyan-100"
+                        style={{ width: 70, height: 70, marginBottom: 3, cursor: "pointer" }}
+                        title="تحميل الملف"
+                      >
+                        <span style={{ fontSize: "2em", color: "#21cbf3" }}>
+                          {ext === "pdf" ? "📄" : "📎"}
+                        </span>
+                        <span className="text-[11px] font-bold text-cyan-900 mt-1">تحميل</span>
+                      </a>
+                    )}
+                    <span className="text-[11px] text-gray-500 mt-1 truncate" title={fileLink}>
+                      {doc.name ? doc.name.slice(0, 18) : (fileLink?.split("/").pop()?.slice(0, 18) || "")}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <div className="text-gray-400 text-xs text-center py-6">
-              لا يوجد مرفقات لهذا الطلب.
-            </div>
-          )}
+          </div>
+        ) : (
+          <div className="text-gray-400 text-xs text-center py-6">
+            لا يوجد مرفقات لهذا الطلب.
+          </div>
+        )}
 
           {/* أزرار التواصل بدون الشات */}
           <div className="flex flex-wrap gap-2 items-center mt-2 mb-2">
