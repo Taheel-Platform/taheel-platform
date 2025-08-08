@@ -26,6 +26,7 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
   const [docs, setDocs] = useState({});
   const [docsStatus, setDocsStatus] = useState({});
   const [docsOCR, setDocsOCR] = useState({});
+  const [errorMsg, setErrorMsg] = useState(null);
 
   const docsList = REQUIRED_DOCS[form.accountType] || [];
 
@@ -89,6 +90,23 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
     setDocsOCR(prev => ({ ...prev, [docType]: null }));
   };
 
+  // دالة تحقق قبل الانتقال أو التسجيل
+  const canProceed = docsList.every(doc =>
+    docsStatus[doc.docType] &&
+    docs[doc.docType] &&
+    (docs[doc.docType].fileUrl || docs[doc.docType].url)
+  );
+
+  // عند الضغط على التالي
+  const handleNext = () => {
+    setErrorMsg(null);
+    if (!canProceed) {
+      setErrorMsg(lang === "ar" ? "يرجى رفع جميع المرفقات المطلوبة أولاً!" : "Please upload all required documents first!");
+      return;
+    }
+    onNext();
+  };
+
   return (
     <div className="flex flex-col gap-8 bg-white rounded-2xl px-4 py-6 shadow-xl animate-fade-in"
       dir={lang === "ar" ? "rtl" : "ltr"}
@@ -124,6 +142,10 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
           </div>
         )}
       </div>
+      {/* رسالة الخطأ عند محاولة التسجيل بدون كل المرفقات */}
+      {errorMsg && (
+        <div className="text-center text-red-600 font-bold mb-2">{errorMsg}</div>
+      )}
       {/* الأزرار تحت بعض في عمود */}
       <div className="flex flex-col gap-3 mt-7 justify-center items-center">
         <button
@@ -136,8 +158,8 @@ export default function DocumentsStep({ form, onChange, onNext, onBack, lang, t 
         <button
           type="button"
           className={`bg-gradient-to-r from-emerald-700 via-emerald-500 to-green-700 text-white px-7 py-2 rounded-xl font-bold shadow-lg hover:brightness-110 hover:scale-[1.02] transition border-none cursor-pointer w-full max-w-xs`}
-          onClick={onNext}
-          disabled={docsList.some(doc => !docsStatus[doc.docType])}
+          onClick={handleNext}
+          disabled={!canProceed}
         >
           {lang === "ar" ? "التالي" : "Next"}
         </button>
