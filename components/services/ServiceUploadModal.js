@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
-import { updateDoc, doc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client"; // تأكد أن هذا الاستيراد صحيح حسب مشروعك
+
+// لا تتعامل مع Firestore هنا إطلاقاً، فقط احفظ المستندات في uploadedDocs
 
 export default function ServiceUploadModal({
   open,
@@ -55,7 +55,7 @@ export default function ServiceUploadModal({
     setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
   }
 
-  // رفع ملف لمستند معين وحفظه داخل وثيقة الطلب
+  // رفع ملف لمستند معين وحفظه فقط في uploadedDocs (وليس في Firestore)
   async function handleUpload(e, docName) {
     e.preventDefault();
     setError((prev) => ({ ...prev, [docName]: "" }));
@@ -73,8 +73,8 @@ export default function ServiceUploadModal({
       const formData = new FormData();
       formData.append("file", selectedFiles[docName]);
       formData.append("userId", userId);
-      formData.append("serviceId", service.serviceId);
-      formData.append("serviceName", service.name);
+      formData.append("serviceId", service?.serviceId || "");
+      formData.append("serviceName", service?.name || "");
       formData.append("docName", docName);
 
       const res = await fetch("/api/upload-to-gcs", {
@@ -101,30 +101,19 @@ export default function ServiceUploadModal({
           type: "application/pdf",
           uploadedAt: new Date().toISOString(),
           userId,
-          serviceId: service.serviceId,
-          serviceName: service.name,
+          serviceId: service?.serviceId || "",
+          serviceName: service?.name || "",
         };
-
-        // حفظ بيانات الملف كمرفق داخل وثيقة الطلب نفسها في حقل attachments
-        try {
-          await updateDoc(doc(db, "requests", service.requestId), {
-            [`attachments.${docName}`]: fileObj
-          });
-        } catch (fireErr) {
-          setError((prev) => ({
-            ...prev,
-            [docName]: lang === "ar"
-              ? "تم رفع الملف لكن هناك مشكلة في حفظه بقاعدة البيانات."
-              : "File uploaded but failed to save in database.",
-          }));
-        }
 
         setMsg((prev) => ({
           ...prev,
           [docName]: lang === "ar" ? "تم رفع الملف بنجاح!" : "File uploaded successfully!",
         }));
+
         setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
         fileRefs.current[docName].value = null;
+
+        // حفظ بيانات الملف في uploadedDocs (state)
         if (setUploadedDocs) {
           setUploadedDocs((prev) => ({
             ...(prev || uploadedDocs || {}),

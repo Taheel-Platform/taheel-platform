@@ -22,6 +22,7 @@ export default function ServicePayModal({
   lang = "ar",
   userId,
   userEmail,
+  uploadedDocs,
   onPaid // <<< أضف هذا هنا!
 }) {
   const [useCoins, setUseCoins] = useState(false);
@@ -43,23 +44,19 @@ async function handlePayment() {
   setPayMsg("");
   setMsgSuccess(false);
   try {
-    // تحقق من رصيد المحفظة أولاً
     if (userWallet < finalPrice) {
       setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
       setIsPaying(false);
       return;
     }
 
-    // خصم المبلغ من رصيد المحفظة
     const userRef = doc(firestore, "users", userId);
     await updateDoc(userRef, {
       walletBalance: userWallet - finalPrice
     });
 
-    // توليد رقم تتبع بعد نجاح الدفع
     const orderNumber = generateOrderNumber();
 
-    // إضافة الإشعار هنا
     await addDoc(collection(firestore, "notifications"), {
       targetId: userId,
       title: lang === "ar" ? "تم الدفع" : "Payment Successful",
@@ -70,19 +67,19 @@ async function handlePayment() {
       isRead: false
     });
 
-    // تسجيل الطلب في requests
-await setDoc(doc(firestore, "requests", orderNumber), {
-  requestId: orderNumber,
-  clientId: userId,
-  serviceName,
-  paidAmount: finalPrice,
-  coinsUsed: useCoins ? coinDiscountValue : 0,
-  coinsGiven: willGetCashback ? cashbackCoins : 0, // ← كان ناقص!
-  createdAt: new Date().toISOString(),
-  status: "paid"
-});
+    // هنا أضف المستندات في الطلب
+    await setDoc(doc(firestore, "requests", orderNumber), {
+      requestId: orderNumber,
+      clientId: userId,
+      serviceName,
+      paidAmount: finalPrice,
+      coinsUsed: useCoins ? coinDiscountValue : 0,
+      coinsGiven: willGetCashback ? cashbackCoins : 0,
+      createdAt: new Date().toISOString(),
+      status: "paid",
+      attachments: uploadedDocs || {} // ← بيانات المستندات كلها هنا
+    });
 
-    // إرسال الإيميل الرسمي للعميل
     await fetch("/api/sendOrderEmail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,8 +94,8 @@ await setDoc(doc(firestore, "requests", orderNumber), {
     setMsgSuccess(true);
     setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
     if (typeof onPaid === "function") {
-  onPaid();
-}
+      onPaid();
+    }
     setTimeout(() => onClose(), 1200);
 
   } catch (e) {
