@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { FaFilePdf, FaUpload, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
+import { updateDoc, doc } from "firebase/firestore";
 
 export default function ServiceUploadModal({
   open,
@@ -123,6 +124,17 @@ export default function ServiceUploadModal({
       }));
     }
     setUploading((prev) => ({ ...prev, [docName]: false }));
+    
+    // حفظ بيانات الملف في الطلب المطلوب
+  await updateDoc(doc(db, "requests", service.requestId), {
+    [`attachments.${docName}`]: {
+      name: selectedFiles[docName].name,
+      url: data.url,
+      type: "application/pdf",
+      uploadedAt: new Date().toISOString(),
+    }
+  });
+
   }
 
   return (
