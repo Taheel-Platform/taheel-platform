@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import { doc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { motion, AnimatePresence } from "framer-motion";
 
