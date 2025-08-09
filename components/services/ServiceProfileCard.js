@@ -106,10 +106,18 @@ export default function ServiceProfileCard({
   const [showDocsModal, setShowDocsModal] = useState(false);
   const [paperCount, setPaperCount] = useState(1);
   const [currentDocName, setCurrentDocName] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
 
   // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
+
+  // أضف هنا دالة handlePaid
+  function handlePaid() {
+    fetchUser();
+    setIsPaid(true);
+  }
+
 
 async function fetchUser() {
   if (!userId) return;
@@ -465,25 +473,27 @@ function renderTooltip() {
 }
         {/* زرار التقديم دايما ظاهر في الأسفل */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowPayModal(true); // يفتح مدوال الدفع
-          }}
-          className={`
-            w-full py-1 rounded-full font-black shadow text-xs transition
-            bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
-            hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-            hover:scale-105 duration-150
-            focus:outline-none focus:ring-2 focus:ring-emerald-400
-            cursor-pointer
-            ${!canPay ? "opacity-40 pointer-events-none" : ""}
-            mt-1
-          `}
-          style={{ cursor: "pointer" }}
-          disabled={!canPay}
-        >
-          {lang === "ar" ? "تقدم الآن" : "Apply Now"}
-        </button>
+  onClick={(e) => {
+    e.stopPropagation();
+    setShowPayModal(true); // يفتح مدوال الدفع
+  }}
+  className={`
+    w-full py-1 rounded-full font-black shadow text-xs transition
+    bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+    hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+    hover:scale-105 duration-150
+    focus:outline-none focus:ring-2 focus:ring-emerald-400
+    cursor-pointer
+    ${(!canPay || isPaid) ? "opacity-40 pointer-events-none" : ""}
+    mt-1
+  `}
+  style={{ cursor: "pointer" }}
+  disabled={!canPay || isPaid}
+>
+  {isPaid
+    ? (lang === "ar" ? "تم الدفع" : "Paid")
+    : (lang === "ar" ? "تقدم الآن" : "Apply Now")}
+</button>
       </div>
       {/* مدوال الدفع */}
               <ServicePayModal
@@ -498,7 +508,7 @@ function renderTooltip() {
   lang={lang}
   userId={userId}
   userEmail={userEmail}
-  onPaid={fetchUser}
+  onPaid={handlePaid}
   uploadedDocs={uploadedDocs}
 />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
