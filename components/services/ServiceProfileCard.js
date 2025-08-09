@@ -129,7 +129,6 @@ useEffect(() => {
 }, [userId]);
 
   function handleAllDocsUploaded() {
-    setShowDocsModal(false);     // يغلق مودال المستندات
     setShowPayModal(true);       // يفتح مودال الدفع مباشرة
   }
 

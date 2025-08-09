@@ -19,14 +19,12 @@ export default function ServiceUploadModal({
   const [error, setError] = useState({});
   const [selectedFiles, setSelectedFiles] = useState({});
 
- // يغلق المدوال تلقائياً إذا كل المستندات تم رفعها (معدل)
 useEffect(() => {
   if (!open) return;
   const allUploaded = requiredDocs.length > 0 && requiredDocs.every(
     (docName) => !!uploadedDocs[docName]
   );
   if (allUploaded) {
-    // استدعاء دالة فتح مودال الدفع بدل الغلق التلقائي
     if (typeof onAllDocsUploaded === "function") {
       onAllDocsUploaded();
     }
