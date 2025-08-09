@@ -10,6 +10,7 @@ export default function ServiceUploadModal({
   setUploadedDocs,
   uploadedDocs = {},
   requiredDocs = [],
+  onAllDocsUploaded
 }) {
   const fileRefs = useRef({});
   const modalRef = useRef(null);
@@ -18,52 +19,53 @@ export default function ServiceUploadModal({
   const [error, setError] = useState({});
   const [selectedFiles, setSelectedFiles] = useState({});
 
-  // يغلق المدوال تلقائياً إذا كل المستندات تم رفعها
-  useEffect(() => {
-    if (!open) return;
-    const allUploaded = requiredDocs.length > 0 && requiredDocs.every(
-      (docName) => uploadedDocs[docName]
-    );
-    if (allUploaded) {
-      setTimeout(() => {
-        onClose && onClose();
-      }, 800);
+ // يغلق المدوال تلقائياً إذا كل المستندات تم رفعها (معدل)
+useEffect(() => {
+  if (!open) return;
+  const allUploaded = requiredDocs.length > 0 && requiredDocs.every(
+    (docName) => !!uploadedDocs[docName]
+  );
+  if (allUploaded) {
+    // استدعاء دالة فتح مودال الدفع بدل الغلق التلقائي
+    if (typeof onAllDocsUploaded === "function") {
+      onAllDocsUploaded();
     }
-  }, [uploadedDocs, requiredDocs, open, onClose]);
-
-  // إغلاق المودال عند الضغط خارج المودال
-  useEffect(() => {
-    if (!open) return;
-    function handleClickOutside(e) {
-      if (modalRef.current && !modalRef.current.contains(e.target)) {
-        onClose && onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  function handleFileChange(e, docName) {
-    setError((prev) => ({ ...prev, [docName]: "" }));
-    setMsg((prev) => ({ ...prev, [docName]: "" }));
-    const file = e.target.files[0];
-    if (!file) {
-      setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
-      return;
-    }
-    if (file.type !== "application/pdf") {
-      setError((prev) => ({
-        ...prev,
-        [docName]: lang === "ar" ? "يرجى رفع ملف PDF فقط" : "Please upload a PDF file only.",
-      }));
-      fileRefs.current[docName].value = null;
-      setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
-      return;
-    }
-    setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
   }
+}, [uploadedDocs, requiredDocs, open, onAllDocsUploaded]);
+
+// إغلاق المودال عند الضغط خارج المودال
+useEffect(() => {
+  if (!open) return;
+  function handleClickOutside(e) {
+    if (modalRef.current && !modalRef.current.contains(e.target)) {
+      onClose && onClose();
+    }
+  }
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, [open, onClose]);
+
+if (!open) return null;
+
+function handleFileChange(e, docName) {
+  setError((prev) => ({ ...prev, [docName]: "" }));
+  setMsg((prev) => ({ ...prev, [docName]: "" }));
+  const file = e.target.files[0];
+  if (!file) {
+    setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
+    return;
+  }
+  if (file.type !== "application/pdf") {
+    setError((prev) => ({
+      ...prev,
+      [docName]: lang === "ar" ? "يرجى رفع ملف PDF فقط" : "Please upload a PDF file only.",
+    }));
+    fileRefs.current[docName].value = null;
+    setSelectedFiles((prev) => ({ ...prev, [docName]: null }));
+    return;
+  }
+  setSelectedFiles((prev) => ({ ...prev, [docName]: file }));
+}
 
   async function handleUpload(e, docName) {
     e.preventDefault();

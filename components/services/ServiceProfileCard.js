@@ -128,6 +128,11 @@ useEffect(() => {
   fetchUser();
 }, [userId]);
 
+  function handleAllDocsUploaded() {
+    setShowDocsModal(false);     // يغلق مودال المستندات
+    setShowPayModal(true);       // يفتح مودال الدفع مباشرة
+  }
+
 
   useEffect(() => {
     let ignore = false;
@@ -454,6 +459,7 @@ function renderTooltip() {
       userId={userId}
       lang={lang}
       service={{ serviceId, name: name }}
+      onAllDocsUploaded={handleAllDocsUploaded}
     />,
     document.body
   )
