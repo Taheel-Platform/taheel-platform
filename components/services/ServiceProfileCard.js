@@ -128,9 +128,10 @@ useEffect(() => {
   fetchUser();
 }, [userId]);
 
-  function handleAllDocsUploaded() {
-    setShowPayModal(true);       // يفتح مودال الدفع مباشرة
-  }
+function handleAllDocsUploaded() {
+  setShowDocsModal(false); // يقفل مودال رفع المستندات
+  setShowPayModal(true);   // يفتح مودال الدفع مباشرة
+}
 
 
   useEffect(() => {
@@ -182,7 +183,6 @@ useEffect(() => {
   }
   function handleDocsUploaded(newDocs) {
     setUploadedDocs(newDocs);
-    closeDocsModal();
   }
   function openPaymentModal() {
     setShowPayModal(true);
