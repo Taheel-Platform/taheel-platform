@@ -59,7 +59,14 @@ async function handlePayment() {
       walletBalance: userWallet - finalPrice
     });
 
-    // إضافة الكوينات للمستخدم إذا يستحق مكافأة
+    // خصم الكوينات إذا استخدمهم العميل للخصم
+    if (useCoins && coinDiscount > 0) {
+      await updateDoc(userRef, {
+        coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
+      });
+    }
+
+    // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
     if (willGetCashback && cashbackCoins > 0) {
       await updateDoc(userRef, {
         coins: increment(cashbackCoins)
