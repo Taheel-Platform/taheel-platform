@@ -13,8 +13,6 @@ import ServiceUploadModal from "./ServiceUploadModal";
 import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
 import { createPortal } from "react-dom";
-import { doc, onSnapshot } from "firebase/firestore";
-import { firestore } from "@/lib/firebase.client";
 
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
@@ -113,32 +111,30 @@ export default function ServiceProfileCard({
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
 
+  // تحديث الرصيد والكوينات بناءً على القيم المرسلة من الأعلى (props)
+  useEffect(() => {
+    setWallet(userWallet);
+  }, [userWallet]);
 
-useEffect(() => {
-  if (!userId) return;
-  const userRef = doc(firestore, "users", userId);
-  const unsubscribe = onSnapshot(userRef, (snap) => {
-    if (snap.exists()) {
-      const data = snap.data();
-      setWallet(Number(data.walletBalance ?? 0));
-      setCoinsBalance(Number(data.coins ?? 0));
-    }
-  });
-  return () => unsubscribe();
-}, [userId]);
+  useEffect(() => {
+    setCoinsBalance(userCoins);
+  }, [userCoins]);
+
+  // إعادة تعيين حالة الدفع عند تغيير الخدمة أو المستخدم
+  useEffect(() => {
+    setIsPaid(false);
+  }, [serviceId, userId]);
 
   // أضف هنا دالة handlePaid
-function handlePaid() {
-  setIsPaid(true);
-}
+  function handlePaid() {
+    setIsPaid(true);
+    if (typeof onPaid === "function") onPaid();
+  }
 
-
-
-function handleAllDocsUploaded() {
-  setShowDocsModal(false); // يقفل مودال رفع المستندات
-  setShowPayModal(true);   // يفتح مودال الدفع مباشرة
-}
-
+  function handleAllDocsUploaded() {
+    setShowDocsModal(false); // يقفل مودال رفع المستندات
+    setShowPayModal(true);   // يفتح مودال الدفع مباشرة
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -196,20 +192,20 @@ function handleAllDocsUploaded() {
   }
 
   // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف على اسم الخدمة فقط)
-function renderTooltip() {
-  return (
-    <div
-      className="fixed z-[200] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
-      style={{
-        minWidth: 280,
-        maxWidth: 380,
-        boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
-      }}
-    >
+  function renderTooltip() {
+    return (
       <div
-        className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
-        style={{ pointerEvents: "none" }}
+        className="fixed z-[200] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
+        style={{
+          minWidth: 280,
+          maxWidth: 380,
+          boxShadow: "0 2px 24px 0 rgba(16,185,129,0.18)",
+        }}
       >
+        <div
+          className="bg-white rounded-xl border border-emerald-400 shadow-lg p-4 w-full text-sm"
+          style={{ pointerEvents: "none" }}
+        >
           <h3 className="text-base font-extrabold text-emerald-700 mb-1 text-center">
             {lang === "en" ? (name_en || translatedName || name || "") : (name || name_en || "")}
           </h3>
@@ -323,73 +319,73 @@ function renderTooltip() {
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
       {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
-<div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
-  <h3
-    className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
-    style={{
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      width: "100%",
-      minHeight: "30px",
-      lineHeight: "1.15",
-      display: "block",
-      cursor: "pointer"
-    }}
-    title={
-      lang === "en"
-        ? (name_en || translatedName || name || "")
-        : (name || name_en || "")
-    }
-    onMouseEnter={handleNameMouseEnter}
-    onMouseLeave={handleNameMouseLeave}
-  >
-    {lang === "en"
-      ? (name_en || translatedName || name || "")
-      : (name || name_en || "")}
-  </h3>
-  {showTooltip && renderTooltip()}
+      <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
+        <h3
+          className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            width: "100%",
+            minHeight: "30px",
+            lineHeight: "1.15",
+            display: "block",
+            cursor: "pointer"
+          }}
+          title={
+            lang === "en"
+              ? (name_en || translatedName || name || "")
+              : (name || name_en || "")
+          }
+          onMouseEnter={handleNameMouseEnter}
+          onMouseLeave={handleNameMouseLeave}
+        >
+          {lang === "en"
+            ? (name_en || translatedName || name || "")
+            : (name || name_en || "")}
+        </h3>
+        {showTooltip && renderTooltip()}
 
-  {/* السعر الثابت تحت اسم الخدمة مباشرة */}
-  <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2 mt-1 mb-2">
-    <div className="flex items-center gap-2 mb-1">
-      <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
-        {totalServicePrice}
-      </span>
-      <span className="text-base text-gray-500 font-bold">
-        {lang === "ar" ? "درهم" : "AED"}
-      </span>
-      <Image
-        src="/aed-logo.png"
-        alt={lang === "ar" ? "درهم إماراتي" : "AED"}
-        width={34}
-        height={34}
-        className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
-      />
-    </div>
-    <table className="w-full text-sm text-gray-700 mb-1">
-      <tbody>
-        <tr>
-          <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-          <td className="text-right">
-            {servicePriceTotal} {lang === "ar" ? "د.إ" : "AED"}
-          </td>
-        </tr>
-        <tr>
-          <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
-          <td className="text-right">
-            {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
-          </td>
-        </tr>
-        <tr>
-          <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
-          <td className="text-right">
-            {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+        {/* السعر الثابت تحت اسم الخدمة مباشرة */}
+        <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2 mt-1 mb-2">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
+              {totalServicePrice}
+            </span>
+            <span className="text-base text-gray-500 font-bold">
+              {lang === "ar" ? "درهم" : "AED"}
+            </span>
+            <Image
+              src="/aed-logo.png"
+              alt={lang === "ar" ? "درهم إماراتي" : "AED"}
+              width={34}
+              height={34}
+              className="rounded-full bg-white ring-1 ring-emerald-200 shadow"
+            />
+          </div>
+          <table className="w-full text-sm text-gray-700 mb-1">
+            <tbody>
+              <tr>
+                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+                <td className="text-right">
+                  {servicePriceTotal} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
+                <td className="text-right">
+                  {printingTotal} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5% on Printing"}</td>
+                <td className="text-right">
+                  {taxTotal.toFixed(2)} {lang === "ar" ? "د.إ" : "AED"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         {/* عداد عدد مرات الخدمة بشكل صغير */}
         {repeatable && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
@@ -433,83 +429,79 @@ function renderTooltip() {
         {/* رفع المستندات */}
         {requireUpload && (
           <div className="w-full flex flex-col max-w-full mt-1 mb-1">
-{requireUpload && (
-  <div className="w-full flex flex-col max-w-full mt-1 mb-1">
-    <button
-      className="w-full py-1 rounded-full font-black shadow text-xs transition
-        bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
-        hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
-        hover:scale-105 duration-150
-        focus:outline-none focus:ring-2 focus:ring-cyan-400
-        cursor-pointer"
-      onClick={(e) => {
-        e.stopPropagation();
-        openDocsModal();
-      }}
-    >
-      {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload required documents"}
-    </button>
-  </div>
-)}
+            <button
+              className="w-full py-1 rounded-full font-black shadow text-xs transition
+                bg-gradient-to-r from-cyan-400 via-cyan-600 to-cyan-400 text-white
+                hover:from-cyan-600 hover:to-cyan-500 hover:shadow-cyan-200/90
+                hover:scale-105 duration-150
+                focus:outline-none focus:ring-2 focus:ring-cyan-400
+                cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                openDocsModal();
+              }}
+            >
+              {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload required documents"}
+            </button>
           </div>
         )}
-{typeof window !== "undefined" && showDocsModal &&
-  createPortal(
-    <ServiceUploadModal
-      open={showDocsModal}
-      onClose={closeDocsModal}
-      requiredDocs={requiredDocs}
-      uploadedDocs={uploadedDocs}
-      setUploadedDocs={handleDocsUploaded}
-      userId={userId}
-      lang={lang}
-      service={{ serviceId, name: name }}
-      onAllDocsUploaded={handleAllDocsUploaded}
-    />,
-    document.body
-  )
-}
+        {typeof window !== "undefined" && showDocsModal &&
+          createPortal(
+            <ServiceUploadModal
+              open={showDocsModal}
+              onClose={closeDocsModal}
+              requiredDocs={requiredDocs}
+              uploadedDocs={uploadedDocs}
+              setUploadedDocs={handleDocsUploaded}
+              userId={userId}
+              lang={lang}
+              service={{ serviceId, name: name }}
+              onAllDocsUploaded={handleAllDocsUploaded}
+            />,
+            document.body
+          )
+        }
         {/* زرار التقديم دايما ظاهر في الأسفل */}
         <button
-  onClick={(e) => {
-    e.stopPropagation();
-    setShowPayModal(true); // يفتح مدوال الدفع
-  }}
-  className={`
-    w-full py-1 rounded-full font-black shadow text-xs transition
-    bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
-    hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-    hover:scale-105 duration-150
-    focus:outline-none focus:ring-2 focus:ring-emerald-400
-    cursor-pointer
-    ${(!canPay || isPaid) ? "opacity-40 pointer-events-none" : ""}
-    mt-1
-  `}
-  style={{ cursor: "pointer" }}
-  disabled={!canPay || isPaid}
->
-  {isPaid
-    ? (lang === "ar" ? "تم الدفع" : "Paid")
-    : (lang === "ar" ? "تقدم الآن" : "Apply Now")}
-</button>
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowPayModal(true); // يفتح مدوال الدفع
+          }}
+          className={`
+            w-full py-1 rounded-full font-black shadow text-xs transition
+            bg-gradient-to-r from-emerald-400 via-emerald-600 to-emerald-400 text-white
+            hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+            hover:scale-105 duration-150
+            focus:outline-none focus:ring-2 focus:ring-emerald-400
+            cursor-pointer
+            ${(!canPay || isPaid) ? "opacity-40 pointer-events-none" : ""}
+            mt-1
+          `}
+          style={{ cursor: "pointer" }}
+          disabled={!canPay || isPaid}
+        >
+          {isPaid
+            ? (lang === "ar" ? "تم الدفع" : "Paid")
+            : (lang === "ar" ? "تقدم الآن" : "Apply Now")}
+        </button>
       </div>
       {/* مدوال الدفع */}
-              <ServicePayModal
-  open={showPayModal}
-  onClose={() => setShowPayModal(false)}
-  serviceName={name}
-  totalPrice={totalServicePrice}
-  printingFee={printingTotal}
-  coinsBalance={coinsBalance}
-  cashbackCoins={coins}
-  userWallet={wallet}
-  lang={lang}
-  userId={userId}
-  userEmail={userEmail}
-  onPaid={handlePaid}
-  uploadedDocs={uploadedDocs}
-/>
+      <ServicePayModal
+        open={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        serviceName={name}
+        totalPrice={totalServicePrice}
+        printingFee={printingTotal}
+        coinsBalance={coinsBalance}
+        cashbackCoins={coins}
+        userWallet={wallet}
+        lang={lang}
+        userId={userId}
+        userEmail={userEmail}
+        onPaid={handlePaid}
+        uploadedDocs={uploadedDocs}
+      />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
-} 
+}
