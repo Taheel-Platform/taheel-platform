@@ -29,7 +29,17 @@ import Sidebar from "@/components/ProfileSidebarLayout/Sidebar";
 import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  collection, doc, getDoc, getDocs, updateDoc, setDoc, query, where, orderBy, deleteDoc
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  setDoc,
+  query,
+  where,
+  orderBy,
+  deleteDoc,
+  onSnapshot
 } from "firebase/firestore";
 import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
@@ -164,48 +174,62 @@ function ClientProfilePageInner({ userId }) {
 
   // ========= SECURE SESSION =========
   useEffect(() => {
-    // إذا لم يكن فيه مستخدم (أو لم يعد مسجلاً)، حول للوج إن
     if (client === null && !loading) {
       router.replace("/login");
     }
   }, [client, loading, router]);
 
-  // ---------- Effects ----------
+  // ========= جلب بيانات العميل لحظيا =========
+  useEffect(() => {
+    if (!userId) return;
+    const userRef = doc(firestore, "users", userId);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const user = snap.data();
+        setClient(user);
+
+        // بيانات المالك للشركات
+        if ((user?.type === "company" || user?.accountType === "company")) {
+          setOwnerResident({
+            firstName: user.ownerFirstName,
+            middleName: user.ownerMiddleName,
+            lastName: user.ownerLastName,
+            birthDate: user.ownerBirthDate,
+            gender: user.ownerGender,
+            nationality: user.ownerNationality,
+            phone: user.phone,
+          });
+        } else {
+          setOwnerResident(null);
+        }
+
+        // جلب الشركات المرتبطة لو نوع العميل مقيم
+        let relatedCompanies = [];
+        if (user?.type === "resident" && user?.userId) {
+          getDocs(
+            query(
+              collection(firestore, "users"),
+              where("type", "==", "company"),
+              where("owner", "in", [user.name, user.userId])
+            )
+          ).then((companiesSnap) => {
+            relatedCompanies = companiesSnap.docs.map(doc => doc.data());
+            setCompanies(relatedCompanies);
+          });
+        } else {
+          setCompanies([]);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [userId]);
+
+  // ========= جلب الخدمات والطلبات والإشعارات =========
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      const userDoc = await getDoc(doc(firestore, "users", userId));
-      const user = userDoc.exists() ? userDoc.data() : null;
-      setClient(user);
 
-      if ((user?.type === "company" || user?.accountType === "company")) {
-        setOwnerResident({
-          firstName: user.ownerFirstName,
-          middleName: user.ownerMiddleName,
-          lastName: user.ownerLastName,
-          birthDate: user.ownerBirthDate,
-          gender: user.ownerGender,
-          nationality: user.ownerNationality,
-          phone: user.phone,
-        });
-      } else {
-        setOwnerResident(null);
-      }
-
-      let relatedCompanies = [];
-      if (user?.type === "resident" && user?.userId) {
-        const companiesSnap = await getDocs(
-          query(
-            collection(firestore, "users"),
-            where("type", "==", "company"),
-            where("owner", "in", [user.name, user.userId])
-          )
-        );
-        relatedCompanies = companiesSnap.docs.map(doc => doc.data());
-      }
-      setCompanies(relatedCompanies);
-
-      // جلب الخدمات مباشرة من document الفئة
+      // جلب الخدمات
       const types = ["resident", "company", "nonresident", "other"];
       let servicesByType = {
         resident: [],
@@ -218,15 +242,14 @@ function ClientProfilePageInner({ userId }) {
         const docRef = doc(firestore, "servicesByClientType", type);
         const snap = await getDoc(docRef);
         const data = snap.exists() ? snap.data() : {};
-        // فقط الحقول التي تبدأ بـ service
         const arr = Object.entries(data)
           .filter(([key]) => key.startsWith("service"))
           .map(([key, val]) => ({ ...val, id: key }));
-        // يمكنك فلترة الخدمات غير المفعلة هنا إذا أردت
         servicesByType[type] = arr.filter(srv => srv.active !== false);
       }
       setServices(servicesByType);
 
+      // جلب الطلبات
       const ordersSnap = await getDocs(
         query(
           collection(firestore, "requests"),
@@ -236,6 +259,7 @@ function ClientProfilePageInner({ userId }) {
       );
       setOrders(ordersSnap.docs.map(doc => doc.data()));
 
+      // جلب الإشعارات
       const notifsSnap = await getDocs(
         query(
           collection(firestore, "notifications"),
@@ -575,21 +599,21 @@ function ClientProfilePageInner({ userId }) {
             <span className="hidden sm:inline">
               <WeatherTimeWidget isArabic={lang === "ar"} />
             </span>
-<button
-  onClick={toggleDarkMode}
-  className={`
-    relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition
-    w-9 h-9
-    ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}
-  `}
-  title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
->
-  {darkMode ? (
-    <FaSun className="text-yellow-400 text-[22px] drop-shadow" />
-  ) : (
-    <FaMoon className="text-gray-700 text-[22px] drop-shadow" />
-  )}
-</button>
+            <button
+              onClick={toggleDarkMode}
+              className={`
+                relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition
+                w-9 h-9
+                ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}
+              `}
+              title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
+            >
+              {darkMode ? (
+                <FaSun className="text-yellow-400 text-[22px] drop-shadow" />
+              ) : (
+                <FaMoon className="text-gray-700 text-[22px] drop-shadow" />
+              )}
+            </button>
             <button
               onClick={toggleLang}
               className="px-3 py-1.5 rounded-full border border-emerald-500 bg-[#16222c] text-emerald-200 hover:bg-emerald-500 hover:text-white text-xs sm:text-sm font-bold shadow transition cursor-pointer"
