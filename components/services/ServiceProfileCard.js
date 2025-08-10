@@ -14,6 +14,7 @@ import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
 import { createPortal } from "react-dom";
 import { doc, onSnapshot } from "firebase/firestore";
+import { firestore } from "@/lib/firebase.client";
 
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
