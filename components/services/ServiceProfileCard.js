@@ -13,7 +13,7 @@ import ServiceUploadModal from "./ServiceUploadModal";
 import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
 import { createPortal } from "react-dom";
-
+import { doc, onSnapshot } from "firebase/firestore";
 
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
@@ -113,24 +113,23 @@ export default function ServiceProfileCard({
   const cardRef = useRef();
 
   // أضف هنا دالة handlePaid
-  function handlePaid() {
-    fetchUser();
-    setIsPaid(true);
-  }
+function handlePaid() {
+  setIsPaid(true);
+}
 
 
-async function fetchUser() {
+useEffect(() => {
   if (!userId) return;
-  try {
-    const userRef = doc(firestore, "users", userId);
-    const snap = await getDoc(userRef);
+  const userRef = doc(firestore, "users", userId);
+  const unsubscribe = onSnapshot(userRef, (snap) => {
     if (snap.exists()) {
       const data = snap.data();
       setWallet(Number(data.walletBalance ?? 0));
       setCoinsBalance(Number(data.coins ?? 0));
     }
-  } catch (err) {}
-}
+  });
+  return () => unsubscribe();
+}, [userId]);
 
 useEffect(() => {
   fetchUser();

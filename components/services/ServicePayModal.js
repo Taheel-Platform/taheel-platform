@@ -60,18 +60,18 @@ async function handlePayment() {
     });
 
     // خصم الكوينات إذا استخدمهم العميل للخصم
-    if (useCoins && coinDiscount > 0) {
-      await updateDoc(userRef, {
-        coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
-      });
-    }
+if (useCoins && coinDiscount > 0) {
+  await updateDoc(userRef, {
+    coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
+  });
+}
 
     // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
-    if (willGetCashback && cashbackCoins > 0) {
-      await updateDoc(userRef, {
-        coins: increment(cashbackCoins)
-      });
-    }
+if (willGetCashback && cashbackCoins > 0) {
+  await updateDoc(userRef, {
+    coins: increment(cashbackCoins)
+  });
+}
 
     const orderNumber = generateOrderNumber();
 

@@ -1,9 +1,16 @@
-"use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaBell } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
-import { getDocs, query, collection, where, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  query,
+  collection,
+  where,
+  updateDoc,
+  doc,
+  deleteDoc,
+  onSnapshot
+} from "firebase/firestore";
 
 export default function NotificationWidget({ userId, lang = "ar", darkMode = false }) {
   const [notifications, setNotifications] = useState([]);
@@ -11,38 +18,37 @@ export default function NotificationWidget({ userId, lang = "ar", darkMode = fal
   const [activeNotif, setActiveNotif] = useState(null);
   const menuRef = useRef();
 
-  // جلب الإشعارات (كل إشعار أحدث من 15 يوم فقط)
-  const fetchNotifications = useCallback(async () => {
+  // جلب الإشعارات لحظيًا (كل إشعار أحدث من 15 يوم فقط)
+  useEffect(() => {
     if (!userId) return;
-    const notifsSnap = await getDocs(
-      query(collection(firestore, "notifications"), where("targetId", "==", userId))
-    );
-    // استخدم document id الحقيقي
-    let clientNotifs = notifsSnap.docs.map(d => ({
-      ...d.data(),
-      notificationId: d.id
-    }));
-    const now = new Date();
-    // فلترة للإشعارات الحديثة فقط
-    const filtered = clientNotifs.filter(n => {
-      if (!n.timestamp) return true;
-      const notifDate = new Date(n.timestamp);
-      return (now - notifDate) / (1000 * 60 * 60 * 24) <= 15;
-    });
-    // حذف إشعارات قديمة من الفايرستور (اختياري)
-    for (const n of clientNotifs) {
-      if (n.timestamp) {
+    const q = query(collection(firestore, "notifications"), where("targetId", "==", userId));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const now = new Date();
+      let clientNotifs = snap.docs.map(d => ({
+        ...d.data(),
+        notificationId: d.id
+      }));
+      // فلترة للإشعارات الحديثة فقط
+      const filtered = clientNotifs.filter(n => {
+        if (!n.timestamp) return true;
         const notifDate = new Date(n.timestamp);
-        if ((now - notifDate) / (1000 * 60 * 60 * 24) > 15 && n.notificationId) {
-          try { await deleteDoc(doc(firestore, "notifications", n.notificationId)); } catch {}
+        return (now - notifDate) / (1000 * 60 * 60 * 24) <= 15;
+      });
+      filtered.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setNotifications(filtered);
+
+      // حذف إشعارات قديمة من الفايرستور (اختياري)
+      for (const n of clientNotifs) {
+        if (n.timestamp) {
+          const notifDate = new Date(n.timestamp);
+          if ((now - notifDate) / (1000 * 60 * 60 * 24) > 15 && n.notificationId) {
+            try { deleteDoc(doc(firestore, "notifications", n.notificationId)); } catch {}
+          }
         }
       }
-    }
-    filtered.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-    setNotifications(filtered);
+    });
+    return () => unsubscribe();
   }, [userId]);
-
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   // إغلاق المنيو عند الضغط خارجها
   useEffect(() => {
