@@ -113,11 +113,6 @@ export default function ServiceProfileCard({
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
 
-  // أضف هنا دالة handlePaid
-function handlePaid() {
-  setIsPaid(true);
-}
-
 
 useEffect(() => {
   if (!userId) return;
@@ -132,9 +127,12 @@ useEffect(() => {
   return () => unsubscribe();
 }, [userId]);
 
-useEffect(() => {
-  fetchUser();
-}, [userId]);
+  // أضف هنا دالة handlePaid
+function handlePaid() {
+  setIsPaid(true);
+}
+
+
 
 function handleAllDocsUploaded() {
   setShowDocsModal(false); // يقفل مودال رفع المستندات
@@ -514,4 +512,4 @@ function renderTooltip() {
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
-}
+} 
