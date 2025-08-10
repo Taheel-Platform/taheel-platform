@@ -1,10 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaWallet } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { collection, addDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, onSnapshot, collection, addDoc } from "firebase/firestore";
 
 // خيارات الشحن والكوينات المجانية
 const rechargeOptions = [
@@ -29,12 +28,21 @@ export default function WalletWidget({
   const [wallet, setWallet] = useState(balance);
   const [userCoins, setUserCoins] = useState(coins);
 
-  function updateLocalBalances(newWallet, newCoins) {
-    setWallet(newWallet);
-    setUserCoins(newCoins);
-    if (typeof onBalanceChange === "function") onBalanceChange(newWallet);
-    if (typeof onCoinsChange === "function") onCoinsChange(newCoins);
-  }
+  // تحديث الرصيد والكوينات لحظياً من فايرستور
+  useEffect(() => {
+    if (!userId) return;
+    const userRef = doc(firestore, "users", userId);
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setWallet(Number(data.walletBalance ?? 0));
+        setUserCoins(Number(data.coins ?? 0));
+        if (typeof onBalanceChange === "function") onBalanceChange(Number(data.walletBalance ?? 0));
+        if (typeof onCoinsChange === "function") onCoinsChange(Number(data.coins ?? 0));
+      }
+    });
+    return () => unsubscribe();
+  }, [userId, onBalanceChange, onCoinsChange]);
 
   // استدعِها بعد نجاح الدفع فقط
   async function handleRecharge(amount, coinsBonus) {
@@ -58,7 +66,7 @@ export default function WalletWidget({
       await updateDoc(userRef, { walletBalance: currentWallet + amount });
       await updateDoc(userRef, { coins: currentCoins + coinsBonus });
 
-            // 👈 هنا أضف كود النوتفكيشن بعد نجاح الشحن
+      // إشعار بعد نجاح الشحن
       await addDoc(collection(firestore, "notifications"), {
         targetId: userId,
         title: lang === "ar" ? "تم شحن المحفظة" : "Wallet Recharged",
@@ -68,8 +76,6 @@ export default function WalletWidget({
         timestamp: new Date().toISOString(),
         isRead: false
       });
-
-      updateLocalBalances(currentWallet + amount, currentCoins + coinsBonus);
 
       setMsg(
         <span className="text-green-700 font-bold">
@@ -114,9 +120,7 @@ export default function WalletWidget({
       >
         <FaWallet
           className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-500 drop-shadow-lg transition-all duration-150"
-          style={{
-            filter: "drop-shadow(0 2px 8px #05966955)"
-          }}
+          style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
         />
         <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[11px] font-bold rounded-full px-[6px] py-[2px] shadow border-2 border-white/80">
           {wallet}
