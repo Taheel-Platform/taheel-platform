@@ -39,14 +39,15 @@ export default async function handler(req, res) {
       return;
     }
 
-    await new Promise((resolve, reject) => {
-      const writeStream = blob.createWriteStream({ contentType: file.mimetype, resumable: false });
-      const readStream = fs.createReadStream(filePath);
-      readStream.on("error", reject);
-      writeStream.on("error", reject);
-      writeStream.on("finish", resolve);
-      readStream.pipe(writeStream);
-    });
+await new Promise((resolve, reject) => {
+  const writeStream = blob.createWriteStream({ contentType: file.mimetype, resumable: false });
+  const readStream = fs.createReadStream(filePath);
+  readStream.on("error", reject);
+  writeStream.on("error", reject);
+  writeStream.on("finish", resolve);
+  readStream.pipe(writeStream);
+});
+await blob.makePublic(); // أضف هذا السطر لتكون الصورة متاحة للجميع
 
     // حذف الملف المؤقت بعد الرفع (اختياري)
     fs.unlink(filePath, () => {});
