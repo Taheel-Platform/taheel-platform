@@ -241,7 +241,7 @@ function ResidentCard({
     {t.nationality}: <span className="font-bold text-emerald-800">{nationality || "-"}</span>
   </span>
   <span className="text-sm text-gray-500 mt-2 text-center w-full">
-    {t.birthDate}: <span className="font-bold">{birthdate || "-"}</span>
+    {t.birthDate}: <span className="font-bold">{birthDate || "-"}</span>
   </span>
 </div>
 
