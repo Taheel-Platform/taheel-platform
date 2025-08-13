@@ -115,7 +115,6 @@ function LoginPageInner() {
         body: JSON.stringify({ token })
       });
       const data = await res.json();
-
       return data.success && (typeof data.score !== "number" || data.score > 0.5);
     } catch {
       return false;
@@ -234,9 +233,17 @@ function LoginPageInner() {
       // حفظ بيانات المستخدم في localStorage (اختياري)
       window.localStorage.setItem("userId", user.uid);
       window.localStorage.setItem("userName", data.name || "موظف");
+      window.localStorage.setItem("userRole", data.role || "client");
 
-      // التوجيه بعد التأكد من كل شيء
-      router.replace(`/dashboard/client?userId=${user.uid}&lang=${lang}`);
+      // التوجيه بعد التأكد من كل شيء حسب الدور
+      let targetUrl = `/dashboard/client?userId=${user.uid}&lang=${lang}`;
+      if (data.role === "admin") {
+        targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
+      } else if (data.role === "employee") {
+        targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
+      }
+      router.replace(targetUrl);
+
       setLoading(false);
       return;
     } catch (e) {
