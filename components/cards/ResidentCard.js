@@ -190,24 +190,26 @@ function ResidentCard({
       {/* صورة وQR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
         {/* الصورة */}
-        <div className="relative group">
-          {localProfilePic ? (
-            <Image src={localProfilePic} width={90} height={90} alt={name || "avatar"} className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover" />
-          ) : (
-            <div className="w-[90px] h-[90px] rounded-xl border-2 border-emerald-300 bg-gray-100 flex items-center justify-center text-gray-300 text-3xl">-</div>
-          )}
-          {/* زر الكاميرا لتغيير الصورة */}
-          <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
-            <FaCamera className="text-emerald-700" size={18} />
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleAvatarChange}
-              disabled={loadingPic}
-            />
-          </label>
-        </div>
+<div className="relative group">
+  <Image
+    src={localProfilePic || client.profilePic || "/default-avatar.png"}
+    width={90}
+    height={90}
+    alt={name || "avatar"}
+    className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover"
+  />
+  {/* زر الكاميرا لتغيير الصورة */}
+  <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
+    <FaCamera className="text-emerald-700" size={18} />
+    <input
+      type="file"
+      accept="image/*"
+      style={{ display: "none" }}
+      onChange={handleAvatarChange}
+      disabled={loadingPic}
+    />
+  </label>
+</div>
         <div className="flex flex-col items-center flex-1 px-2" />
         {/* QR */}
 <div className="flex flex-col items-center">
