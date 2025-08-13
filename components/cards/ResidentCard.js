@@ -212,13 +212,15 @@ function ResidentCard({
         {/* QR */}
 <div className="flex flex-col items-center">
   <div className="bg-white p-0 rounded-xl shadow border-2 border-emerald-100 w-[90px] h-[90px] flex items-center justify-center">
-    {(userId || client.userId) ? (
-      <StyledQRCode value={userId || client.userId} logo={APP_LOGO} size={82} />
+    {client.customerId ? (
+      <StyledQRCode value={client.customerId} logo={APP_LOGO} size={82} />
     ) : (
       <div className="text-gray-300 text-6xl">-</div>
     )}
   </div>
-  <span className="mt-1 text-[11px] text-gray-500 font-mono font-bold tracking-widest">{userId || client.userId || "-"}</span>
+  <span className="mt-1 text-[11px] text-gray-500 font-mono font-bold tracking-widest">
+    {client.customerId || "-"}
+  </span>
 </div>
       </div>
 
