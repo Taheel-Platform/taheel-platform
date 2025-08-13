@@ -161,21 +161,23 @@ export default function RegisterPage() {
 
       // 5. حذف الحقول المؤقتة قبل الحفظ
       const { password, passwordConfirm, emailConfirm, ...safeForm } = form;
-      await setDoc(
-        firestoreDoc(db, "users", user.uid),
-        {
-          ...safeForm,
-          email,
-          customerId,
-          role: "client",
-          accountType: form.accountType?.toLowerCase(),
-          type: form.accountType?.toLowerCase(),
-          emailVerified: false, 
-          phoneVerified: false,
-          createdAt: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+      const userDocId = customerId;
+await setDoc(
+  firestoreDoc(db, "users", userDocId),
+  {
+    ...safeForm,
+    email,
+    customerId,            // احتفظ به كحقل
+    uid: user.uid,         // مهم جدًا عشان تربط بحساب الـ Auth
+    role: "client",
+    accountType: form.accountType?.toLowerCase(),
+    type: form.accountType?.toLowerCase(),
+    emailVerified: false,
+    phoneVerified: false,
+    createdAt: new Date().toISOString(),
+  },
+  { merge: true }
+);
 
       setRegSuccess(true);
       router.replace(`/dashboard/client/profile?lang=${lang}`);

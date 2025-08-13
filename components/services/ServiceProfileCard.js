@@ -143,7 +143,7 @@ export default function ServiceProfileCard({
         clientEmail: userEmail,
         lang,
       };
-      await addDoc(collection(firestore, "serviceOrders"), orderData);
+      await addDoc(collection(firestore, "requests"), orderData);
       // يمكنك هنا إضافة إشعار أو تحديث واجهة المستخدم لو أردت
     } catch (err) {
       console.error("Error saving order:", err);
