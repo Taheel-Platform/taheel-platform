@@ -24,27 +24,26 @@ export default function ServiceSection({
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
   // جلب طلبات العميل من فايرستور
-  const [orders, setOrders] = useState([]);
   useEffect(() => {
-    async function fetchOrders() {
-      try {
-        const q = query(
-          collection(firestore, "serviceOrders"),
-          where("userId", "==", client.userId)
-        );
-        const snapshot = await getDocs(q);
-        setOrders(
-          snapshot.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id
-          }))
-        );
-      } catch (err) {
-        setOrders([]);
-      }
+  async function fetchOrders() {
+    setLoading(true);
+    try {
+      const db = getFirestore(app);
+      const q = query(collection(db, "requests"), where("userId", "==", clientId));
+      const snapshot = await getDocs(q);
+      setOrders(
+        snapshot.docs.map(doc => ({
+          ...doc.data(),
+          orderId: doc.id,
+        }))
+      );
+    } catch (error) {
+      setOrders([]);
     }
-    if (client?.userId) fetchOrders();
-  }, [client?.userId, onServicePaid]);
+    setLoading(false);
+  }
+  if (clientId) fetchOrders();
+}, [clientId]);
 
   return (
     <div className="space-y-8">
