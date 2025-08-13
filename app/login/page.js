@@ -33,7 +33,6 @@ const LANGUAGES = {
     wrongClient: "رقم العميل غير صحيح أو لا يوجد حساب بهذا الرقم.",
     emailVerify: "يجب تفعيل بريدك الإلكتروني أولاً. تحقق من بريدك واضغط على رابط التفعيل.",
     notFound: "لم يتم العثور على بيانات المستخدم!",
-    phoneVerify: "يجب تفعيل رقم الجوال أولاً.",
     wrongLogin: "بيانات الدخول غير صحيحة أو هناك مشكلة في الاتصال!",
     verified: "✔ تم التحقق",
     recaptcha: "Google reCAPTCHA",
@@ -59,7 +58,6 @@ const LANGUAGES = {
     wrongClient: "Client number is incorrect or does not exist.",
     emailVerify: "Please verify your email address first.",
     notFound: "User data not found!",
-    phoneVerify: "You must verify your phone number first.",
     wrongLogin: "Incorrect login credentials or connection problem!",
     verified: "✔ Verified",
     recaptcha: "Google reCAPTCHA",
@@ -214,7 +212,7 @@ function LoginPageInner() {
       const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
       const user = userCredential.user;
 
-      // التحقق من التفعيل
+      // التحقق من تفعيل البريد فقط
       if (!user.emailVerified) {
         setLoading(false);
         setErrorMsg(t.emailVerify);
@@ -231,11 +229,9 @@ function LoginPageInner() {
         return;
       }
       const data = docSnap.data();
-      if (data.phoneVerified === false) {
-        setLoading(false);
-        setErrorMsg(t.phoneVerify);
-        return;
-      }
+
+      // لا يوجد تحقق على phoneVerified نهائياً
+
       const role = data.role || data.type || "client";
       window.localStorage.setItem("userId", user.uid);
       window.localStorage.setItem("userName", data.name || "موظف");
