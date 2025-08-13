@@ -13,6 +13,8 @@ import ServiceUploadModal from "./ServiceUploadModal";
 import ServicePayModal from "./ServicePayModal";
 import { translateText } from "@/lib/translateText";
 import { createPortal } from "react-dom";
+import { firestore } from "@/lib/firebase.client";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 
 function generateOrderNumber() {
   const part1 = Math.floor(1000 + Math.random() * 9000);
@@ -125,10 +127,35 @@ export default function ServiceProfileCard({
     setIsPaid(false);
   }, [serviceId, userId]);
 
-  // أضف هنا دالة handlePaid
+  // دالة حفظ الطلب باسم العميل في فايرستور
+  async function saveServiceOrder() {
+    try {
+      const orderData = {
+        userId,
+        serviceId,
+        serviceName: name,
+        quantity,
+        paperCount,
+        uploadedDocs,
+        total: totalServicePrice,
+        coins,
+        createdAt: Timestamp.now(),
+        clientEmail: userEmail,
+        lang,
+      };
+      await addDoc(collection(firestore, "serviceOrders"), orderData);
+      // يمكنك هنا إضافة إشعار أو تحديث واجهة المستخدم لو أردت
+    } catch (err) {
+      console.error("Error saving order:", err);
+      // يمكنك هنا إضافة إشعار الخطأ أو أي معالجة إضافية
+    }
+  }
+
   function handlePaid() {
     setIsPaid(true);
+    saveServiceOrder();
     if (typeof onPaid === "function") onPaid();
+    setShowPayModal(false); // يغلق مدوال الدفع بعد الدفع
   }
 
   function handleAllDocsUploaded() {
