@@ -170,7 +170,7 @@ export default function RegisterPage() {
           role: "client",
           accountType: form.accountType?.toLowerCase(),
           type: form.accountType?.toLowerCase(),
-          emailVerified: false, // true لو بتفعل بالـ OTP على السيرفر
+          emailVerified: false, 
           phoneVerified: false,
           createdAt: new Date().toISOString(),
         },
@@ -178,7 +178,7 @@ export default function RegisterPage() {
       );
 
       setRegSuccess(true);
-      setTimeout(() => router.push(`/verify-email?lang=${lang}`), 1000);
+      router.replace(`/profile?lang=${lang}`);
 
     } catch (err) {
       const m = (code => {
