@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/firebase.admin";
 
-// نفس دالة التوليد التي تستخدمها في الفرونت (يفضل نقلها لمكان مشترك)
+// دالة توليد رقم العميل حسب نوع الحساب ومعرف فريد (docId)
 function generateCustomerId(accountType, docId) {
   let prefix = "";
   let startArr = [];
@@ -28,35 +28,43 @@ function generateCustomerId(accountType, docId) {
 
 export async function POST(req) {
   try {
+    // استقبال نوع الحساب من الفرونت
     const { accountType } = await req.json();
+
+    // تحقق من صحة نوع الحساب
     if (!accountType || typeof accountType !== "string") {
       return NextResponse.json({ error: "Bad request" }, { status: 400 });
     }
 
-    // حاول توليد رقم عميل غير مستخدم
+    // محاولة توليد رقم عميل فريد
     let customerId;
-    let attempts = 0;
     let exists = true;
+    let attempts = 0;
 
     while (attempts < 5 && exists) {
       attempts++;
-      customerId = generateCustomerId(accountType, Date.now().toString() + Math.floor(Math.random() * 10000));
-      // تحقق من وجوده في customerIds collection
+
+      // استخدم تاريخ الآن ورقم عشوائي للحصول على docId فريد
+      const docId = Date.now().toString() + Math.floor(Math.random() * 10000);
+      customerId = generateCustomerId(accountType, docId);
+
+      // تحقق من عدم وجود الرقم بالفعل في مجموعة customerIds
       const docRef = adminFirestore.collection("customerIds").doc(customerId);
       const docSnap = await docRef.get();
       exists = docSnap.exists;
     }
+
+    // لو لم نستطع توليد رقم فريد بعد عدة محاولات
     if (exists) {
-      // لم يتم توليد رقم فريد بعد عدة محاولات
       return NextResponse.json({ error: "Could not reserve unique customerId" }, { status: 409 });
     }
 
-    // احجز الرقم الآن (اكتب doc فارغ بالرقم)
+    // حجز الرقم بإنشاء مستند جديد في customerIds
     await adminFirestore.collection("customerIds").doc(customerId).set({
       reservedAt: Date.now()
     });
 
-    // أرجع الرقم للفرونت
+    // إرجاع الرقم للفرونت
     return NextResponse.json({ customerId });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
