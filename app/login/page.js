@@ -4,7 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaLock, FaUser, FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from "firebase/auth";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
@@ -119,7 +124,7 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه حسب الدور
+  // تسجيل الدخول والتوجيه حسب الدور، منطقي موحد عبر Firebase Auth فقط
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -133,8 +138,6 @@ function LoginPageInner() {
       try {
         await new Promise((resolve) => window.grecaptcha.ready(resolve));
         recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "login" });
-        
-
         if (!recaptchaToken) {
           setLoading(false);
           setRecaptchaOk(false);
@@ -164,79 +167,62 @@ function LoginPageInner() {
     }
     setRecaptchaOk(true);
 
-    // ----------- منطق دخول العميل فقط ----------
+    // تعيين الـ persistence حسب "تذكرني"
     try {
-      const enteredLoginId = loginId.trim();
-      const enteredPassword = password.trim();
-
-      let clientQuery;
-      if (!isEmail(enteredLoginId)) {
-        clientQuery = query(
-          collection(firestore, "users"),
-          where("customerId", "==", enteredLoginId),
-          where("password", "==", enteredPassword),
-          where("role", "==", "client")
-        );
-      } else {
-        clientQuery = query(
-          collection(firestore, "users"),
-          where("email", "==", enteredLoginId.toLowerCase()),
-          where("password", "==", enteredPassword),
-          where("role", "==", "client")
-        );
-      }
-
-      const clientSnap = await getDocs(clientQuery);
-
-      if (!clientSnap.empty) {
-        const userDoc = clientSnap.docs[0];
-        const data = userDoc.data();
-        const userId = userDoc.id;
-
-        window.localStorage.setItem(
-          "userName",
-          data.fullName ||
-          `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim() ||
-          data.nameEn ||
-          "عميل"
-        );
-        window.localStorage.setItem("userId", userId);
-
-        router.replace(`/dashboard/client/profile?userId=${userId}`);
-        setLoading(false);
-        return;
-      }
-    } catch (e) {
-      // يمكنك تسجيل الخطأ هنا أثناء التطوير
-      // console.error(e);
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    } catch (err) {
+      setLoading(false);
+      setErrorMsg("خطأ في تعيين حالة الجلسة");
+      return;
     }
 
-    // ----------- باقي الأدوار (مدير، موظف، ...) ----------
-    try {
-      const enteredLoginId = loginId.trim();
-      const enteredPassword = password.trim();
-
-      let emailToUse = enteredLoginId;
-      if (!isEmail(enteredLoginId)) {
-        // بحث عن العميل أو الموظف بالرقم في Firestore
-        const q = query(collection(firestore, "users"), where("customerId", "==", enteredLoginId));
+    // تحديد الإيميل الذي سيتم استخدامه
+    let emailToUse = loginId.trim();
+    if (!isEmail(emailToUse)) {
+      // البحث عن الإيميل المطابق للرقم في Firestore (customerId فريد وعليه Index)
+      try {
+        const q = query(
+          collection(firestore, "users"),
+          where("customerId", "==", emailToUse)
+        );
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-          emailToUse = querySnapshot.docs[0].data().email;
+          // تطبيع الإيميل قبل الاستخدام
+          emailToUse = (querySnapshot.docs[0].data().email || "").trim().toLowerCase();
+          if (!emailToUse) {
+            setLoading(false);
+            setErrorMsg(t.wrongClient);
+            return;
+          }
         } else {
           setLoading(false);
           setErrorMsg(t.wrongClient);
           return;
         }
+      } catch (err) {
+        setLoading(false);
+        setErrorMsg(t.wrongClient);
+        return;
       }
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, enteredPassword);
+    } else {
+      // تطبيع الإيميل المدخل مباشرة
+      emailToUse = emailToUse.toLowerCase().trim();
+    }
+
+    // الدخول عبر Firebase Auth فقط
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
       const user = userCredential.user;
+
+      // التحقق من التفعيل
       if (!user.emailVerified) {
         setLoading(false);
         setErrorMsg(t.emailVerify);
         setUnverifiedUser(user);
         return;
       }
+
+      // جلب بيانات المستخدم من Firestore
       const docRef = doc(firestore, "users", user.uid);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
@@ -251,7 +237,6 @@ function LoginPageInner() {
         return;
       }
       const role = data.role || data.type || "client";
-
       window.localStorage.setItem("userId", user.uid);
       window.localStorage.setItem("userName", data.name || "موظف");
 

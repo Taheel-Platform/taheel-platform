@@ -4,19 +4,23 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import {
+  setDoc,
+  doc as firestoreDoc
+} from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification
+} from "firebase/auth";
+import { firestore as db, auth } from "@/lib/firebase.client";
 
-// Firebase imports
-import { setDoc, doc as firestoreDoc } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
-
-// استدعاء الكومبوننتات المقسمة
 import ClientTypeStep from "@/components/register/ClientTypeStep";
 import PersonalInfoStep from "@/components/register/PersonalInfoStep";
 import AddressStep from "@/components/register/AddressStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
 import ContactStep from "@/components/register/ContactStep";
 
-// دالة توليد رقم العميل
+// دالة توليد رقم العميل (يفضل يكون نداء API محمية للسيرفر)
 function generateCustomerId(accountType, docId) {
   let prefix = "";
   let startArr = [];
@@ -41,7 +45,6 @@ function generateCustomerId(accountType, docId) {
   return `${prefix}-${first3}-${last4}`;
 }
 
-// اللغات
 const LANGUAGES = {
   ar: {
     accountType: "نوع الحساب",
@@ -81,17 +84,14 @@ export default function RegisterPage() {
   const router = useRouter();
   const { executeRecaptcha } = useGoogleReCaptcha();
 
-  // أنواع العميل
   const ACCOUNT_TYPES = [
     { value: "resident", label: t.resident },
     { value: "nonresident", label: t.nonresident },
     { value: "company", label: t.company },
   ];
 
-  // بيانات العميل (كل الحقول المطلوبة لكل الخطوات في وثيقة واحدة لكل مستخدم)
   const [form, setForm] = useState({
     accountType: "",
-    // Personal Info
     firstName: "",
     middleName: "",
     lastName: "",
@@ -100,7 +100,6 @@ export default function RegisterPage() {
     gender: "",
     nationality: "",
     eidNumber: "",
-    // Company Info
     companyNameAr: "",
     companyNameEn: "",
     companyLicenseNumber: "",
@@ -111,7 +110,6 @@ export default function RegisterPage() {
     ownerBirthDate: "",
     ownerGender: "",
     ownerNationality: "",
-    // Address Info
     emirate: "",
     district: "",
     street: "",
@@ -121,9 +119,7 @@ export default function RegisterPage() {
     country: "",
     city: "",
     state: "",
-    // Documents
-    documents: {}, // كل المستندات هنا
-    // Contact/Security Info
+    documents: {},
     email: "",
     emailConfirm: "",
     password: "",
@@ -136,18 +132,15 @@ export default function RegisterPage() {
     createdAt: "",
   });
 
-  // متغيرات التحكم
   const [step, setStep] = useState(0);
   const [regError, setRegError] = useState("");
   const [regLoading, setRegLoading] = useState(false);
   const [regSuccess, setRegSuccess] = useState(false);
 
-  // دالة تحديث البيانات من كل كومبوننت
   const handleChange = useCallback((data) => {
     setForm(prev => ({ ...prev, ...data }));
   }, []);
 
-  // دالة تغيير اللغة
   function handleLang(lng) {
     setLang(lng);
     const params = new URLSearchParams();
@@ -155,42 +148,78 @@ export default function RegisterPage() {
     router.replace(`?${params.toString()}`);
   }
 
-  // دالة التسجيل النهائية: تحفظ كل بيانات العميل في وثيقة واحدة وتحول على صفحة البروفايل مع توليد رقم العميل
-const handleRegister = async () => {
-  setRegError("");
-  setRegLoading(true);
+  // التسجيل الآمن والمتكامل مع كل التصحيحات
+  const handleRegister = async () => {
+    setRegError(""); setRegLoading(true);
 
-  try {
-    // 1. توليد رقم العميل (userId)
-    const userId = generateCustomerId(form.accountType, Date.now().toString());
+    try {
+      const email = form.email.trim().toLowerCase();
 
-    // 2. إعداد البيانات
-    const dataToSave = {
-  ...form,
-  userId,
-  accountType: form.accountType?.toLowerCase(),
-  type: form.accountType?.toLowerCase(),    // أضف هذا السطر لحفظ النوع في الحقلين
-  createdAt: new Date().toISOString(),
-  role: "client",
-};
+      // حجز customerId من السيرفر
+      const reserveRes = await fetch("/api/reserve-customer-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountType: form.accountType })
+      });
+      if (!reserveRes.ok) throw new Error("customerId_failed");
+      const { customerId } = await reserveRes.json();
 
-    // 3. احفظ البيانات في users ويكون document ID هو userId
-    await setDoc(firestoreDoc(db, "users", userId), dataToSave);
+      // تحقق reCAPTCHA سيرفر سايد
+      const recaptchaToken = await executeRecaptcha?.("register");
+      const recaptchaRes = await fetch("/api/recaptcha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: recaptchaToken })
+      });
+      if (!recaptchaRes.ok) throw new Error("recaptcha_failed");
 
-    setRegSuccess(true);
+      // أنشئ المستخدم في Firebase Auth
+      const cred = await createUserWithEmailAndPassword(auth, email, form.password);
+      const user = cred.user;
 
-    // 4. التحويل لصفحة البروفايل مع userId
-    setTimeout(() => {
-      router.push(`/dashboard/client/profile?userId=${userId}`);
-    }, 1000);
-  } catch (err) {
-    setRegError("حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.");
-  }
+      // لو تستخدم تفعيل Auth فقط (لا تفعيل سيرفر):
+      await sendEmailVerification(user);
 
-  setRegLoading(false);
-};
+      // حذف الحقول المؤقتة قبل الحفظ
+      const { password, passwordConfirm, emailConfirm, ...safeForm } = form;
+      await setDoc(
+        firestoreDoc(db, "users", user.uid),
+        {
+          ...safeForm,
+          email,
+          customerId,
+          role: "client",
+          accountType: form.accountType?.toLowerCase(),
+          type: form.accountType?.toLowerCase(),
+          emailVerified: false, // true لو بتفعل بالـ OTP في السيرفر
+          phoneVerified: false,
+          createdAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
 
-  // خطوات التسجيل بدون خطوة الاتفاقية، كل خطوة تحدث بيانات form المركزي فقط
+      setRegSuccess(true);
+      // لو بتستخدم تفعيل Firebase فقط:
+      setTimeout(() => router.push(`/verify-email?lang=${lang}`), 1000);
+      // لو بتفعل بالـ OTP على السيرفر: استبدل بـ router.push(`/dashboard/client`)
+
+    } catch (err) {
+      const m = (code => {
+        switch (code) {
+          case "auth/email-already-in-use": return lang==="ar"?"هذا البريد مستخدم بالفعل.":"Email already in use.";
+          case "auth/weak-password": return lang==="ar"?"كلمة المرور ضعيفة.":"Weak password.";
+          case "auth/invalid-email": return lang==="ar"?"بريد غير صالح.":"Invalid email.";
+          case "recaptcha_failed": return lang==="ar"?"فشل التحقق من reCAPTCHA.":"reCAPTCHA failed.";
+          case "customerId_failed": return lang==="ar"?"خطأ في حجز رقم العميل، حاول مرة أخرى.":"Customer ID reservation failed.";
+          default: return lang==="ar"?"حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.":"An error occurred during registration.";
+        }
+      })(err?.code || err?.message);
+      setRegError(m);
+    }
+
+    setRegLoading(false);
+  };
+
   const steps = [
     <ClientTypeStep
       key="step-0"
@@ -242,7 +271,6 @@ const handleRegister = async () => {
     />
   ];
 
-  // واجهة الصفحة الرئيسية
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] font-sans relative overflow-x-hidden"
       dir={lang === "ar" ? "rtl" : "ltr"}
@@ -277,9 +305,7 @@ const handleRegister = async () => {
               {t.createAccount}
             </h2>
           </div>
-          {/* استدعاء الخطوة الحالية فقط */}
           {steps[step]}
-          {/* رسائل خطأ أو تحميل أو نجاح */}
           {regError && (
             <div className="text-red-600 font-bold text-center mt-2">{regError}</div>
           )}
