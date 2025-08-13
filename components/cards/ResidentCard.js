@@ -11,13 +11,11 @@ function getFullName(client, lang = "ar") {
   if (!client) return "";
   if (lang === "ar") {
     return [client.firstName, client.middleName, client.lastName]
-      .filter(Boolean)
-      .join(" ");
+      .filter(Boolean).join(" ");
   }
   if (client.nameEn) return client.nameEn;
   return [client.firstName, client.middleName, client.lastName]
-    .filter(Boolean)
-    .join(" ");
+    .filter(Boolean).join(" ");
 }
 
 function ResidentCard({
@@ -41,14 +39,15 @@ function ResidentCard({
     customerId,
   } = client;
 
+  // حالة الصورة المحلية
   const [showModal, setShowModal] = useState(false);
   const [loadingPic, setLoadingPic] = useState(false);
   const [localProfilePic, setLocalProfilePic] = useState(profilePic);
 
-  // مراقبة بيانات العميل عند التغيير
+  // مراقبة وصول بيانات العميل وحقل الصورة
   useEffect(() => {
     console.log("Client data updated:", client);
-    // تحدث localProfilePic لو العميل تغير والصورة ليست نفس الصورة المحلية
+    console.log("client.profilePic:", profilePic);
     if (profilePic && profilePic !== localProfilePic) {
       setLocalProfilePic(profilePic);
       console.log("ProfilePic state updated from client:", profilePic);
@@ -94,6 +93,7 @@ function ResidentCard({
     },
   }[lang === "en" ? "en" : "ar"];
 
+  // منطق انتهاء الإقامة
   let diffDays = null, daysSinceExpiry = null, expiring = false, expired = false, frozen = false;
   if (eidExpiry) {
     const expire = new Date(eidExpiry);
@@ -128,7 +128,7 @@ function ResidentCard({
 
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
-        setLocalProfilePic(data.url);
+        setLocalProfilePic(data.url); // تعيين الصورة الجديدة فوراً
 
         console.log("Set localProfilePic to:", data.url);
 
@@ -146,6 +146,7 @@ function ResidentCard({
     }
   };
 
+  // عند تحديث المستندات
   const handleAttachmentSave = (data) => {
     setShowModal(false);
   };
@@ -223,13 +224,13 @@ function ResidentCard({
             </div>
           )}
           <Image
-            src={localProfilePic || client.profilePic || "/default-avatar.png"}
+            src={localProfilePic || profilePic || "/default-avatar.png"}
             width={90}
             height={90}
             alt={name || "avatar"}
             className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover"
-            onLoad={() => console.log("Profile image loaded:", localProfilePic || client.profilePic)}
-            onError={() => console.log("Profile image failed to load:", localProfilePic || client.profilePic)}
+            onLoad={() => console.log("Profile image loaded:", localProfilePic || profilePic)}
+            onError={() => console.log("Profile image failed to load:", localProfilePic || profilePic)}
           />
           {/* زر الكاميرا لتغيير الصورة */}
           <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
