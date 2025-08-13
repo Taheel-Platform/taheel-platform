@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
 import { FaBell, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
 import Image from "next/image";
@@ -44,6 +44,16 @@ function ResidentCard({
   const [showModal, setShowModal] = useState(false);
   const [loadingPic, setLoadingPic] = useState(false);
   const [localProfilePic, setLocalProfilePic] = useState(profilePic);
+
+  // مراقبة بيانات العميل عند التغيير
+  useEffect(() => {
+    console.log("Client data updated:", client);
+    // تحدث localProfilePic لو العميل تغير والصورة ليست نفس الصورة المحلية
+    if (profilePic && profilePic !== localProfilePic) {
+      setLocalProfilePic(profilePic);
+      console.log("ProfilePic state updated from client:", profilePic);
+    }
+  }, [profilePic, client]);
 
   const APP_LOGO = "/logo-transparent-large.png";
 
@@ -95,6 +105,7 @@ function ResidentCard({
     frozen = daysSinceExpiry > 30;
   }
 
+  // رفع صورة البروفايل
   const handleAvatarChange = async (e) => {
     if (e.target.files && e.target.files[0] && userId) {
       try {
@@ -104,22 +115,33 @@ function ResidentCard({
         formData.append('file', file);
         formData.append('sessionId', userId);
 
+        console.log("Uploading file:", file);
+
         const res = await fetch('/api/upload-to-gcs', {
           method: 'POST',
           body: formData,
         });
         const data = await res.json();
+
+        console.log("API response status:", res.status);
+        console.log("API response data:", data);
+
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
         setLocalProfilePic(data.url);
 
+        console.log("Set localProfilePic to:", data.url);
+
         await updateDoc(doc(firestore, "users", userId), { profilePic: data.url });
+
+        console.log("Updated firestore profilePic for userId:", userId);
 
         setLoadingPic(false);
         alert(t.uploadProfileDone);
       } catch (err) {
         setLoadingPic(false);
         alert(t.uploadProfileError);
+        console.error("Error uploading avatar:", err);
       }
     }
   };
@@ -190,40 +212,51 @@ function ResidentCard({
       {/* صورة وQR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
         {/* الصورة */}
-<div className="relative group">
-  <Image
-    src={localProfilePic || client.profilePic || "/default-avatar.png"}
-    width={90}
-    height={90}
-    alt={name || "avatar"}
-    className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover"
-  />
-  {/* زر الكاميرا لتغيير الصورة */}
-  <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
-    <FaCamera className="text-emerald-700" size={18} />
-    <input
-      type="file"
-      accept="image/*"
-      style={{ display: "none" }}
-      onChange={handleAvatarChange}
-      disabled={loadingPic}
-    />
-  </label>
-</div>
+        <div className="relative group">
+          {/* علامة تحميل أثناء رفع الصورة */}
+          {loadingPic && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-xl z-20">
+              <svg className="animate-spin h-8 w-8 text-emerald-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+            </div>
+          )}
+          <Image
+            src={localProfilePic || client.profilePic || "/default-avatar.png"}
+            width={90}
+            height={90}
+            alt={name || "avatar"}
+            className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover"
+            onLoad={() => console.log("Profile image loaded:", localProfilePic || client.profilePic)}
+            onError={() => console.log("Profile image failed to load:", localProfilePic || client.profilePic)}
+          />
+          {/* زر الكاميرا لتغيير الصورة */}
+          <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
+            <FaCamera className="text-emerald-700" size={18} />
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleAvatarChange}
+              disabled={loadingPic}
+            />
+          </label>
+        </div>
         <div className="flex flex-col items-center flex-1 px-2" />
         {/* QR */}
-<div className="flex flex-col items-center">
-  <div className="bg-white p-0 rounded-xl shadow border-2 border-emerald-100 w-[90px] h-[90px] flex items-center justify-center">
-    {client.customerId ? (
-      <StyledQRCode value={client.customerId} logo={APP_LOGO} size={82} />
-    ) : (
-      <div className="text-gray-300 text-6xl">-</div>
-    )}
-  </div>
-  <span className="mt-1 text-[11px] text-gray-500 font-mono font-bold tracking-widest">
-    {client.customerId || "-"}
-  </span>
-</div>
+        <div className="flex flex-col items-center">
+          <div className="bg-white p-0 rounded-xl shadow border-2 border-emerald-100 w-[90px] h-[90px] flex items-center justify-center">
+            {client.customerId ? (
+              <StyledQRCode value={client.customerId} logo={APP_LOGO} size={82} />
+            ) : (
+              <div className="text-gray-300 text-6xl">-</div>
+            )}
+          </div>
+          <span className="mt-1 text-[11px] text-gray-500 font-mono font-bold tracking-widest">
+            {client.customerId || "-"}
+          </span>
+        </div>
       </div>
 
       {/* بيانات العميل */}
