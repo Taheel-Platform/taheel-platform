@@ -16,18 +16,23 @@ export default async function handler(req, res) {
     res.status(405).json({ error: "Method Not Allowed" });
     return;
   }
+
   try {
+    // Parse form data
     const form = formidable({ maxFileSize: 5 * 1024 * 1024, multiples: false });
     const { fields, files } = await new Promise((resolve, reject) =>
-      form.parse(req, (err, fields, files) => err ? reject(err) : resolve({ fields, files }))
+      form.parse(req, (err, fields, files) =>
+        err ? reject(err) : resolve({ fields, files })
+      )
     );
 
+    // "file" must be the key in your FormData from frontend
     const fileArr = files.file;
     const file = Array.isArray(fileArr) ? fileArr[0] : fileArr;
 
     const sessionId = Array.isArray(fields.sessionId) ? fields.sessionId[0] : fields.sessionId;
     const docType = Array.isArray(fields.docType) ? fields.docType[0] : fields.docType;
-    const ext = file?.originalFilename?.split('.').pop() || "bin";
+    const ext = file?.originalFilename?.split(".").pop() || "bin";
     const uniqueName = `${sessionId || "no-session"}_${docType || "document"}_${Date.now()}.${ext}`;
 
     const bucket = storage.bucket(bucketName);
@@ -39,22 +44,34 @@ export default async function handler(req, res) {
       return;
     }
 
-await new Promise((resolve, reject) => {
-  const writeStream = blob.createWriteStream({ contentType: file.mimetype, resumable: false });
-  const readStream = fs.createReadStream(filePath);
-  readStream.on("error", reject);
-  writeStream.on("error", reject);
-  writeStream.on("finish", resolve);
-  readStream.pipe(writeStream);
-});
-await blob.makePublic(); // أضف هذا السطر لتكون الصورة متاحة للجميع
+    // Upload file to GCS
+    await new Promise((resolve, reject) => {
+      const writeStream = blob.createWriteStream({
+        contentType: file.mimetype,
+        resumable: false,
+      });
+      const readStream = fs.createReadStream(filePath);
+      readStream.on("error", reject);
+      writeStream.on("error", reject);
+      writeStream.on("finish", resolve);
+      readStream.pipe(writeStream);
+    });
 
-    // حذف الملف المؤقت بعد الرفع (اختياري)
+    // Make file public (optional, but needed for direct access)
+    try {
+      await blob.makePublic();
+    } catch (makePublicError) {
+      console.error("GCS makePublic error:", makePublicError);
+      // Continue even if makePublic fails
+    }
+
+    // Remove temp file
     fs.unlink(filePath, () => {});
 
     const publicUrl = `https://storage.googleapis.com/${bucketName}/${uniqueName}`;
     res.status(200).json({ success: true, url: publicUrl });
   } catch (error) {
+    console.error("Upload API error:", error);
     res.status(500).json({ error: "Failed to upload file", details: error.message });
   }
-} 
+}
