@@ -32,7 +32,6 @@ const hiddenSteps = {
 };
 
 function buildTimeline(statusHistory = []) {
-  // استبعد الحالات المخفية
   const filteredHistory = statusHistory.filter(
     h => h.status !== "pending_requirements" && h.status !== "rejected"
   );
@@ -55,17 +54,14 @@ function buildTimeline(statusHistory = []) {
 // الكارت الواحد
 function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, isArabic, orderId, orderName }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
-  // آخر حالة
   const lastStatusObj = statusHistory?.length ? statusHistory[statusHistory.length - 1] : { status: "submitted" };
   const lastStatus = lastStatusObj.status;
   const lastNote = lastStatusObj.note || "";
 
-  // هل آخر حالة مخفية؟
   const isPendingReq = lastStatus === "pending_requirements";
   const isRejected = lastStatus === "rejected";
   const hiddenStep = hiddenSteps[lastStatus];
 
-  // شريط التتبع (لا يشمل الحالات المخفية)
   const timeline = buildTimeline(statusHistory || []);
   const lastStep = timeline.find(s => s.active);
 
@@ -114,12 +110,10 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
           </span>
         </div>
 
-        {/* شريط التتبع الرأسي (يختفي لو آخر حالة مخفية) */}
+        {/* شريط التتبع الرأسي */}
         {!(isPendingReq || isRejected) && (
           <div className="relative flex flex-row w-full min-h-[140px] mb-2 z-10">
-            {/* الشريط */}
             <div className="relative flex flex-col items-center min-w-[40px] pt-2 pb-2">
-              {/* الخط الخلفي */}
               <div
                 className="absolute left-1/2 -translate-x-1/2"
                 style={{
@@ -131,7 +125,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                   borderRadius: 9,
                 }}
               />
-              {/* الخط المتحرك */}
               <motion.div
                 className="absolute left-1/2 -translate-x-1/2"
                 style={{
@@ -145,7 +138,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                 animate={{ height: (timeline.findIndex(s=>s.active) <= 0 ? 0 : (32 + 18) * timeline.findIndex(s=>s.active)) }}
                 transition={{ duration: 1, ease: "easeInOut" }}
               />
-              {/* الأيقونات */}
               {timeline.map((step, idx) => {
                 const Icon = step.icon;
                 return (
@@ -187,7 +179,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                 );
               })}
             </div>
-            {/* أسماء الحالات */}
             <div className="flex flex-col justify-between pl-4 py-2 w-full">
               {timeline.map((step, idx) => (
                 <div key={step.key} className="flex items-center min-h-[40px] mb-2">
@@ -216,7 +207,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
           </div>
         )}
 
-        {/* بيانات الطلب */}
         <div className="w-full flex flex-col gap-1 z-10">
           <span className="text-gray-700 text-xs font-semibold">
             {t("آخر حالة:","Status:")}
@@ -238,7 +228,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
           </span>
         </div>
 
-        {/* الحالات المخفية */}
         {(isPendingReq || isRejected) && (
           <div className="mt-2 flex flex-col gap-2 w-full">
             <div
@@ -271,7 +260,6 @@ function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, is
                   {t("رفع المستند المطلوب","Upload Required Document")}
                 </button>
               )}
-              {/* مودال رفع المستند */}
               {showUploadModal && (
                 <ClientOrdersTrackingModal
                   show={showUploadModal}
@@ -299,8 +287,8 @@ export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" })
       setLoading(true);
       try {
         const db = getFirestore(app);
-        // غير "requests" لو اسم المجموعة مختلف
-        const q = query(collection(db, "requests"), where("clientId", "==", clientId));
+        // جلب الطلبات من مجموعة serviceOrders باسم معرف العميل الصحيح
+        const q = query(collection(db, "serviceOrders"), where("userId", "==", clientId));
         const snapshot = await getDocs(q);
         setOrders(
           snapshot.docs.map(doc => ({
@@ -308,7 +296,7 @@ export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" })
             statusHistory: doc.data().statusHistory || [],
             lastUpdate: doc.data().lastUpdated || doc.data().createdAt,
             orderId: doc.id,
-            orderName: doc.data().orderName || doc.data().serviceType || "", // ضع هنا اسم الطلب حسب بياناتك
+            orderName: doc.data().serviceName || doc.data().orderName || doc.data().serviceType || "", // اسم الخدمة/الطلب
           }))
         );
       } catch (error) {
