@@ -230,17 +230,20 @@ function ResidentCard({
       </div>
 
       {/* بيانات العميل */}
-      <div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
-        <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={getFullName(client, lang)}>
-          {getFullName(client, lang) || "-"}
-        </span>
-        <span className="text-sm text-gray-500 mt-2 text-center w-full">
-          {t.nationality}: <span className="font-bold text-emerald-800">{nationality || "-"}</span>
-        </span>
-        <span className="text-sm text-gray-500 mt-2 text-center w-full">
-          {t.birthDate}: <span className="font-bold">{birthdate || "-"}</span>
-        </span>
-      </div>
+<div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
+  <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={getFullName(client, lang)}>
+    {getFullName(client, lang) || "-"}
+  </span>
+  <span className="text-sm text-gray-500 mt-2 text-center w-full">
+    رقم العميل: <span className="font-bold text-emerald-800">{client.customerId || "-"}</span>
+  </span>
+  <span className="text-sm text-gray-500 mt-2 text-center w-full">
+    {t.nationality}: <span className="font-bold text-emerald-800">{nationality || "-"}</span>
+  </span>
+  <span className="text-sm text-gray-500 mt-2 text-center w-full">
+    {t.birthDate}: <span className="font-bold">{birthdate || "-"}</span>
+  </span>
+</div>
 
       {/* تاريخ انتهاء الإقامة */}
       <div className="flex items-end justify-between px-4 pb-4 mt-2 relative z-10">
