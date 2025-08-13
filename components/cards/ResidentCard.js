@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import StyledQRCode from "@/components/StyledQRCode";
-import { FaBell, FaCamera, FaCloudUploadAlt } from "react-icons/fa";
+import { FaBell, FaCamera, FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
 import Image from "next/image";
 import EditModal from "./EditModal";
+// Firestore imports
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
@@ -40,17 +41,15 @@ function ResidentCard({
   } = client;
 
   // حالة الصورة المحلية
-  const [showModal, setShowModal] = useState(false);
+  const [localProfilePic, setLocalProfilePic] = useState(profilePic || "/default-avatar.png");
   const [loadingPic, setLoadingPic] = useState(false);
-  const [localProfilePic, setLocalProfilePic] = useState(profilePic);
+  const [showModal, setShowModal] = useState(false);
 
   // مراقبة وصول بيانات العميل وحقل الصورة
   useEffect(() => {
-    console.log("Client data updated:", client);
-    console.log("client.profilePic:", profilePic);
+    // لو تغيرت صورة العميل في الداتا الخارجية يتم تحديث الحالة المحلية
     if (profilePic && profilePic !== localProfilePic) {
       setLocalProfilePic(profilePic);
-      console.log("ProfilePic state updated from client:", profilePic);
     }
   }, [profilePic, client]);
 
@@ -108,33 +107,26 @@ function ResidentCard({
   // رفع صورة البروفايل
   const handleAvatarChange = async (e) => {
     if (e.target.files && e.target.files[0] && userId) {
+      setLoadingPic(true);
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', userId);
+
       try {
-        setLoadingPic(true);
-        const file = e.target.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('sessionId', userId);
-
-        console.log("Uploading file:", file);
-
         const res = await fetch('/api/upload-to-gcs', {
           method: 'POST',
           body: formData,
         });
         const data = await res.json();
 
-        console.log("API response status:", res.status);
-        console.log("API response data:", data);
-
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
-        setLocalProfilePic(data.url); // تعيين الصورة الجديدة فوراً
+        // تعيين الصورة الجديدة فوراً (الحالة المحلية فقط)
+        setLocalProfilePic(data.url);
 
-        console.log("Set localProfilePic to:", data.url);
-
+        // تحديث الرابط في فايربيز
         await updateDoc(doc(firestore, "users", userId), { profilePic: data.url });
-
-        console.log("Updated firestore profilePic for userId:", userId);
 
         setLoadingPic(false);
         alert(t.uploadProfileDone);
@@ -147,7 +139,7 @@ function ResidentCard({
   };
 
   // عند تحديث المستندات
-  const handleAttachmentSave = (data) => {
+  const handleAttachmentSave = () => {
     setShowModal(false);
   };
 
@@ -217,20 +209,17 @@ function ResidentCard({
           {/* علامة تحميل أثناء رفع الصورة */}
           {loadingPic && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-xl z-20">
-              <svg className="animate-spin h-8 w-8 text-emerald-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
+              <FaSpinner className="animate-spin h-8 w-8 text-emerald-700" />
             </div>
           )}
           <Image
-            src={localProfilePic || profilePic || "/default-avatar.png"}
+            src={localProfilePic || "/default-avatar.png"}
             width={90}
             height={90}
             alt={name || "avatar"}
             className="rounded-xl border-2 border-emerald-700 bg-gray-200 object-cover"
-            onLoad={() => console.log("Profile image loaded:", localProfilePic || profilePic)}
-            onError={() => console.log("Profile image failed to load:", localProfilePic || profilePic)}
+            onLoad={() => console.log("Profile image loaded:", localProfilePic)}
+            onError={() => console.log("Profile image failed to load:", localProfilePic)}
           />
           {/* زر الكاميرا لتغيير الصورة */}
           <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-emerald-300 cursor-pointer group-hover:opacity-100 transition z-10" title={t.uploadProfile}>
