@@ -23,27 +23,36 @@ export default function ServiceSection({
 }) {
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
-  // جلب طلبات العميل من فايرستور
+  // ✅ عرف الـ state
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // ✅ استخرج الـ clientId اللي Firestore مسميه userId في collection requests
+  // (حسب لقطة الشاشة قيمته رقم العميل COM-400-0106)
+  const clientId = client?.customerId || client?.userId || null;
+
   useEffect(() => {
-  async function fetchOrders() {
-    setLoading(true);
-    try {
-      const db = getFirestore(app);
-      const q = query(collection(db, "requests"), where("userId", "==", clientId));
-      const snapshot = await getDocs(q);
-      setOrders(
-        snapshot.docs.map(doc => ({
-          ...doc.data(),
-          orderId: doc.id,
-        }))
-      );
-    } catch (error) {
-      setOrders([]);
+    async function fetchOrders() {
+      setLoading(true);
+      try {
+        // ✅ استخدم الإنستانس الجاهز
+        const q = query(
+          collection(firestore, "requests"),
+          where("userId", "==", clientId) // في الدوك الحقل اسمه userId
+        );
+        const snapshot = await getDocs(q);
+        setOrders(
+          snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
+        );
+      } catch (error) {
+        console.error("fetchOrders error:", error);
+        setOrders([]);
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }
-  if (clientId) fetchOrders();
-}, [clientId]);
+    if (clientId) fetchOrders();
+    else setOrders([]);
+  }, [clientId]);
 
   return (
     <div className="space-y-8">
@@ -52,7 +61,7 @@ export default function ServiceSection({
         if (!arr.length) return null;
         return (
           <div key={group.title + idx}>
-            <SectionTitle icon={null} color={"emerald"}>
+            <SectionTitle icon={null} color="emerald">
               {group.title}
             </SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
@@ -71,9 +80,10 @@ export default function ServiceSection({
                   requireUpload={srv.requireUpload}
                   coins={srv.coins || 0}
                   lang={lang}
-                  userId={client.userId}
-                  userWallet={client.walletBalance || 0}
-                  userCoins={client.coins || 0}
+                  // ⚠️ هنا برضه ابعت رقم العميل لأن requests.userId هو رقم العميل
+                  userId={client?.customerId || client?.userId}
+                  userWallet={client?.walletBalance || 0}
+                  userCoins={client?.coins || 0}
                   onPaid={onServicePaid}
                   coinsPercent={0.1}
                   addNotification={addNotification}
@@ -81,47 +91,62 @@ export default function ServiceSection({
                   repeatable={srv.repeatable}
                   allowPaperCount={srv.allowPaperCount}
                   pricePerPage={srv.pricePerPage}
-                  userEmail={client.email}
+                  userEmail={client?.email}
                 />
               ))}
             </div>
           </div>
         );
       })}
-      {/* رسالة إذا لا توجد أي خدمات بعد الفلترة */}
+
       {groups.every(g => !objectToArray(g.services).filter(filterFn).length) && (
         <div className="text-center text-gray-400 py-8">
           لا توجد خدمات متاحة حاليا
         </div>
       )}
 
-      {/* عرض الطلبات الحالية للعميل في البروفايل */}
-      <SectionTitle icon={null} color={"emerald"}>
+      <SectionTitle icon={null} color="emerald">
         {lang === "ar" ? "عروضك الحالية / طلباتك المدفوعة" : "Your Current Offers / Paid Orders"}
       </SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-        {orders.length > 0 ? (
-          orders.map((order, idx) => (
-            <div key={order.id || idx} className="border rounded-lg p-4 bg-white shadow">
-              <div className="font-bold text-emerald-600 mb-2">
-                {order.serviceName}
-              </div>
-              <div className="text-gray-700 text-sm mb-1">
-                {lang === "ar" ? "إجمالي السعر: " : "Total Price: "} {order.total} {lang === "ar" ? "د.إ" : "AED"}
-              </div>
-              <div className="text-gray-500 text-xs mb-1">
-                {lang === "ar" ? "تاريخ الطلب: " : "Order Date: "}
-                {order.createdAt?.toDate ? order.createdAt.toDate().toLocaleString(lang === "ar" ? "ar-EG" : "en-US") : ""}
-              </div>
-              {/* يمكنك إضافة تفاصيل أخرى هنا حسب الحاجة */}
+
+      {loading ? (
+        <div className="text-center text-gray-400 py-4">
+          {lang === "ar" ? "جاري التحميل..." : "Loading..."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+          {orders.length > 0 ? (
+            orders.map((order, idx) => {
+              // ✅ createdAt قد يكون string أو Timestamp
+              const createdAt =
+                order.createdAt?.toDate
+                  ? order.createdAt.toDate()
+                  : order.createdAt
+                  ? new Date(order.createdAt)
+                  : null;
+
+              return (
+                <div key={order.orderId || idx} className="border rounded-lg p-4 bg-white shadow">
+                  <div className="font-bold text-emerald-600 mb-2">
+                    {order.serviceName}
+                  </div>
+                  <div className="text-gray-700 text-sm mb-1">
+                    {lang === "ar" ? "إجمالي السعر: " : "Total Price: "} {order.total ?? order.paidAmount ?? 0} {lang === "ar" ? "د.إ" : "AED"}
+                  </div>
+                  <div className="text-gray-500 text-xs mb-1">
+                    {lang === "ar" ? "تاريخ الطلب: " : "Order Date: "}
+                    {createdAt ? createdAt.toLocaleString(lang === "ar" ? "ar-EG" : "en-US") : "-"}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center text-gray-400 py-4">
+              {lang === "ar" ? "لا يوجد طلبات حتى الآن" : "No orders yet"}
             </div>
-          ))
-        ) : (
-          <div className="text-center text-gray-400 py-4">
-            {lang === "ar" ? "لا يوجد طلبات حتى الآن" : "No orders yet"}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
