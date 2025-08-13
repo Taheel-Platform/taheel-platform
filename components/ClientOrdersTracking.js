@@ -51,7 +51,6 @@ function buildTimeline(statusHistory = []) {
   });
 }
 
-// الكارت الواحد
 function ClientOrderTrackingCard({ trackingNumber, statusHistory, lastUpdate, isArabic, orderId, orderName }) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const lastStatusObj = statusHistory?.length ? statusHistory[statusHistory.length - 1] : { status: "submitted" };
@@ -287,24 +286,40 @@ export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" })
       setLoading(true);
       try {
         const db = getFirestore(app);
-        // جلب الطلبات من مجموعة serviceOrders باسم معرف العميل الصحيح
-        const q = query(collection(db, "serviceOrders"), where("userId", "==", clientId));
+        console.log("Firebase DB instance:", db);
+        console.log("clientId used for query:", clientId);
+
+        // جلب الطلبات من مجموعة requests باسم معرف العميل الصحيح
+        const q = query(collection(db, "requests"), where("userId", "==", clientId));
+        console.log("Firestore query:", q);
+
         const snapshot = await getDocs(q);
+        console.log("Snapshot size (orders found):", snapshot.size);
+
         setOrders(
-          snapshot.docs.map(doc => ({
-            trackingNumber: doc.data().trackingNumber || doc.id,
-            statusHistory: doc.data().statusHistory || [],
-            lastUpdate: doc.data().lastUpdated || doc.data().createdAt,
-            orderId: doc.id,
-            orderName: doc.data().serviceName || doc.data().orderName || doc.data().serviceType || "", // اسم الخدمة/الطلب
-          }))
+          snapshot.docs.map(doc => {
+            const data = doc.data();
+            console.log("Order doc data:", data);
+            return {
+              trackingNumber: data.trackingNumber || doc.id,
+              statusHistory: data.statusHistory || [],
+              lastUpdate: data.lastUpdated || data.createdAt,
+              orderId: doc.id,
+              orderName: data.serviceName || data.orderName || data.serviceType || "",
+            };
+          })
         );
       } catch (error) {
+        console.error("Error fetching orders:", error);
         setOrders([]);
       }
       setLoading(false);
     }
     if (clientId) fetchOrders();
+    else {
+      console.warn("No clientId provided to ClientOrdersTrackingFirestore!");
+      setLoading(false);
+    }
   }, [clientId]);
 
   if (loading) {
