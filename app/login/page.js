@@ -223,6 +223,7 @@ function LoginPageInner() {
       // جلب بيانات المستخدم من Firestore
       const docRef = doc(firestore, "users", user.uid);
       const docSnap = await getDoc(docRef);
+
       if (!docSnap.exists()) {
         setLoading(false);
         setErrorMsg(t.notFound);
@@ -230,35 +231,18 @@ function LoginPageInner() {
       }
       const data = docSnap.data();
 
-      // لا يوجد تحقق على phoneVerified نهائياً
-
-      const role = data.role || data.type || "client";
+      // حفظ بيانات المستخدم في localStorage (اختياري)
       window.localStorage.setItem("userId", user.uid);
       window.localStorage.setItem("userName", data.name || "موظف");
 
-      // التوجيه حسب الدور
-      let dashboardPath = "/dashboard/client";
-      if (role === "admin" || role === "superadmin") dashboardPath = "/dashboard/admin";
-      else if (role === "employee") dashboardPath = "/dashboard/employee";
-      else if (role === "manager") dashboardPath = "/dashboard/manager";
-
-      if (
-        prev &&
-        prev !== "/login" &&
-        prev !== "/" &&
-        prev !== window.location.pathname
-      ) {
-        router.replace(prev);
-      } else {
-        router.replace(dashboardPath);
-      }
+      // التوجيه بعد التأكد من كل شيء
+      router.replace(`/dashboard/client?userId=${user.uid}&lang=${lang}`);
       setLoading(false);
       return;
     } catch (e) {
       setErrorMsg(t.wrongLogin);
+      setLoading(false);
     }
-    setLoading(false);
-    setErrorMsg(t.wrongLogin);
   };
 
   const handleLang = (lng) => {
