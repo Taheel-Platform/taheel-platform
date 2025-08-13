@@ -178,7 +178,7 @@ export default function RegisterPage() {
       );
 
       setRegSuccess(true);
-      router.replace(`/profile?lang=${lang}`);
+      router.replace(`/dashboard/client/profile?lang=${lang}`);
 
     } catch (err) {
       const m = (code => {
