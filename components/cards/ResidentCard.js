@@ -5,7 +5,7 @@ import { FaBell, FaCamera, FaCloudUploadAlt, FaSpinner } from "react-icons/fa";
 import Image from "next/image";
 import EditModal from "./EditModal";
 // Firestore imports
-import { firestore } from "@/lib/firebase.client";
+import { firestore, auth } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
 function getFullName(client, lang = "ar") {
@@ -25,6 +25,7 @@ function ResidentCard({
 }) {
   const {
     userId,
+    uid, // أضف الـ UID لو متاح في بيانات العميل
     name,
     nationality,
     eidExpiry,
@@ -47,7 +48,6 @@ function ResidentCard({
 
   // مراقبة وصول بيانات العميل وحقل الصورة
   useEffect(() => {
-    // لو تغيرت صورة العميل في الداتا الخارجية يتم تحديث الحالة المحلية
     if (profilePic && profilePic !== localProfilePic) {
       setLocalProfilePic(profilePic);
     }
@@ -106,12 +106,14 @@ function ResidentCard({
 
   // رفع صورة البروفايل
   const handleAvatarChange = async (e) => {
-    if (e.target.files && e.target.files[0] && userId) {
+    // استخدم الـ UID الحقيقي وليس userId أو رقم العميل
+    const docId = uid || (auth.currentUser && auth.currentUser.uid) || userId;
+    if (e.target.files && e.target.files[0] && docId) {
       setLoadingPic(true);
       const file = e.target.files[0];
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('sessionId', userId);
+      formData.append('sessionId', docId);
 
       try {
         const res = await fetch('/api/upload-to-gcs', {
@@ -122,11 +124,9 @@ function ResidentCard({
 
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
-        // تعيين الصورة الجديدة فوراً (الحالة المحلية فقط)
         setLocalProfilePic(data.url);
-
-        // تحديث الرابط في فايربيز
-        await updateDoc(doc(firestore, "users", userId), { profilePic: data.url });
+        // حفظ الرابط في فايرستور على users/{uid}
+        await updateDoc(doc(firestore, "users", docId), { profilePic: data.url });
 
         setLoadingPic(false);
         alert(t.uploadProfileDone);
@@ -138,7 +138,6 @@ function ResidentCard({
     }
   };
 
-  // عند تحديث المستندات
   const handleAttachmentSave = () => {
     setShowModal(false);
   };
