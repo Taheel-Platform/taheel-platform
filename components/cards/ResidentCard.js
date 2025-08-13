@@ -7,7 +7,6 @@ import EditModal from "./EditModal";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc } from "firebase/firestore";
 
-// دالة لجمع اسم العميل من firstName, middleName, lastName
 function getFullName(client, lang = "ar") {
   if (!client) return "";
   if (lang === "ar") {
@@ -29,7 +28,6 @@ function ResidentCard({
     userId,
     name,
     nationality,
-    birthdate,
     eidExpiry,
     profilePic,
     qrClientCardUrl,
@@ -40,6 +38,7 @@ function ResidentCard({
     middleName,
     lastName,
     nameEn,
+    customerId,
   } = client;
 
   const [showModal, setShowModal] = useState(false);
@@ -48,7 +47,6 @@ function ResidentCard({
 
   const APP_LOGO = "/logo-transparent-large.png";
 
-  // ==== نصوص ثنائية اللغة ====
   const t = {
     ar: {
       cardTitle: "بطاقة تأهيل",
@@ -65,6 +63,7 @@ function ResidentCard({
       uploadProfileDone: "تم رفع الصورة بنجاح",
       uploadProfileError: "حدث خطأ أثناء رفع الصورة",
       uploadDoc: "رفع/فحص مستند",
+      customerId: "رقم العميل",
     },
     en: {
       cardTitle: "Taheel Card",
@@ -81,11 +80,10 @@ function ResidentCard({
       uploadProfileDone: "Photo uploaded successfully",
       uploadProfileError: "Error uploading photo",
       uploadDoc: "Upload/Scan Document",
+      customerId: "Customer ID",
     },
   }[lang === "en" ? "en" : "ar"];
-  // ===========================
 
-  // حساب الفروقات الزمنية (لو eidExpiry موجود)
   let diffDays = null, daysSinceExpiry = null, expiring = false, expired = false, frozen = false;
   if (eidExpiry) {
     const expire = new Date(eidExpiry);
@@ -97,7 +95,6 @@ function ResidentCard({
     frozen = daysSinceExpiry > 30;
   }
 
-  // رفع صورة البروفايل عبر API خارجي (Google Cloud Storage)
   const handleAvatarChange = async (e) => {
     if (e.target.files && e.target.files[0] && userId) {
       try {
@@ -107,7 +104,6 @@ function ResidentCard({
         formData.append('file', file);
         formData.append('sessionId', userId);
 
-        // إرسال الملف إلى API الرفع الخاص بك
         const res = await fetch('/api/upload-to-gcs', {
           method: 'POST',
           body: formData,
@@ -115,10 +111,8 @@ function ResidentCard({
         const data = await res.json();
         if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
-        // تحديث صورة البروفايل في الواجهة وقاعدة البيانات
         setLocalProfilePic(data.url);
 
-        // Firestore فقط (تحديث صورة المستخدم)
         await updateDoc(doc(firestore, "users", userId), { profilePic: data.url });
 
         setLoadingPic(false);
@@ -130,7 +124,6 @@ function ResidentCard({
     }
   };
 
-  // بعد حفظ مستند من المودال
   const handleAttachmentSave = (data) => {
     setShowModal(false);
   };
@@ -230,27 +223,27 @@ function ResidentCard({
       </div>
 
       {/* بيانات العميل */}
-<div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
-  <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={getFullName(client, lang)}>
-    {getFullName(client, lang) || "-"}
-  </span>
-  <span className="text-sm text-gray-500 mt-2 text-center w-full">
-    رقم العميل: <span className="font-bold text-emerald-800">{client.customerId || "-"}</span>
-  </span>
-  <span className="text-sm text-gray-500 mt-2 text-center w-full">
-    {t.nationality}: <span className="font-bold text-emerald-800">{nationality || "-"}</span>
-  </span>
-  <span className="text-sm text-gray-500 mt-2 text-center w-full">
-    {t.birthDate}: <span className="font-bold">{birthDate || "-"}</span>
-  </span>
-</div>
+      <div className="flex flex-col items-center justify-center mt-6 mb-2 px-4 relative z-10">
+        <span className="font-bold text-lg text-gray-800 text-center w-full truncate" title={getFullName(client, lang)}>
+          {getFullName(client, lang) || "-"}
+        </span>
+        <span className="text-sm text-gray-500 mt-2 text-center w-full">
+          {t.customerId}: <span className="font-bold text-emerald-800">{customerId || client.customerId || "-"}</span>
+        </span>
+        <span className="text-sm text-gray-500 mt-2 text-center w-full">
+          {t.nationality}: <span className="font-bold text-emerald-800">{nationality || client.nationality || "-"}</span>
+        </span>
+        <span className="text-sm text-gray-500 mt-2 text-center w-full">
+          {t.birthDate}: <span className="font-bold">{client.birthDate || client.birthdate || "-"}</span>
+        </span>
+      </div>
 
       {/* تاريخ انتهاء الإقامة */}
       <div className="flex items-end justify-between px-4 pb-4 mt-2 relative z-10">
         <div className="flex flex-col items-end ml-2">
           <span className="text-[13px] font-bold text-gray-700">{t.expiryDate}</span>
           <span className={`text-[15px] font-extrabold ${expiring ? "text-orange-600" : "text-emerald-700"}`}>
-            {eidExpiry || "-"}
+            {eidExpiry || client.eidExpiry || "-"}
           </span>
         </div>
       </div>
