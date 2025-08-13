@@ -20,31 +20,7 @@ import AddressStep from "@/components/register/AddressStep";
 import DocumentsStep from "@/components/register/DocumentsStep";
 import ContactStep from "@/components/register/ContactStep";
 
-// دالة توليد رقم العميل (يفضل يكون نداء API محمية للسيرفر)
-function generateCustomerId(accountType, docId) {
-  let prefix = "";
-  let startArr = [];
-  if (accountType === "resident") {
-    prefix = "RES";
-    startArr = ["100", "200", "300"];
-  } else if (accountType === "company") {
-    prefix = "COM";
-    startArr = ["400", "500", "600"];
-  } else if (accountType === "nonresident") {
-    prefix = "NON";
-    startArr = ["700", "800", "900"];
-  } else {
-    prefix = "RES";
-    startArr = ["100"];
-  }
-  const first3 = startArr[Math.floor(Math.random() * startArr.length)];
-  let last4 = docId.replace(/\D/g, '').slice(-4);
-  if (last4.length < 4) {
-    last4 = (last4 + Date.now().toString().slice(-4)).slice(0, 4);
-  }
-  return `${prefix}-${first3}-${last4}`;
-}
-
+// اللغات
 const LANGUAGES = {
   ar: {
     accountType: "نوع الحساب",
@@ -148,23 +124,26 @@ export default function RegisterPage() {
     router.replace(`?${params.toString()}`);
   }
 
-  // التسجيل الآمن والمتكامل مع كل التصحيحات
+  // التسجيل الآمن والمتكامل
   const handleRegister = async () => {
     setRegError(""); setRegLoading(true);
 
     try {
       const email = form.email.trim().toLowerCase();
 
-      // حجز customerId من السيرفر
+      // 1. حجز رقم العميل من السيرفر
       const reserveRes = await fetch("/api/reserve-customer-id", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accountType: form.accountType })
       });
-      if (!reserveRes.ok) throw new Error("customerId_failed");
-      const { customerId } = await reserveRes.json();
+      const reserveJson = await reserveRes.json();
+      if (!reserveRes.ok || !reserveJson.customerId) {
+        throw new Error("customerId_failed");
+      }
+      const customerId = reserveJson.customerId;
 
-      // تحقق reCAPTCHA سيرفر سايد
+      // 2. تحقق reCAPTCHA سيرفر سايد
       const recaptchaToken = await executeRecaptcha?.("register");
       const recaptchaRes = await fetch("/api/recaptcha", {
         method: "POST",
@@ -173,14 +152,14 @@ export default function RegisterPage() {
       });
       if (!recaptchaRes.ok) throw new Error("recaptcha_failed");
 
-      // أنشئ المستخدم في Firebase Auth
+      // 3. أنشئ المستخدم في Firebase Auth
       const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       const user = cred.user;
 
-      // لو تستخدم تفعيل Auth فقط (لا تفعيل سيرفر):
+      // 4. إرسال تفعيل البريد لو تستخدم Firebase Auth
       await sendEmailVerification(user);
 
-      // حذف الحقول المؤقتة قبل الحفظ
+      // 5. حذف الحقول المؤقتة قبل الحفظ
       const { password, passwordConfirm, emailConfirm, ...safeForm } = form;
       await setDoc(
         firestoreDoc(db, "users", user.uid),
@@ -191,7 +170,7 @@ export default function RegisterPage() {
           role: "client",
           accountType: form.accountType?.toLowerCase(),
           type: form.accountType?.toLowerCase(),
-          emailVerified: false, // true لو بتفعل بالـ OTP في السيرفر
+          emailVerified: false, // true لو بتفعل بالـ OTP على السيرفر
           phoneVerified: false,
           createdAt: new Date().toISOString(),
         },
@@ -199,9 +178,7 @@ export default function RegisterPage() {
       );
 
       setRegSuccess(true);
-      // لو بتستخدم تفعيل Firebase فقط:
       setTimeout(() => router.push(`/verify-email?lang=${lang}`), 1000);
-      // لو بتفعل بالـ OTP على السيرفر: استبدل بـ router.push(`/dashboard/client`)
 
     } catch (err) {
       const m = (code => {
