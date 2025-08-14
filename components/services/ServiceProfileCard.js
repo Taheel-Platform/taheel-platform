@@ -151,6 +151,14 @@ export default function ServiceProfileCard({
     }
   }
 
+    
+  function handlePaid() {
+    setIsPaid(true);
+    saveServiceOrder();
+    if (typeof onPaid === "function") onPaid();
+    setShowPayModal(false);
+  }
+
   function handleAllDocsUploaded() {
     setShowDocsModal(false); // يقفل مودال رفع المستندات
     setShowPayModal(true);   // يفتح مودال الدفع مباشرة
@@ -520,7 +528,6 @@ export default function ServiceProfileCard({
   userEmail={userEmail}
   onPaid={handlePaid}
   uploadedDocs={uploadedDocs}
- orderNumber={orderNumber}
 />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
