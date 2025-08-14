@@ -210,52 +210,72 @@ function LoginPageInner() {
     }
 
     // الدخول عبر Firebase Auth فقط
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
-      const user = userCredential.user;
+try {
+  const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
+  const user = userCredential.user;
 
-      // التحقق من تفعيل البريد فقط
-      if (!user.emailVerified) {
-        setLoading(false);
-        setErrorMsg(t.emailVerify);
-        setUnverifiedUser(user);
-        return;
-      }
+  // التحقق من تفعيل البريد فقط
+  if (!user.emailVerified) {
+    setLoading(false);
+    setErrorMsg(t.emailVerify);
+    setUnverifiedUser(user);
+    return;
+  }
 
-      // جلب بيانات المستخدم من Firestore باستخدام الإيميل
-      const q = query(
-        collection(firestore, "users"),
-        where("email", "==", user.email)
-      );
-      const querySnapshot = await getDocs(q);
+  let data = null;
+  let querySnapshot;
 
-      if (querySnapshot.empty) {
-        setLoading(false);
-        setErrorMsg(t.notFound);
-        return;
-      }
-      const data = querySnapshot.docs[0].data();
+  // جلب بيانات المستخدم من Firestore:
+  // الموظف أو الأدمن بالـ uid فقط
+  // العميل بالـ email فقط
 
-      // حفظ بيانات المستخدم في localStorage (اختياري)
-      window.localStorage.setItem("userId", data.customerId);
-      window.localStorage.setItem("userName", data.name || "موظف");
-      window.localStorage.setItem("userRole", data.role || "client");
+  // سنبحث أولاً بالـ uid (للأدمن والموظف)
+  const qUid = query(
+    collection(firestore, "users"),
+    where("uid", "==", user.uid)
+  );
+  querySnapshot = await getDocs(qUid);
 
-      // التوجيه بعد التأكد من كل شيء حسب الدور (برقم العميل دائماً)
-      let targetUrl = `/dashboard/client?userId=${data.customerId}&lang=${lang}`;
-      if (data.role === "admin") {
-        targetUrl = `/dashboard/admin?userId=${data.customerId}&lang=${lang}`;
-      } else if (data.role === "employee") {
-        targetUrl = `/dashboard/employee?userId=${data.customerId}&lang=${lang}`;
-      }
-      router.replace(targetUrl);
+  if (!querySnapshot.empty) {
+    // وجدنا موظف أو أدمن بالـ uid
+    data = querySnapshot.docs[0].data();
+  } else {
+    // لم نجد موظف أو أدمن، نبحث كعميل بالـ email
+    const qEmail = query(
+      collection(firestore, "users"),
+      where("email", "==", user.email)
+    );
+    querySnapshot = await getDocs(qEmail);
 
+    if (!querySnapshot.empty) {
+      data = querySnapshot.docs[0].data();
+    } else {
       setLoading(false);
+      setErrorMsg(t.notFound);
       return;
-    } catch (e) {
-      setErrorMsg(t.wrongLogin);
-      setLoading(false);
     }
+  }
+
+  // حفظ بيانات المستخدم في localStorage (اختياري)
+  window.localStorage.setItem("userId", data.customerId || "");
+  window.localStorage.setItem("userName", data.name || "موظف");
+  window.localStorage.setItem("userRole", data.role || "client");
+
+  // التوجيه حسب الدور
+  let targetUrl = `/dashboard/client?userId=${data.customerId || ""}&lang=${lang}`;
+  if (data.role === "admin") {
+    targetUrl = `/dashboard/admin?userId=${data.customerId || ""}&lang=${lang}`;
+  } else if (data.role === "employee") {
+    targetUrl = `/dashboard/employee?userId=${data.customerId || ""}&lang=${lang}`;
+  }
+  router.replace(targetUrl);
+
+  setLoading(false);
+  return;
+} catch (e) {
+  setErrorMsg(t.wrongLogin);
+  setLoading(false);
+}
     // End of handleLogin try-catch
   }
 
