@@ -105,38 +105,38 @@ function ResidentCard({
   }
 
   // رفع صورة البروفايل
-  const handleAvatarChange = async (e) => {
-    // استخدم الـ UID الحقيقي وليس userId أو رقم العميل
-    const docId = uid || (auth.currentUser && auth.currentUser.uid) || userId;
-    if (e.target.files && e.target.files[0] && docId) {
-      setLoadingPic(true);
-      const file = e.target.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', docId);
+const handleAvatarChange = async (e) => {
+  // استخدم customerId وليس uid
+  const docId = customerId || client.customerId;
+  if (e.target.files && e.target.files[0] && docId) {
+    setLoadingPic(true);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sessionId', docId);
 
-      try {
-        const res = await fetch('/api/upload-to-gcs', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
+    try {
+      const res = await fetch('/api/upload-to-gcs', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
 
-        if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
+      if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
 
-        setLocalProfilePic(data.url);
-        // حفظ الرابط في فايرستور على users/{uid}
-        await updateDoc(doc(firestore, "users", docId), { profilePic: data.url });
+      setLocalProfilePic(data.url);
+      // حفظ الرابط في فايرستور على users/{customerId}
+      await updateDoc(doc(firestore, "users", docId), { profilePic: data.url });
 
-        setLoadingPic(false);
-        alert(t.uploadProfileDone);
-      } catch (err) {
-        setLoadingPic(false);
-        alert(t.uploadProfileError);
-        console.error("Error uploading avatar:", err);
-      }
+      setLoadingPic(false);
+      alert(t.uploadProfileDone);
+    } catch (err) {
+      setLoadingPic(false);
+      alert(t.uploadProfileError);
+      console.error("Error uploading avatar:", err);
     }
-  };
+  }
+};
 
   const handleAttachmentSave = () => {
     setShowModal(false);
