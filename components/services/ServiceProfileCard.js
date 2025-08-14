@@ -131,7 +131,7 @@ export default function ServiceProfileCard({
   async function saveServiceOrder() {
     try {
       const orderData = {
-        clientId: userId,
+        userId: userId,
         serviceId,
         serviceName: name,
         quantity,
@@ -149,13 +149,6 @@ export default function ServiceProfileCard({
       console.error("Error saving order:", err);
       // يمكنك هنا إضافة إشعار الخطأ أو أي معالجة إضافية
     }
-  }
-
-  function handlePaid() {
-    setIsPaid(true);
-    saveServiceOrder();
-    if (typeof onPaid === "function") onPaid();
-    setShowPayModal(false); // يغلق مدوال الدفع بعد الدفع
   }
 
   function handleAllDocsUploaded() {
@@ -514,20 +507,21 @@ export default function ServiceProfileCard({
       </div>
       {/* مدوال الدفع */}
       <ServicePayModal
-        open={showPayModal}
-        onClose={() => setShowPayModal(false)}
-        serviceName={name}
-        totalPrice={totalServicePrice}
-        printingFee={printingTotal}
-        coinsBalance={coinsBalance}
-        cashbackCoins={coins}
-        userWallet={wallet}
-        lang={lang}
-        userId={userId}
-        userEmail={userEmail}
-        onPaid={handlePaid}
-        uploadedDocs={uploadedDocs}
-      />
+  open={showPayModal}
+  onClose={() => setShowPayModal(false)}
+  serviceName={name}
+  totalPrice={Number(totalServicePrice) || 0}
+  printingFee={Number(printingTotal) || 0}
+  coinsBalance={Number(coinsBalance) || 0}
+  cashbackCoins={Number(coins) || 0}
+  userWallet={Number(wallet) || 0}
+  lang={lang}
+  userId={userId}
+  userEmail={userEmail}
+  onPaid={handlePaid}
+  uploadedDocs={uploadedDocs}
+ orderNumber={orderNumber}
+/>
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
