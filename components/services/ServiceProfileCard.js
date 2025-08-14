@@ -131,7 +131,7 @@ export default function ServiceProfileCard({
   async function saveServiceOrder() {
     try {
       const orderData = {
-        userId,
+        clientId: userId,
         serviceId,
         serviceName: name,
         quantity,
