@@ -175,6 +175,7 @@ function LoginPageInner() {
 
     // تحديد الإيميل الذي سيتم استخدامه
     let emailToUse = loginId.trim();
+    let customerId = "";
     if (!isEmail(emailToUse)) {
       // البحث عن الإيميل المطابق للرقم في Firestore (customerId فريد وعليه Index)
       try {
@@ -185,7 +186,9 @@ function LoginPageInner() {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           // تطبيع الإيميل قبل الاستخدام
-          emailToUse = (querySnapshot.docs[0].data().email || "").trim().toLowerCase();
+          const userDoc = querySnapshot.docs[0].data();
+          emailToUse = (userDoc.email || "").trim().toLowerCase();
+          customerId = userDoc.customerId;
           if (!emailToUse) {
             setLoading(false);
             setErrorMsg(t.wrongClient);
@@ -206,62 +209,62 @@ function LoginPageInner() {
       emailToUse = emailToUse.toLowerCase().trim();
     }
 
-  // الدخول عبر Firebase Auth فقط
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
-    const user = userCredential.user;
+    // الدخول عبر Firebase Auth فقط
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
+      const user = userCredential.user;
 
-    // التحقق من تفعيل البريد فقط
-    if (!user.emailVerified) {
+      // التحقق من تفعيل البريد فقط
+      if (!user.emailVerified) {
+        setLoading(false);
+        setErrorMsg(t.emailVerify);
+        setUnverifiedUser(user);
+        return;
+      }
+
+      // جلب بيانات المستخدم من Firestore باستخدام الإيميل
+      const q = query(
+        collection(firestore, "users"),
+        where("email", "==", user.email)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setLoading(false);
+        setErrorMsg(t.notFound);
+        return;
+      }
+      const data = querySnapshot.docs[0].data();
+
+      // حفظ بيانات المستخدم في localStorage (اختياري)
+      window.localStorage.setItem("userId", data.customerId);
+      window.localStorage.setItem("userName", data.name || "موظف");
+      window.localStorage.setItem("userRole", data.role || "client");
+
+      // التوجيه بعد التأكد من كل شيء حسب الدور (برقم العميل دائماً)
+      let targetUrl = `/dashboard/client?userId=${data.customerId}&lang=${lang}`;
+      if (data.role === "admin") {
+        targetUrl = `/dashboard/admin?userId=${data.customerId}&lang=${lang}`;
+      } else if (data.role === "employee") {
+        targetUrl = `/dashboard/employee?userId=${data.customerId}&lang=${lang}`;
+      }
+      router.replace(targetUrl);
+
       setLoading(false);
-      setErrorMsg(t.emailVerify);
-      setUnverifiedUser(user);
       return;
-    }
-
-    // جلب بيانات المستخدم من Firestore باستخدام الإيميل
-    const q = query(
-      collection(firestore, "users"),
-      where("email", "==", user.email)
-    );
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
+    } catch (e) {
+      setErrorMsg(t.wrongLogin);
       setLoading(false);
-      setErrorMsg(t.notFound);
-      return;
     }
-    const data = querySnapshot.docs[0].data();
-
-    // حفظ بيانات المستخدم في localStorage (اختياري)
-    window.localStorage.setItem("userId", user.uid);
-    window.localStorage.setItem("userName", data.name || "موظف");
-    window.localStorage.setItem("userRole", data.role || "client");
-
-    // التوجيه بعد التأكد من كل شيء حسب الدور
-    let targetUrl = `/dashboard/client?userId=${user.uid}&lang=${lang}`;
-    if (data.role === "admin") {
-      targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
-    } else if (data.role === "employee") {
-      targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
-    }
-    router.replace(targetUrl);
-
-    setLoading(false);
-    return;
-  } catch (e) {
-    setErrorMsg(t.wrongLogin);
-    setLoading(false);
+    // End of handleLogin try-catch
   }
-  // End of handleLogin try-catch
-  } // <-- Add this closing brace to properly end handleLogin
 
-const handleLang = (lng) => {
-  setLang(lng);
-  const params = new URLSearchParams(searchParams);
-  params.set("lang", lng);
-  router.replace(`?${params.toString()}`);
-};
+  const handleLang = (lng) => {
+    setLang(lng);
+    const params = new URLSearchParams(searchParams);
+    params.set("lang", lng);
+    router.replace(`?${params.toString()}`);
+  };
 
   // إعادة إرسال رابط التفعيل
   const handleResendActivation = async () => {
