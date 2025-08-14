@@ -46,78 +46,81 @@ async function handlePayment() {
   setPayMsg("");
   setMsgSuccess(false);
   try {
-    if (userWallet < finalPrice) {
-      setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
-      setIsPaying(false);
-      return;
-    }
+    try {
+      if (userWallet < finalPrice) {
+        setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
+        setIsPaying(false);
+        return;
+      }
 
-    const userRef = doc(firestore, "users", userId);
+      const userRef = doc(firestore, "users", userId);
 
-    // خصم الرصيد من المحفظة
-    await updateDoc(userRef, {
-      walletBalance: userWallet - finalPrice
-    });
+      // خصم الرصيد من المحفظة
+      await updateDoc(userRef, {
+        walletBalance: userWallet - finalPrice
+      });
 
-    // خصم الكوينات إذا استخدمهم العميل للخصم
-if (useCoins && coinDiscount > 0) {
-  await updateDoc(userRef, {
-    coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
-  });
-}
+      // خصم الكوينات إذا استخدمهم العميل للخصم
+      if (useCoins && coinDiscount > 0) {
+        await updateDoc(userRef, {
+          coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
+        });
+      }
 
-    // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
-if (willGetCashback && cashbackCoins > 0) {
-  await updateDoc(userRef, {
-    coins: increment(cashbackCoins)
-  });
-}
+      // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
+      if (willGetCashback && cashbackCoins > 0) {
+        await updateDoc(userRef, {
+          coins: increment(cashbackCoins)
+        });
+      }
 
-    const orderNumber = generateOrderNumber();
+      const orderNumber = generateOrderNumber();
 
-    await addDoc(collection(firestore, "notifications"), {
-      targetId: userId,
-      title: lang === "ar" ? "تم الدفع" : "Payment Successful",
-      body: lang === "ar"
-        ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
-        : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
-      timestamp: new Date().toISOString(),
-      isRead: false
-    });
+      await addDoc(collection(firestore, "notifications"), {
+        targetId: userId,
+        title: lang === "ar" ? "تم الدفع" : "Payment Successful",
+        body: lang === "ar"
+          ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
+          : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      });
 
-    // حفظ بيانات الطلب والمرفقات
-    await setDoc(doc(firestore, "requests", orderNumber), {
-      requestId: orderNumber,
-      clientId: userId,
-      serviceName,
-      paidAmount: finalPrice,
-      coinsUsed: useCoins ? coinDiscountValue : 0,
-      coinsGiven: willGetCashback ? cashbackCoins : 0,
-      createdAt: new Date().toISOString(),
-      status: "paid",
-      attachments: uploadedDocs || {}
-    });
-
-    await fetch("/api/sendOrderEmail", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: userEmail,
-        orderNumber,
+      // حفظ بيانات الطلب والمرفقات
+      await setDoc(doc(firestore, "requests", orderNumber), {
+        requestId: orderNumber,
+        clientId: userId,
         serviceName,
-        price: finalPrice.toFixed(2)
-      }),
-    });
+        paidAmount: finalPrice,
+        coinsUsed: useCoins ? coinDiscountValue : 0,
+        coinsGiven: willGetCashback ? cashbackCoins : 0,
+        createdAt: new Date().toISOString(),
+        status: "paid",
+        attachments: uploadedDocs || {}
+      });
 
-    setMsgSuccess(true);
-    setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-    if (typeof onPaid === "function") {
-      onPaid();
+      await fetch("/api/sendOrderEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: userEmail,
+          orderNumber,
+          serviceName,
+          price: finalPrice.toFixed(2)
+        }),
+      });
+
+      setMsgSuccess(true);
+      setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+      if (typeof onPaid === "function") {
+        onPaid();
+      }
+      setTimeout(() => onClose(), 1200);
+
+    } catch (e) {
+      console.log("Payment error:", e);
+      setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
     }
-    setTimeout(() => onClose(), 1200);
-
-  } catch (e) {
-    setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
   } finally {
     setIsPaying(false);
   }
