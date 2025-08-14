@@ -206,58 +206,62 @@ function LoginPageInner() {
       emailToUse = emailToUse.toLowerCase().trim();
     }
 
-    // الدخول عبر Firebase Auth فقط
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
-      const user = userCredential.user;
+  // الدخول عبر Firebase Auth فقط
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
+    const user = userCredential.user;
 
-      // التحقق من تفعيل البريد فقط
-      if (!user.emailVerified) {
-        setLoading(false);
-        setErrorMsg(t.emailVerify);
-        setUnverifiedUser(user);
-        return;
-      }
-
-      // جلب بيانات المستخدم من Firestore
-      const docRef = doc(firestore, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        setLoading(false);
-        setErrorMsg(t.notFound);
-        return;
-      }
-      const data = docSnap.data();
-
-      // حفظ بيانات المستخدم في localStorage (اختياري)
-      window.localStorage.setItem("userId", user.uid);
-      window.localStorage.setItem("userName", data.name || "موظف");
-      window.localStorage.setItem("userRole", data.role || "client");
-
-      // التوجيه بعد التأكد من كل شيء حسب الدور
-      let targetUrl = `/dashboard/client?userId=${user.uid}&lang=${lang}`;
-      if (data.role === "admin") {
-        targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
-      } else if (data.role === "employee") {
-        targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
-      }
-      router.replace(targetUrl);
-
+    // التحقق من تفعيل البريد فقط
+    if (!user.emailVerified) {
       setLoading(false);
+      setErrorMsg(t.emailVerify);
+      setUnverifiedUser(user);
       return;
-    } catch (e) {
-      setErrorMsg(t.wrongLogin);
-      setLoading(false);
     }
-  };
 
-  const handleLang = (lng) => {
-    setLang(lng);
-    const params = new URLSearchParams(searchParams);
-    params.set("lang", lng);
-    router.replace(`?${params.toString()}`);
-  };
+    // جلب بيانات المستخدم من Firestore باستخدام الإيميل
+    const q = query(
+      collection(firestore, "users"),
+      where("email", "==", user.email)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      setLoading(false);
+      setErrorMsg(t.notFound);
+      return;
+    }
+    const data = querySnapshot.docs[0].data();
+
+    // حفظ بيانات المستخدم في localStorage (اختياري)
+    window.localStorage.setItem("userId", user.uid);
+    window.localStorage.setItem("userName", data.name || "موظف");
+    window.localStorage.setItem("userRole", data.role || "client");
+
+    // التوجيه بعد التأكد من كل شيء حسب الدور
+    let targetUrl = `/dashboard/client?userId=${user.uid}&lang=${lang}`;
+    if (data.role === "admin") {
+      targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
+    } else if (data.role === "employee") {
+      targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
+    }
+    router.replace(targetUrl);
+
+    setLoading(false);
+    return;
+  } catch (e) {
+    setErrorMsg(t.wrongLogin);
+    setLoading(false);
+  }
+  // End of handleLogin try-catch
+  } // <-- Add this closing brace to properly end handleLogin
+
+const handleLang = (lng) => {
+  setLang(lng);
+  const params = new URLSearchParams(searchParams);
+  params.set("lang", lng);
+  router.replace(`?${params.toString()}`);
+};
 
   // إعادة إرسال رابط التفعيل
   const handleResendActivation = async () => {
