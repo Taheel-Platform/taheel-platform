@@ -75,10 +75,10 @@ function getFullName(client, lang = "ar") {
 function getWelcome(name, lang = "ar") {
   return lang === "ar" ? `مرحباً ${name || ""}` : `Welcome, ${name || ""}`;
 }
-async function addNotification(userId, title, body, type = "wallet") {
+async function addNotification(customerId, title, body, type = "wallet") {
   const notif = {
     notificationId: `notif-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    user.customerId = snap.id;
+    targetId: customerId, // هذا هو المعيار الموحد للإشعارات الخاصة بالعميل
     title,
     body,
     isRead: false,
