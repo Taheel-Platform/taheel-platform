@@ -30,28 +30,36 @@ function EmployeeGuard({ children }) {
   const [allowed, setAllowed] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        router.replace("/login?prev=/dashboard/employee");
-        return;
-      }
-      const snap = await getDoc(doc(firestore, "users", user.uid));
-      if (snap.exists() && (snap.data().role === "employee" || snap.data().type === "employee")) {
+useEffect(() => {
+  const unsub = onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      router.replace("/login?prev=/dashboard/employee");
+      return;
+    }
+
+    // بدلاً من جلب المستند مباشرة بالـ uid كمعرف مستند
+    // ابحث عن الموظف بالـ uid كحقل في البيانات
+    const q = query(
+      collection(firestore, "users"),
+      where("uid", "==", user.uid)
+    );
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const employeeDoc = snap.docs[0].data();
+      if (employeeDoc.role === "employee" || employeeDoc.type === "employee") {
         setAllowed(true);
-        setEmployeeData({ id: user.uid, ...snap.data() });
+        setEmployeeData({ id: user.uid, ...employeeDoc });
       } else {
         router.replace("/unauthorized");
       }
-      setChecking(false);
-    });
-    return () => unsub();
-  }, [router]);
-
-  if (checking) return <div className="p-10 text-center">جاري التأكد من الصلاحية...</div>;
-  if (!allowed) return null;
-  return typeof children === "function" ? children(employeeData) : children;
-}
+    } else {
+      router.replace("/unauthorized");
+    }
+    setChecking(false);
+  });
+  return () => unsub();
+}, [router]);
 
 const EMPLOYEE_SIDEBAR_LINKS = [
   { key: "profile", icon: <FaUserTie />, labelAr: "بياناتي", labelEn: "My Profile" },
