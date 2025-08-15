@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner } from "react-icons/fa";
+import {
+  FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner
+} from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { motion, AnimatePresence } from "framer-motion";
-import { doc, setDoc, updateDoc, increment, collection, addDoc } from "firebase/firestore";
-
+import {
+  doc, setDoc, updateDoc, increment, collection, addDoc
+} from "firebase/firestore";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -22,7 +25,8 @@ export default function ServicePayModal({
   cashbackCoins,
   userWallet,
   lang = "ar",
-  userId,
+  customerId,   // رقم العميل مثل RES-200-9180
+  userId,       // الـ UID لو تحتاجه لاحقًا
   userEmail,
   uploadedDocs,
   onPaid
@@ -41,11 +45,21 @@ export default function ServicePayModal({
   const willGetCashback = !useCoins;
 
   // دفع المحفظة
-async function handlePayment() {
-  setIsPaying(true);
-  setPayMsg("");
-  setMsgSuccess(false);
-  try {
+  async function handlePayment() {
+    setIsPaying(true);
+    setPayMsg("");
+    setMsgSuccess(false);
+
+    // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
+    if (!customerId || !userEmail || !serviceName) {
+      setPayMsg(lang === "ar"
+        ? "بيانات العميل أو البريد أو الخدمة ناقصة."
+        : "Customer ID, email or service name missing."
+      );
+      setIsPaying(false);
+      return;
+    }
+
     try {
       if (userWallet < finalPrice) {
         setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
@@ -53,7 +67,7 @@ async function handlePayment() {
         return;
       }
 
-      const userRef = doc(firestore, "users", userId);
+      const userRef = doc(firestore, "users", customerId);
 
       // خصم الرصيد من المحفظة
       await updateDoc(userRef, {
@@ -63,7 +77,7 @@ async function handlePayment() {
       // خصم الكوينات إذا استخدمهم العميل للخصم
       if (useCoins && coinDiscount > 0) {
         await updateDoc(userRef, {
-          coins: increment(-coinDiscount) // يخصم الكوينات المستعملة
+          coins: increment(-coinDiscount)
         });
       }
 
@@ -76,8 +90,9 @@ async function handlePayment() {
 
       const orderNumber = generateOrderNumber();
 
+      // إشعار العميل
       await addDoc(collection(firestore, "notifications"), {
-        targetId: userId,
+        targetId: customerId,
         title: lang === "ar" ? "تم الدفع" : "Payment Successful",
         body: lang === "ar"
           ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
@@ -89,7 +104,7 @@ async function handlePayment() {
       // حفظ بيانات الطلب والمرفقات
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
-        clientId: userId,
+        clientId: customerId,             // هنا رقم العميل الأساسي
         serviceName,
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
@@ -99,6 +114,7 @@ async function handlePayment() {
         attachments: uploadedDocs || {}
       });
 
+      // إرسال إيميل تأكيد
       await fetch("/api/sendOrderEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -120,11 +136,10 @@ async function handlePayment() {
     } catch (e) {
       console.log("Payment error:", e);
       setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
+    } finally {
+      setIsPaying(false);
     }
-  } finally {
-    setIsPaying(false);
   }
-}
 
   // دفع بوابة
   async function handleGatewayRedirect() {
@@ -138,7 +153,7 @@ async function handlePayment() {
         body: JSON.stringify({
           amount: finalPrice,
           serviceName,
-          userId,
+          customerId,      // هنا رقم العميل وليس UID
           userEmail,
         }),
       });
@@ -181,7 +196,6 @@ async function handlePayment() {
           exit={{ scale: 0.97, opacity: 0, y: 30 }}
           transition={{ duration: 0.32, ease: "easeOut" }}
         >
-          {/* لوجو أعلى المدوال */}
           <img
             src="/logo3.png"
             alt="Logo"
@@ -189,8 +203,6 @@ async function handlePayment() {
             draggable={false}
             loading="eager"
           />
-
-          {/* زر إغلاق دائري */}
           <button
             className="absolute top-3 right-4 bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow hover:bg-emerald-700 transition cursor-pointer"
             onClick={onClose}
@@ -199,10 +211,8 @@ async function handlePayment() {
           >
             <FaTimes />
           </button>
-          {/* عنوان الخدمة */}
           <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
           <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
-          {/* جدول الأسعار */}
           <table className="w-full text-xs text-gray-700 font-bold mb-2">
             <tbody>
               <tr>
@@ -228,7 +238,6 @@ async function handlePayment() {
               </tr>
             </tbody>
           </table>
-          {/* خيار الكوينات */}
           <div className="w-full flex flex-row items-center justify-between mb-1">
             <label className="flex items-center gap-1 font-bold text-xs text-emerald-700 cursor-pointer">
               <input
@@ -246,7 +255,6 @@ async function handlePayment() {
               {lang === "ar" ? "رصيدك:" : "Your coins:"} {coinsBalance}
             </span>
           </div>
-          {/* طرق الدفع */}
           <div className="w-full flex flex-row items-center justify-between mb-1">
             <label className={`flex items-center gap-1 font-bold text-emerald-800 text-xs cursor-pointer ${userWallet < finalPrice ? "opacity-60" : ""}`}>
               <input
@@ -273,7 +281,6 @@ async function handlePayment() {
               {lang === "ar" ? "بوابة الدفع" : "Gateway"}
             </label>
           </div>
-          {/* كاش باك/مكافأة */}
           <div className="w-full mb-1 text-center">
             {willGetCashback ? (
               <div className="flex flex-row items-center justify-center gap-1 text-yellow-700 font-bold text-xs">
@@ -290,7 +297,6 @@ async function handlePayment() {
               </div>
             )}
           </div>
-          {/* زر الدفع */}
           <button
             onClick={onPayClick}
             disabled={isPaying}
@@ -312,16 +318,12 @@ async function handlePayment() {
               <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
             )}
           </button>
-
-          {/* رسائل الدفع */}
           {payMsg && (
             <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
               {msgSuccess ? <FaCheckCircle className="text-emerald-500" size={16} /> : <FaExclamationCircle className="text-red-400" size={14} />}
               <span>{payMsg}</span>
             </div>
           )}
-
-          {/* رسالة أمان تحت */}
           <div className="w-full text-center mt-5 mb-1 flex flex-col items-center gap-1">
             <div className="text-xs text-emerald-700 font-semibold flex items-center justify-center">
               <FaCheckCircle className="inline mr-2 text-emerald-500" />
@@ -330,7 +332,6 @@ async function handlePayment() {
                 : "All your data is encrypted and securely stored."}
             </div>
           </div>
-          {/* ديكور سفلي */}
           <div className="absolute -bottom-6 right-0 left-0 w-full h-7 bg-gradient-to-t from-emerald-200/70 via-white/20 to-transparent blur-2xl opacity-80 pointer-events-none"></div>
         </motion.div>
       </motion.div>
