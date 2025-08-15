@@ -524,8 +524,8 @@ export default function ServiceProfileCard({
   cashbackCoins={coins}
   userWallet={wallet}
   lang={lang}
-  customerId={userId}       // هنا رقم العميل من props (يجب أن يكون معرف المستند)
-  userId={userId}           // الـ UID لو هو نفسه معرف المستند
+  customerId={customerId}    // معرف المستند الصحيح (مثال: "RES-200-9180")
+  userId={userId}            // الـ UID من Auth
   userEmail={userEmail}
   uploadedDocs={uploadedDocs}
   onPaid={handlePaid}
