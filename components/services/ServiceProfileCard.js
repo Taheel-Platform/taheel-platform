@@ -69,6 +69,7 @@ export default function ServiceProfileCard({
   category = "resident",
   name,
   name_en,
+  customerId,
   description,
   description_en,
   price,
