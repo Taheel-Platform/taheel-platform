@@ -515,19 +515,20 @@ export default function ServiceProfileCard({
       </div>
       {/* مدوال الدفع */}
       <ServicePayModal
-  open={showPayModal}
-  onClose={() => setShowPayModal(false)}
-  serviceName={name}
-  totalPrice={Number(totalServicePrice) || 0}
-  printingFee={Number(printingTotal) || 0}
-  coinsBalance={Number(coinsBalance) || 0}
-  cashbackCoins={Number(coins) || 0}
-  userWallet={Number(wallet) || 0}
+  open={modalOpen}
+  onClose={handleClose}
+  serviceName={serviceName} // اسم الخدمة المطلوب دفعها
+  totalPrice={totalPrice}
+  printingFee={printingFee}
+  coinsBalance={user.coins}
+  cashbackCoins={cashbackCoins}
+  userWallet={user.walletBalance}
   lang={lang}
-  userId={userId}
-  userEmail={userEmail}
-  onPaid={handlePaid}
+  customerId={userId}         // يجب أن يكون معرف المستند في users (RES-200-9180)
+  userId={authUid}            // الـ UID لو تحتاجه في عمليات أخرى
+  userEmail={user.email}      // البريد الإلكتروني للعميل
   uploadedDocs={uploadedDocs}
+  onPaid={onPaid}
 />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
