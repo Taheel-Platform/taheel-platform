@@ -186,6 +186,7 @@ function ClientProfilePageInner({ userId }) {
     const unsubscribe = onSnapshot(userRef, (snap) => {
       if (snap.exists()) {
         const user = snap.data();
+        user.customerId = snap.id; // هذا هو التعديل المهم
         setClient(user);
 
         // بيانات المالك للشركات
