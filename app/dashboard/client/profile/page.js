@@ -62,15 +62,16 @@ function getDayGreeting(lang = "ar") {
 function getFullName(client, lang = "ar") {
   if (!client) return "";
   if (lang === "ar") {
-    return [client.firstName, client.middleName, client.lastName]
-      .filter(Boolean)
-      .join(" ");
+    // فقط الاسم الأول والأخير
+    return [client.firstName, client.lastName].filter(Boolean).join(" ");
   }
-  if (client.nameEn) return client.nameEn;
-  return [client.firstName, client.middleName, client.lastName]
-    .filter(Boolean)
-    .join(" ");
+  if (client.nameEn) {
+    // لو عندك nameEn فيه فقط first/last استخدمه
+    return client.nameEn;
+  }
+  return [client.firstName, client.lastName].filter(Boolean).join(" ");
 }
+
 function getWelcome(name, lang = "ar") {
   return lang === "ar" ? `مرحباً ${name || ""}` : `Welcome, ${name || ""}`;
 }

@@ -66,8 +66,9 @@ export default function RegisterPage() {
     { value: "company", label: t.company },
   ];
 
+  // الحقول الموحدة
   const [form, setForm] = useState({
-    accountType: "",
+    accountType: "", // نوع الحساب الموحد
     firstName: "",
     middleName: "",
     lastName: "",
@@ -131,7 +132,7 @@ export default function RegisterPage() {
     try {
       const email = form.email.trim().toLowerCase();
 
-      // 1. حجز رقم العميل من السيرفر
+      // 1. حجز رقم العميل الموحد من السيرفر
       const reserveRes = await fetch("/api/reserve-customer-id", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -141,7 +142,7 @@ export default function RegisterPage() {
       if (!reserveRes.ok || !reserveJson.customerId) {
         throw new Error("customerId_failed");
       }
-      const customerId = reserveJson.customerId;
+      const customerId = reserveJson.customerId; // معرف موحد لكل مستخدم
 
       // 2. تحقق reCAPTCHA سيرفر سايد
       const recaptchaToken = await executeRecaptcha?.("register");
@@ -160,24 +161,34 @@ export default function RegisterPage() {
       await sendEmailVerification(user);
 
       // 5. حذف الحقول المؤقتة قبل الحفظ
-      const { password, passwordConfirm, emailConfirm, ...safeForm } = form;
-      const userDocId = customerId;
-await setDoc(
-  firestoreDoc(db, "users", userDocId),
-  {
-    ...safeForm,
-    email,
-    customerId,            // احتفظ به كحقل
-    uid: user.uid,         // مهم جدًا عشان تربط بحساب الـ Auth
-    role: "client",
-    accountType: form.accountType?.toLowerCase(),
-    type: form.accountType?.toLowerCase(),
-    emailVerified: false,
-    phoneVerified: false,
-    createdAt: new Date().toISOString(),
-  },
-  { merge: true }
-);
+      const {
+        password,
+        passwordConfirm,
+        emailConfirm,
+        createdAt, // سيتم توليده من هنا
+        ...safeForm
+      } = form;
+
+      // 6. حفظ بيانات المستخدم الموحدة في فايرستور
+      await setDoc(
+        firestoreDoc(db, "users", customerId),
+        {
+          ...safeForm,
+          email,                // موحد، صغير وحيد
+          customerId,           // موحد ومميز، هو معرف المستند
+          uid: user.uid,        // معرف حساب الـ Auth
+          userId: user.uid,     // نوحده أيضًا لسهولة البحث (اختياري)
+          role: "client",
+          accountType: form.accountType?.toLowerCase(), // نوع الحساب
+          type: form.accountType?.toLowerCase(),        // نوع الحساب
+          emailVerified: false,
+          phoneVerified: false,
+          walletBalance: 0,     // الرصيد يبدأ بصفر
+          coins: 0,             // الكوينات تبدأ بصفر
+          createdAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
 
       setRegSuccess(true);
       router.replace(`/dashboard/client/profile?lang=${lang}`);
