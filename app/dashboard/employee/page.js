@@ -5,23 +5,21 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { auth, firestore } from "@/lib/firebase.client";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDocs, getDoc, collection, query, where, orderBy, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
 import ChatWidget from "@/components/admin/ChatWidget";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import {
   FaUserTie, FaClipboardList, FaBell, FaComments, FaSignOutAlt,
   FaChevronRight, FaChevronLeft, FaClock, FaEnvelope
 } from "react-icons/fa";
-
-// Force dynamic rendering to prevent static export issues
-export const dynamic = 'force-dynamic';
-
-// استيراد الأقسام
 import ProfileSection from "@/components/employee/ProfileSection";
 import { AttendanceSection } from "@/components/employee/AttendanceSection";
 import { MyOrdersSection } from "@/components/employee/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
+
+// Force dynamic rendering to prevent static export issues
+export const dynamic = 'force-dynamic';
 
 // --- EmployeeGuard ---
 function EmployeeGuard({ children }) {
@@ -30,36 +28,39 @@ function EmployeeGuard({ children }) {
   const [allowed, setAllowed] = useState(false);
   const [employeeData, setEmployeeData] = useState(null);
 
-useEffect(() => {
-  const unsub = onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      router.replace("/login?prev=/dashboard/employee");
-      return;
-    }
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        router.replace("/login?prev=/dashboard/employee");
+        return;
+      }
+      // ابحث عن الموظف بالـ uid كحقل وليس معرف مستند
+      const q = query(
+        collection(firestore, "users"),
+        where("uid", "==", user.uid)
+      );
+      const snap = await getDocs(q);
 
-    // بدلاً من جلب المستند مباشرة بالـ uid كمعرف مستند
-    // ابحث عن الموظف بالـ uid كحقل في البيانات
-    const q = query(
-      collection(firestore, "users"),
-      where("uid", "==", user.uid)
-    );
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const employeeDoc = snap.docs[0].data();
-      if (employeeDoc.role === "employee" || employeeDoc.type === "employee") {
-        setAllowed(true);
-        setEmployeeData({ id: user.uid, ...employeeDoc });
+      if (!snap.empty) {
+        const employeeDoc = snap.docs[0].data();
+        if (employeeDoc.role === "employee" || employeeDoc.type === "employee") {
+          setAllowed(true);
+          setEmployeeData({ id: user.uid, ...employeeDoc });
+        } else {
+          router.replace("/unauthorized");
+        }
       } else {
         router.replace("/unauthorized");
       }
-    } else {
-      router.replace("/unauthorized");
-    }
-    setChecking(false);
-  });
-  return () => unsub();
-}, [router]);
+      setChecking(false);
+    });
+    return () => unsub();
+  }, [router]);
+
+  if (checking) return <div className="p-10 text-center">جاري التأكد من الصلاحية...</div>;
+  if (!allowed) return null;
+  return typeof children === "function" ? children(employeeData) : children;
+}
 
 const EMPLOYEE_SIDEBAR_LINKS = [
   { key: "profile", icon: <FaUserTie />, labelAr: "بياناتي", labelEn: "My Profile" },
@@ -91,7 +92,6 @@ function useOnlineStatus(employeeData) {
     if (!employeeData?.id) return;
     const userRef = doc(firestore, "users", employeeData.id);
 
-    // تحديث الأونلاين ووقت آخر تواجد، وتسجيل دخول اليوم
     const setUserOnline = async () => {
       await updateDoc(userRef, {
         status: "online",
