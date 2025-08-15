@@ -514,19 +514,19 @@ export default function ServiceProfileCard({
         </button>
       </div>
       {/* مدوال الدفع */}
-      <ServicePayModal
+<ServicePayModal
   open={modalOpen}
   onClose={handleClose}
-  serviceName={serviceName} // اسم الخدمة المطلوب دفعها
-  totalPrice={totalPrice}
-  printingFee={printingFee}
-  coinsBalance={user.coins}
-  cashbackCoins={cashbackCoins}
-  userWallet={user.walletBalance}
+  serviceName={service.name}                // اسم الخدمة
+  totalPrice={service.price}                // السعر الأساسي للخدمة
+  printingFee={service.printingFee}         // رسوم الطباعة من بيانات الخدمة
+  coinsBalance={user.coins}                 // رصيد الكوينات للعميل
+  cashbackCoins={service.coins}             // عدد الكوينات التي سيحصل عليها العميل من الخدمة (أو حسب نظام المكافآت)
+  userWallet={user.walletBalance}           // رصيد المحفظة للعميل
   lang={lang}
-  customerId={userId}         // يجب أن يكون معرف المستند في users (RES-200-9180)
-  userId={authUid}            // الـ UID لو تحتاجه في عمليات أخرى
-  userEmail={user.email}      // البريد الإلكتروني للعميل
+  customerId={user.customerId}              // معرف المستند للعميل (رقم العميل)
+  userId={user.uid}                         // الـ UID من سجل العميل
+  userEmail={user.email}                    // بريد العميل
   uploadedDocs={uploadedDocs}
   onPaid={onPaid}
 />
