@@ -78,7 +78,7 @@ function getWelcome(name, lang = "ar") {
 async function addNotification(userId, title, body, type = "wallet") {
   const notif = {
     notificationId: `notif-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    targetId: userId,
+    user.customerId = snap.id;
     title,
     body,
     isRead: false,
@@ -381,14 +381,14 @@ function ClientProfilePageInner({ userId }) {
 
         await updateDoc(doc(firestore, "users", client.userId), { walletBalance: newWallet });
         await addNotification(
-          client.userId,
+          client.customerId,
           lang === "ar" ? "تم شحن المحفظة" : "Wallet Charged",
           lang === "ar" ? `تم شحن محفظتك بمبلغ ${amount} درهم.` : `Your wallet was charged with ${amount} AED.`
         );
         if (bonus > 0) {
           await updateDoc(doc(firestore, "users", client.userId), { coins: newCoins });
           await addNotification(
-            client.userId,
+            client.customerId,
             lang === "ar" ? "تم إضافة كوينات" : "Coins Added",
             lang === "ar"
               ? `تم إضافة ${bonus} كوين لرصيدك كمكافأة شحن المحفظة.`
@@ -545,7 +545,7 @@ function ClientProfilePageInner({ userId }) {
               </span>
             </div>
             {/* Notifications */}
-            <NotificationWidget userId={client.userId} lang={lang} darkMode={darkMode} />
+            <NotificationWidget userId={client.customerId} lang={lang} darkMode={darkMode} />
 
             {/* Messages */}
             <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
