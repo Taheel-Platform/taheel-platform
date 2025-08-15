@@ -25,8 +25,8 @@ export default function ServicePayModal({
   cashbackCoins,
   userWallet,
   lang = "ar",
-  customerId,   // رقم العميل مثل RES-200-9180
-  userId,       // الـ UID لو تحتاجه لاحقًا
+  customerId,   // معرف المستند للعميل (رقم العميل: مثال "RES-200-9180" أو "COM-2025-001")
+  userId,       // الـ UID الخاص بفيريبيز (لو احتجته)
   userEmail,
   uploadedDocs,
   onPaid
@@ -104,7 +104,7 @@ export default function ServicePayModal({
       // حفظ بيانات الطلب والمرفقات
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
-        clientId: customerId,             // هنا رقم العميل الأساسي
+        clientId: customerId,
         serviceName,
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
@@ -153,7 +153,7 @@ export default function ServicePayModal({
         body: JSON.stringify({
           amount: finalPrice,
           serviceName,
-          customerId,      // هنا رقم العميل وليس UID
+          customerId,
           userEmail,
         }),
       });
@@ -217,7 +217,7 @@ export default function ServicePayModal({
             <tbody>
               <tr>
                 <td>{lang === "ar" ? "إجمالي السعر" : "Total"}</td>
-                <td className="text-right">{totalPrice.toFixed(2)} د.إ</td>
+                <td className="text-right">{totalPrice?.toFixed(2)} د.إ</td>
               </tr>
               <tr>
                 <td>{lang === "ar" ? "رسوم الطباعة" : "Printing"}</td>

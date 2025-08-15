@@ -515,20 +515,20 @@ export default function ServiceProfileCard({
       </div>
       {/* مدوال الدفع */}
 <ServicePayModal
-  open={modalOpen}
-  onClose={handleClose}
-  serviceName={service.name}                // اسم الخدمة
-  totalPrice={service.price}                // السعر الأساسي للخدمة
-  printingFee={service.printingFee}         // رسوم الطباعة من بيانات الخدمة
-  coinsBalance={user.coins}                 // رصيد الكوينات للعميل
-  cashbackCoins={service.coins}             // عدد الكوينات التي سيحصل عليها العميل من الخدمة (أو حسب نظام المكافآت)
-  userWallet={user.walletBalance}           // رصيد المحفظة للعميل
+  open={showPayModal}
+  onClose={() => setShowPayModal(false)}
+  serviceName={name}
+  totalPrice={totalServicePrice}
+  printingFee={printingFee}
+  coinsBalance={coinsBalance}
+  cashbackCoins={coins}
+  userWallet={wallet}
   lang={lang}
-  customerId={user.customerId}              // معرف المستند للعميل (رقم العميل)
-  userId={user.uid}                         // الـ UID من سجل العميل
-  userEmail={user.email}                    // بريد العميل
+  customerId={userId}       // هنا رقم العميل من props (يجب أن يكون معرف المستند)
+  userId={userId}           // الـ UID لو هو نفسه معرف المستند
+  userEmail={userEmail}
   uploadedDocs={uploadedDocs}
-  onPaid={onPaid}
+  onPaid={handlePaid}
 />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
