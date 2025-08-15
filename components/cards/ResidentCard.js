@@ -299,4 +299,5 @@ const handleAvatarChange = async (e) => {
   );
 }
 
+
 export { ResidentCard };
