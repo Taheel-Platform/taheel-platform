@@ -69,7 +69,7 @@ export default function ServiceProfileCard({
   category = "resident",
   name,
   name_en,
-  customerId,
+  customerId, // تأكد أن هذا يأتي من الـ props من الكمبوننت الأب
   description,
   description_en,
   price,
@@ -93,6 +93,13 @@ export default function ServiceProfileCard({
   longDescription,
   longDescription_en,
 }) {
+  // تحقق من customerId في أول الكومبوننت
+  useEffect(() => {
+    if (!customerId) {
+      console.error("❌ customerId is missing in ServiceProfileCard! يجب تمريره من الكمبوننت الأب.");
+    }
+  }, [customerId]);
+
   const requiredDocs = requiredDocuments || [];
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
   const [wallet, setWallet] = useState(userWallet);
@@ -110,11 +117,10 @@ export default function ServiceProfileCard({
   const [currentDocName, setCurrentDocName] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
-  // Tooltip يظهر فقط عند الوقوف على اسم الخدمة
+  // Tooltip
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
 
-  // تحديث الرصيد والكوينات بناءً على القيم المرسلة من الأعلى (props)
   useEffect(() => {
     setWallet(userWallet);
   }, [userWallet]);
@@ -123,16 +129,16 @@ export default function ServiceProfileCard({
     setCoinsBalance(userCoins);
   }, [userCoins]);
 
-  // إعادة تعيين حالة الدفع عند تغيير الخدمة أو المستخدم
   useEffect(() => {
     setIsPaid(false);
   }, [serviceId, userId]);
 
-  // دالة حفظ الطلب باسم العميل في فايرستور
+  // حفظ الطلب في فايرستور مع customerId
   async function saveServiceOrder() {
     try {
       const orderData = {
-        userId: userId,
+        userId,
+        clientId: customerId, // أضف clientId لسهولة البحث (customerId الموحد)
         serviceId,
         serviceName: name,
         quantity,
@@ -145,14 +151,11 @@ export default function ServiceProfileCard({
         lang,
       };
       await addDoc(collection(firestore, "requests"), orderData);
-      // يمكنك هنا إضافة إشعار أو تحديث واجهة المستخدم لو أردت
     } catch (err) {
       console.error("Error saving order:", err);
-      // يمكنك هنا إضافة إشعار الخطأ أو أي معالجة إضافية
     }
   }
 
-    
   function handlePaid() {
     setIsPaid(true);
     saveServiceOrder();
@@ -161,8 +164,8 @@ export default function ServiceProfileCard({
   }
 
   function handleAllDocsUploaded() {
-    setShowDocsModal(false); // يقفل مودال رفع المستندات
-    setShowPayModal(true);   // يفتح مودال الدفع مباشرة
+    setShowDocsModal(false);
+    setShowPayModal(true);
   }
 
   useEffect(() => {
@@ -187,7 +190,6 @@ export default function ServiceProfileCard({
     return () => { ignore = true; };
   }, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
 
-  // الحسابات المالية
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
   const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
@@ -210,7 +212,7 @@ export default function ServiceProfileCard({
   }
   function closeDocsModal() {
     setShowDocsModal(false);
-    setCurrentDocName(""); // حماية إضافية: تصفير اسم المستند بعد غلق المدوال
+    setCurrentDocName("");
   }
   function handleDocsUploaded(newDocs) {
     setUploadedDocs(newDocs);
@@ -220,7 +222,6 @@ export default function ServiceProfileCard({
     setPayMsg("");
   }
 
-  // Tooltip المنبثقة فوق الكارت (تظهر خارج الكارت عند الوقوف على اسم الخدمة فقط)
   function renderTooltip() {
     return (
       <div
@@ -494,7 +495,7 @@ export default function ServiceProfileCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setShowPayModal(true); // يفتح مدوال الدفع
+            setShowPayModal(true);
           }}
           className={`
             w-full py-1 rounded-full font-black shadow text-xs transition
@@ -515,22 +516,22 @@ export default function ServiceProfileCard({
         </button>
       </div>
       {/* مدوال الدفع */}
-<ServicePayModal
-  open={showPayModal}
-  onClose={() => setShowPayModal(false)}
-  serviceName={name}
-  totalPrice={totalServicePrice}
-  printingFee={printingFee}
-  coinsBalance={coinsBalance}
-  cashbackCoins={coins}
-  userWallet={wallet}
-  lang={lang}
-  customerId={customerId}    // معرف المستند الصحيح (مثال: "RES-200-9180")
-  userId={userId}            // الـ UID من Auth
-  userEmail={userEmail}
-  uploadedDocs={uploadedDocs}
-  onPaid={handlePaid}
-/>
+      <ServicePayModal
+        open={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        serviceName={name}
+        totalPrice={totalServicePrice}
+        printingFee={printingFee}
+        coinsBalance={coinsBalance}
+        cashbackCoins={coins}
+        userWallet={wallet}
+        lang={lang}
+        customerId={customerId} // تأكد أن هذا يصل بشكل صحيح!
+        userId={userId}
+        userEmail={userEmail}
+        uploadedDocs={uploadedDocs}
+        onPaid={handlePaid}
+      />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
