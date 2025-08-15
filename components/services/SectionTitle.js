@@ -31,33 +31,36 @@ export default function ServiceSection({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
         {filteredServices.map((srv, i) => (
           <ServiceProfileCard
-  key={srv.serviceId || srv.name + i}
-  category={srv.category || category}
+  key={srv.name + i}
+  category={selectedSection.replace("Services", "")}
   name={srv.name}
   name_en={srv.name_en}
   description={srv.description}
   description_en={srv.description_en}
-  price={srv.price}                  
+  price={srv.price}
   printingFee={srv.printingFee}
   tax={srv.tax}
   clientPrice={srv.clientPrice}
   duration={srv.duration}
-  requiredDocuments={srv.requiredDocuments || []}
-  coins={srv.coins || 0}
+  requiredDocuments={srv.requiredDocuments || srv.documents || []}
   requireUpload={srv.requireUpload}
-  repeatable={srv.repeatable}
-  allowPaperCount={srv.allowPaperCount}
-  pricePerPage={srv.pricePerPage}
+  coins={srv.coins || 0}
+  lang={lang}
   userId={client.userId}
   userWallet={client.walletBalance || 0}
   userCoins={client.coins || 0}
-  lang={lang}
-  onPaid={onPaid}
-  serviceId={srv.serviceId}
   userEmail={client.email}
   longDescription={srv.longDescription}
   longDescription_en={srv.longDescription_en}
+  setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
+  onPaid={handleServicePaid}
+  coinsPercent={0.1}
   addNotification={addNotification}
+  serviceId={srv.serviceId}
+  repeatable={srv.repeatable}
+  allowPaperCount={srv.allowPaperCount}
+  pricePerPage={srv.pricePerPage}
+  customerId={client.customerId} // <--- هذا السطر هو الحل!
 />
         ))}
       </div>
