@@ -262,13 +262,13 @@ try {
   window.localStorage.setItem("userRole", data.role || "client");
 
   // التوجيه حسب الدور
-  let targetUrl = `/dashboard/client?userId=${data.customerId || ""}&lang=${lang}`;
-  if (data.role === "admin") {
-    targetUrl = `/dashboard/admin?userId=${data.customerId || ""}&lang=${lang}`;
-  } else if (data.role === "employee") {
-    targetUrl = `/dashboard/employee?userId=${data.customerId || ""}&lang=${lang}`;
-  }
-  router.replace(targetUrl);
+let targetUrl = `/dashboard/client?userId=${data.customerId || ""}&lang=${lang}`;
+if (data.role === "admin") {
+  targetUrl = `/dashboard/admin?userId=${data.uid || ""}&lang=${lang}`;
+} else if (data.role === "employee") {
+  targetUrl = `/dashboard/employee?userId=${data.uid || ""}&lang=${lang}`;
+}
+router.replace(targetUrl);
 
   setLoading(false);
   return;
