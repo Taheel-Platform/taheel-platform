@@ -45,19 +45,24 @@ export default function ServicePayModal({
   const willGetCashback = !useCoins;
 
   // دفع المحفظة
-  async function handlePayment() {
-    setIsPaying(true);
-    setPayMsg("");
-    setMsgSuccess(false);
+async function handlePayment() {
+  setIsPaying(true);
+  setPayMsg("");
+  setMsgSuccess(false);
 
-    // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
-    if (!customerId || !userEmail || !serviceName) {
-      setPayMsg(lang === "ar"
-        ? "بيانات العميل أو البريد أو الخدمة ناقصة."
-        : "Customer ID, email or service name missing."
-      );
-      setIsPaying(false);
-      return;
+  // تحقق من القيم الممررة
+  console.log("customerId:", customerId);
+  console.log("userEmail:", userEmail);
+  console.log("serviceName:", serviceName);
+
+  // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
+  if (!customerId || !userEmail || !serviceName) {
+    setPayMsg(lang === "ar"
+      ? "بيانات العميل أو البريد أو الخدمة ناقصة."
+      : "Customer ID, email or service name missing."
+    );
+    setIsPaying(false);
+    return;
     }
 
     try {
