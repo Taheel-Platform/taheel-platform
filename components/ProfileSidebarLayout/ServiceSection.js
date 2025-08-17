@@ -37,7 +37,7 @@ useEffect(() => {
     try {
       const q = query(
         collection(firestore, "requests"),
-        where("userId", "==", clientId) // هنا استخدم clientId وليس client.customerId
+        where("customerId", "==", clientId) // ✅ استخدم customerId وليس userId
       );
       const snapshot = await getDocs(q);
       setOrders(
