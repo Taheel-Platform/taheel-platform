@@ -10,7 +10,8 @@ function objectToArray(obj) {
   if (obj && typeof obj === "object") return Object.values(obj);
   return [];
 }
-
+console.log("client:", client);
+console.log("clientId:", clientId);
 export default function ServiceSection({
   groups = [],
   filterService,
