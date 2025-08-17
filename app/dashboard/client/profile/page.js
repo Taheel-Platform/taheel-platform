@@ -255,7 +255,7 @@ function ClientProfilePageInner({ userId }) {
       const ordersSnap = await getDocs(
         query(
           collection(firestore, "requests"),
-          where("clientId", "==", userId),
+          where("customerId", "==", userId),
           orderBy("createdAt", "desc")
         )
       );
