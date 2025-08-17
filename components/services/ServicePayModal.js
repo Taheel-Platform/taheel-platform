@@ -109,7 +109,7 @@ async function handlePayment() {
       // حفظ بيانات الطلب والمرفقات
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
-        clientId: customerId,
+        customerId: customerId,
         serviceName,
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
