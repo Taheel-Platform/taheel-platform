@@ -37,9 +37,9 @@ export default function ServiceSection({
       try {
         // ✅ استخدم الإنستانس الجاهز
         const q = query(
-          collection(firestore, "requests"),
-          where("userId", "==", clientId) // في الدوك الحقل اسمه userId
-        );
+        collection(firestore, "requests"),
+        where("userId", "==", client.customerId)
+         );
         const snapshot = await getDocs(q);
         setOrders(
           snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
