@@ -31,28 +31,27 @@ export default function ServiceSection({
   // (حسب لقطة الشاشة قيمته رقم العميل COM-400-0106)
   const clientId = client?.customerId || client?.userId || null;
 
-  useEffect(() => {
-    async function fetchOrders() {
-      setLoading(true);
-      try {
-        // ✅ استخدم الإنستانس الجاهز
-        const q = query(
+useEffect(() => {
+  async function fetchOrders() {
+    setLoading(true);
+    try {
+      const q = query(
         collection(firestore, "requests"),
-        where("userId", "==", client.customerId)
-         );
-        const snapshot = await getDocs(q);
-        setOrders(
-          snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
-        );
-      } catch (error) {
-        console.error("fetchOrders error:", error);
-        setOrders([]);
-      }
-      setLoading(false);
+        where("userId", "==", clientId) // هنا استخدم clientId وليس client.customerId
+      );
+      const snapshot = await getDocs(q);
+      setOrders(
+        snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
+      );
+    } catch (error) {
+      console.error("fetchOrders error:", error);
+      setOrders([]);
     }
-    if (clientId) fetchOrders();
-    else setOrders([]);
-  }, [clientId]);
+    setLoading(false);
+  }
+  if (clientId) fetchOrders();
+  else setOrders([]);
+}, [clientId]);
 
   return (
     <div className="space-y-8">
