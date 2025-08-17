@@ -4,6 +4,7 @@ import ServiceProfileCard from "@/components/services/ServiceProfileCard";
 import { firestore } from "@/lib/firebase.client";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
+// يحول الكائن إلى مصفوفة (للتعامل مع الخدمات)
 function objectToArray(obj) {
   if (Array.isArray(obj)) return obj;
   if (obj && typeof obj === "object") return Object.values(obj);
@@ -23,38 +24,39 @@ export default function ServiceSection({
 }) {
   const filterFn = typeof filterService === "function" ? filterService : () => true;
 
-  // ✅ عرف الـ state
+  // حالة الطلبات والتحميل
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ استخرج الـ clientId اللي Firestore مسميه userId في collection requests
-  // (حسب لقطة الشاشة قيمته رقم العميل COM-400-0106)
+  // استخراج رقم العميل (customerId) للربط مع الطلبات
   const clientId = client?.customerId || client?.userId || null;
 
-useEffect(() => {
-  async function fetchOrders() {
-    setLoading(true);
-    try {
-      const q = query(
-        collection(firestore, "requests"),
-        where("customerId", "==", clientId) // ✅ استخدم customerId وليس userId
-      );
-      const snapshot = await getDocs(q);
-      setOrders(
-        snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
-      );
-    } catch (error) {
-      console.error("fetchOrders error:", error);
-      setOrders([]);
+  useEffect(() => {
+    async function fetchOrders() {
+      setLoading(true);
+      try {
+        // الاستعلام عن الطلبات بناءً على customerId
+        const q = query(
+          collection(firestore, "requests"),
+          where("customerId", "==", clientId) // هنا الربط الصحيح!
+        );
+        const snapshot = await getDocs(q);
+        setOrders(
+          snapshot.docs.map(d => ({ ...d.data(), orderId: d.id }))
+        );
+      } catch (error) {
+        console.error("fetchOrders error:", error);
+        setOrders([]);
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }
-  if (clientId) fetchOrders();
-  else setOrders([]);
-}, [clientId]);
+    if (clientId) fetchOrders();
+    else setOrders([]);
+  }, [clientId]);
 
   return (
     <div className="space-y-8">
+      {/* عرض مجموعات الخدمات */}
       {groups.map((group, idx) => {
         const arr = objectToArray(group.services).filter(filterFn);
         if (!arr.length) return null;
@@ -79,7 +81,6 @@ useEffect(() => {
                   requireUpload={srv.requireUpload}
                   coins={srv.coins || 0}
                   lang={lang}
-                  // ⚠️ هنا برضه ابعت رقم العميل لأن requests.userId هو رقم العميل
                   userId={client?.customerId || client?.userId}
                   userWallet={client?.walletBalance || 0}
                   userCoins={client?.coins || 0}
@@ -98,16 +99,19 @@ useEffect(() => {
         );
       })}
 
+      {/* رسالة في حالة عدم وجود خدمات متاحة */}
       {groups.every(g => !objectToArray(g.services).filter(filterFn).length) && (
         <div className="text-center text-gray-400 py-8">
           لا توجد خدمات متاحة حاليا
         </div>
       )}
 
+      {/* عنوان الطلبات */}
       <SectionTitle icon={null} color="emerald">
         {lang === "ar" ? "عروضك الحالية / طلباتك المدفوعة" : "Your Current Offers / Paid Orders"}
       </SectionTitle>
 
+      {/* عرض الطلبات أو رسالة التحميل أو رسالة عدم وجود طلبات */}
       {loading ? (
         <div className="text-center text-gray-400 py-4">
           {lang === "ar" ? "جاري التحميل..." : "Loading..."}
@@ -116,7 +120,7 @@ useEffect(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
           {orders.length > 0 ? (
             orders.map((order, idx) => {
-              // ✅ createdAt قد يكون string أو Timestamp
+              // تحويل تاريخ الإنشاء إلى تاريخ صالح للعرض
               const createdAt =
                 order.createdAt?.toDate
                   ? order.createdAt.toDate()
