@@ -430,7 +430,10 @@ function StaffAddModal({ onClose, staffList }) {
         uid: user.uid,
         role: data.type
       };
-    await setDoc(doc(firestore, "users", user.uid), userData);
+    await setDoc(doc(firestore, "users", employeeNumber), {
+  ...userData,
+  uid: user.uid, // احتفظ بالـ UID للربط مع Authentication إذا احتجته
+});
     onClose();
   } catch (err) {
     setError(err.message || "حدث خطأ!");
