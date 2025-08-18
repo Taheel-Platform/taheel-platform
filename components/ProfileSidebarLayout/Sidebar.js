@@ -4,94 +4,29 @@ import {
   FaBuilding, FaUserTie, FaTag,
   FaChevronLeft, FaChevronRight
 } from "react-icons/fa";
+import { firestore } from "@/lib/firebase.client";
+import { doc, getDoc } from "firebase/firestore";
 
 // الأقسام الأساسية
 const MAIN_SECTIONS = [
-  {
-    key: "personal",
-    icon: <FaUser size={22} />,
-    ar: "المعلومات الشخصية",
-    en: "Personal Info",
-  },
-  {
-    key: "orders",
-    icon: <FaClipboardList size={22} />,
-    ar: "الطلبات الحالية",
-    en: "Current Orders",
-  },
+  { key: "personal", icon: <FaUser size={22} />, ar: "المعلومات الشخصية", en: "Personal Info" },
+  { key: "orders",   icon: <FaClipboardList size={22} />, ar: "الطلبات الحالية", en: "Current Orders" },
 ];
 
-// أقسام الخدمات حسب نوع العميل
 const SERVICE_SECTIONS = {
   resident: [
-    {
-      key: "residentServices",
-      icon: <FaServicestack size={22} />,
-      ar: "خدمات المقيم",
-      en: "Resident Services",
-    },
-    {
-      key: "otherServices",
-      icon: <FaTag size={22} />,
-      ar: "خدمات أخرى",
-      en: "Other Services",
-    },
+    { key: "residentServices", icon: <FaServicestack size={22} />, ar: "خدمات المقيم", en: "Resident Services" },
+    { key: "otherServices",    icon: <FaTag size={22} />, ar: "خدمات أخرى", en: "Other Services" },
   ],
   nonresident: [
-    {
-      key: "nonresidentServices",
-      icon: <FaUserTie size={22} />,
-      ar: "خدمات غير المقيم",
-      en: "Non-Resident Services",
-    },
-    {
-      key: "otherServices",
-      icon: <FaTag size={22} />,
-      ar: "خدمات أخرى",
-      en: "Other Services",
-    },
+    { key: "nonresidentServices", icon: <FaUserTie size={22} />, ar: "خدمات غير المقيم", en: "Non-Resident Services" },
+    { key: "otherServices",       icon: <FaTag size={22} />, ar: "خدمات أخرى", en: "Other Services" },
   ],
   company: [
-    {
-      key: "companyServices",
-      icon: <FaBuilding size={22} />,
-      ar: "خدمات الشركات",
-      en: "Company Services",
-    },
-    {
-      key: "residentServices",
-      icon: <FaServicestack size={22} />,
-      ar: "خدمات المقيم",
-      en: "Resident Services",
-    },
-    {
-      key: "otherServices",
-      icon: <FaTag size={22} />,
-      ar: "خدمات أخرى",
-      en: "Other Services",
-    },
+    { key: "companyServices",  icon: <FaBuilding size={22} />, ar: "خدمات الشركات", en: "Company Services" },
+    { key: "residentServices", icon: <FaServicestack size={22} />, ar: "خدمات المقيم", en: "Resident Services" },
+    { key: "otherServices",    icon: <FaTag size={22} />, ar: "خدمات أخرى", en: "Other Services" },
   ],
-};
-
-// يمكنك تعديل هذا لجلب السابكاتوجري من API أو فايرستور بناءً على القسم
-const SUBCATEGORIES = {
-  residentServices: [
-    "فرعي 1",
-    "فرعي 2",
-    "فرعي 3",
-  ],
-  nonresidentServices: [
-    "فرعي أ",
-    "فرعي ب",
-  ],
-  companyServices: [
-    "فرعي الشركات 1",
-    "فرعي الشركات 2",
-  ],
-  otherServices: [
-    "فرعي آخر 1",
-    "فرعي آخر 2",
-  ]
 };
 
 export default function Sidebar({
@@ -106,24 +41,54 @@ export default function Sidebar({
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const headerHeight = 140;
+  const [showSubcatsFor, setShowSubcatsFor] = useState(null);
+  const serviceSections = SERVICE_SECTIONS[clientType] || [];
+  const [isHovered, setIsHovered] = useState(false);
+
+  // السابكاتوجري الديناميكية لكل قسم خدمات
+  const [subcategories, setSubcategories] = useState({});
+
+  // جلب السابكاتوجري الديناميكية عند فتح القسم
+  async function fetchSubcategories(sectionKey) {
+    let docKey = "";
+    if (sectionKey === "residentServices") docKey = "resident";
+    else if (sectionKey === "nonresidentServices") docKey = "nonresident";
+    else if (sectionKey === "companyServices") docKey = "company";
+    else if (sectionKey === "otherServices") docKey = "other";
+    if (!docKey) return;
+
+    try {
+      const snap = await getDoc(doc(firestore, "servicesByClientType", docKey));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      // استخراج الخدمات فقط من الداتا (تجاهل الحقول الأخرى)
+      const servicesArr = Object.values(data).filter(
+        s => typeof s === "object" && s.subcategory
+      );
+      // استخراج التصنيفات الفريدة
+      const uniqueSubcats = [
+        ...new Set(servicesArr.map(s => s.subcategory).filter(Boolean))
+      ];
+      setSubcategories(prev => ({ ...prev, [sectionKey]: uniqueSubcats }));
+    } catch (error) {
+      setSubcategories(prev => ({ ...prev, [sectionKey]: [] }));
+    }
+  }
 
   useEffect(() => {
     function handleClick(e) {
       if (opened && sidebarRef.current && !sidebarRef.current.contains(e.target)) {
         setOpened(false);
+        setShowSubcatsFor(null);
       }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [opened]);
 
-  const serviceSections = SERVICE_SECTIONS[clientType] || [];
-  const [isHovered, setIsHovered] = useState(false);
-
-  // زر عائم صغير على الحافة الخارجية (يمين أو يسار حسب اللغة)
   const floatingBtnStyle = {
     position: "absolute",
-    top: "26px", // أعلى السايدبار تقريباً
+    top: "26px",
     right: dir === "rtl" ? "-18px" : undefined,
     left: dir === "ltr" ? "-18px" : undefined,
     width: "36px",
@@ -143,12 +108,24 @@ export default function Sidebar({
     outline: "none",
   };
 
-  // حركة ديناميكية عند التحويم
   const floatingBtnHoverStyle = {
     background: "#10b981",
     color: "#fff",
     borderColor: "#059669",
     boxShadow: "0 4px 24px 0 rgba(16,185,129,0.32)",
+  };
+
+  const handleServiceSectionClick = async (sectionKey) => {
+    onSelect(sectionKey);
+    if (showSubcatsFor === sectionKey) {
+      setShowSubcatsFor(null);
+      onSelectSubcategory("");
+    } else {
+      setShowSubcatsFor(sectionKey);
+      onSelectSubcategory("");
+      // جلب التصنيفات الديناميكية
+      await fetchSubcategories(sectionKey);
+    }
   };
 
   return (
@@ -179,7 +156,10 @@ export default function Sidebar({
         style={isHovered ? { ...floatingBtnStyle, ...floatingBtnHoverStyle } : floatingBtnStyle}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => setOpened(v => !v)}
+        onClick={() => {
+          setOpened(v => !v);
+          if (opened) setShowSubcatsFor(null);
+        }}
         title={opened ? (lang === "ar" ? "إغلاق القائمة" : "Close sidebar") : (lang === "ar" ? "فتح القائمة" : "Open sidebar")}
       >
         {opened
@@ -211,7 +191,10 @@ export default function Sidebar({
                 : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
               }
               `}
-            onClick={() => onSelect(section.key)}
+            onClick={() => {
+              setShowSubcatsFor(null);
+              onSelect(section.key);
+            }}
             style={{
               justifyContent: "flex-start",
               cursor: "pointer",
@@ -235,7 +218,7 @@ export default function Sidebar({
                   : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
                 }
                 `}
-              onClick={() => onSelect(section.key)}
+              onClick={() => handleServiceSectionClick(section.key)}
               style={{
                 justifyContent: "flex-start",
                 cursor: "pointer",
@@ -247,8 +230,8 @@ export default function Sidebar({
                 <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
               )}
             </button>
-            {/* قائمة السابكاتوجري تظهر فقط لو القسم مختار */}
-            {selected === section.key && SUBCATEGORIES[section.key] && opened && (
+            {/* قائمة السابكاتوجري تظهر فقط لو القسم مفتوح ومختار */}
+            {showSubcatsFor === section.key && subcategories[section.key] && opened && !!subcategories[section.key].length && (
               <div className="flex flex-col gap-1 pl-8 pr-2 mt-1 mb-2">
                 <button
                   onClick={() => onSelectSubcategory("")}
@@ -259,7 +242,7 @@ export default function Sidebar({
                 >
                   {lang === "ar" ? "كل التصنيفات" : "All categories"}
                 </button>
-                {SUBCATEGORIES[section.key].map(subcat => (
+                {subcategories[section.key].map(subcat => (
                   <button
                     key={subcat}
                     onClick={() => onSelectSubcategory(subcat)}
