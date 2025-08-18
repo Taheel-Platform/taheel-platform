@@ -49,15 +49,15 @@ export default function ServicesSection({ lang = "ar" }) {
   const [loading, setLoading] = useState(false);
   const [documentsCount, setDocumentsCount] = useState(1);
   const [documentsFields, setDocumentsFields] = useState([""]);
-  const [subcategories, setSubcategories] = useState([]); // جديد
-  const [providers, setProviders] = useState([]); // جديد
+  const [subcategories, setSubcategories] = useState([]);
+  const [providers, setProviders] = useState([]);
 
   const [newService, setNewService] = useState({
     name: "",
     description: "",
     category: clientType,
     subcategory: "",
-    provider: "",
+    providers: [],
     price: "",
     printingFee: "",
     coins: "",
@@ -67,9 +67,8 @@ export default function ServicesSection({ lang = "ar" }) {
     repeatable: false,
   });
   const [editingId, setEditingId] = useState(null);
-  const [editMode, setEditMode] = useState(false); // الجديد: وضع التعديل
+  const [editMode, setEditMode] = useState(false);
 
-  // جلب كل الخدمات وقوائم التصنيفات الفرعية وجهات الخدمة
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
@@ -77,13 +76,11 @@ export default function ServicesSection({ lang = "ar" }) {
       const snap = await getDoc(docRef);
       const data = snap.exists() ? snap.data() : {};
 
-      // التصنيفات الفرعية وجهات الخدمة
       setSubcategories(Array.isArray(data.subcategories) ? data.subcategories : []);
       setProviders(Array.isArray(data.providers) ? data.providers : []);
 
-      // فقط الحقول التي تبدأ بـ service (لو عندك حقول أخرى تجاهلها)
       const arr = Object.entries(data)
-        .filter(([key]) => key.startsWith("service"))
+        .filter(([key, val]) => key.startsWith("service") && typeof val === "object")
         .map(([key, val]) => ({
           ...val,
           id: key,
@@ -91,15 +88,12 @@ export default function ServicesSection({ lang = "ar" }) {
           clientPrice: val.clientPrice !== undefined ? val.clientPrice : calcAll(val.price, val.printingFee).clientPrice,
         }));
       setServices(
-        arr.sort((a, b) =>
-          a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en")
-        )
+        arr.sort((a, b) => a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en"))
       );
     }
     fetchData();
   }, [loading, lang, clientType]);
 
-  // تحديث الحقول عند تغيير عدد المستندات المطلوبة (لإضافة خدمة)
   useEffect(() => {
     if (documentsCount < 1) setDocumentsCount(1);
     setDocumentsFields(
@@ -110,7 +104,6 @@ export default function ServicesSection({ lang = "ar" }) {
     );
   }, [documentsCount, newService.requiredDocuments]);
 
-  // تحديث الكوينات فقط عند تغير السعر
   useEffect(() => {
     if (newService.price !== "" && !isNaN(newService.price)) {
       setNewService((ns) => ({
@@ -120,46 +113,52 @@ export default function ServicesSection({ lang = "ar" }) {
     }
   }, [newService.price]);
 
-  // حسابات الأسعار والضريبة
   const { tax, clientPrice, print } = calcAll(
     newService.price,
     newService.printingFee
   );
 
-  // إضافة خدمة جديدة كـ field داخل document الفئة
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
     const serviceFieldName = `service${Date.now()}`;
-await updateDoc(
-  doc(db, "servicesByClientType", clientType),
-  {
-    [serviceFieldName]: {
-      ...newService,
-      providers: [newService.provider].filter(Boolean), // هذا هو الحقل الموحد
-      // احذف الحقل provider
-      category: clientType,
-      price: Number(newService.price),
-      printingFee: Number(newService.printingFee),
-      coins: Number(newService.coins),
-      profit: Number(newService.printingFee),
-      tax: Number(tax),
-      clientPrice: Number(clientPrice),
-      requiredDocuments: newService.requireUpload
-        ? documentsFields.map((s) => s.trim()).filter(Boolean)
-        : [],
-      serviceId: generateServiceId(clientType),
-      createdAt: serverTimestamp(),
-      active: true,
-    },
-  }
-);
+    await updateDoc(
+      doc(db, "servicesByClientType", clientType),
+      {
+        [serviceFieldName]: {
+          name: newService.name,
+          description: newService.description,
+          category: clientType,
+          subcategory: newService.subcategory,
+          providers: Array.isArray(newService.providers)
+            ? newService.providers.filter(Boolean)
+            : typeof newService.providers === "string" && newService.providers
+              ? [newService.providers]
+              : [],
+          price: Number(newService.price),
+          printingFee: Number(newService.printingFee),
+          coins: Number(newService.coins),
+          profit: Number(newService.printingFee),
+          tax: Number(tax),
+          clientPrice: Number(clientPrice),
+          requiredDocuments: newService.requireUpload
+            ? documentsFields.map((s) => s.trim()).filter(Boolean)
+            : [],
+          duration: newService.duration,
+          requireUpload: !!newService.requireUpload,
+          repeatable: !!newService.repeatable,
+          serviceId: generateServiceId(clientType),
+          createdAt: serverTimestamp(),
+          active: true,
+        },
+      }
+    );
     setNewService({
       name: "",
       description: "",
       category: clientType,
       subcategory: "",
-      provider: "",
+      providers: [],
       price: "",
       printingFee: "",
       coins: "",
@@ -171,21 +170,13 @@ await updateDoc(
     setDocumentsFields([""]);
     setDocumentsCount(1);
     setShowAdd(false);
-    setEditMode(false); // إعادة وضع التعديل
+    setEditMode(false);
     setEditingId(null);
     setLoading(false);
   }
 
-  // حذف خدمة (حذف الحقل من الدوكيومنت)
   async function handleDeleteService(id) {
-    if (
-      !confirm(
-        lang === "ar"
-          ? "هل أنت متأكد من حذف الخدمة؟"
-          : "Are you sure to delete the service?"
-      )
-    )
-      return;
+    if (!confirm(lang === "ar" ? "هل أنت متأكد من حذف الخدمة؟" : "Are you sure to delete the service?")) return;
     setLoading(true);
     await updateDoc(doc(db, "servicesByClientType", clientType), {
       [id]: deleteField(),
@@ -193,30 +184,35 @@ await updateDoc(
     setLoading(false);
   }
 
-  // تعديل خدمة (تحديث الحقل داخل الدوكيومنت)
   async function handleEditService(e) {
     e.preventDefault();
     setLoading(true);
-    const { tax, clientPrice } = calcAll(
-      newService.price,
-      newService.printingFee
-    );
-await updateDoc(doc(db, "servicesByClientType", clientType), {
-  [editingId]: {
-    ...newService,
-    providers: [newService.provider].filter(Boolean), // هذا هو الحقل الموحد
-    // احذف الحقل provider
-    price: Number(newService.price),
-    printingFee: Number(newService.printingFee),
-    coins: Number(newService.coins),
-    profit: Number(newService.printingFee),
-    tax: Number(tax),
-    clientPrice: Number(clientPrice),
-    requiredDocuments: newService.requireUpload
-      ? documentsFields.map((s) => s.trim()).filter(Boolean)
-      : [],
-  },
-});
+    const { tax, clientPrice } = calcAll(newService.price, newService.printingFee);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      [editingId]: {
+        name: newService.name,
+        description: newService.description,
+        category: clientType,
+        subcategory: newService.subcategory,
+        providers: Array.isArray(newService.providers)
+          ? newService.providers.filter(Boolean)
+          : typeof newService.providers === "string" && newService.providers
+            ? [newService.providers]
+            : [],
+        price: Number(newService.price),
+        printingFee: Number(newService.printingFee),
+        coins: Number(newService.coins),
+        profit: Number(newService.printingFee),
+        tax: Number(tax),
+        clientPrice: Number(clientPrice),
+        requiredDocuments: newService.requireUpload
+          ? documentsFields.map((s) => s.trim()).filter(Boolean)
+          : [],
+        duration: newService.duration,
+        requireUpload: !!newService.requireUpload,
+        repeatable: !!newService.repeatable,
+      },
+    });
     setEditingId(null);
     setEditMode(false);
     setNewService({
@@ -224,7 +220,7 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
       description: "",
       category: clientType,
       subcategory: "",
-      provider: "",
+      providers: [],
       price: "",
       printingFee: "",
       coins: "",
@@ -239,7 +235,6 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
     setLoading(false);
   }
 
-  // إضافة تصنيف فرعي
   async function handleAddSubcategory(subcat) {
     if (!subcat.trim()) return;
     setLoading(true);
@@ -249,7 +244,6 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
     setLoading(false);
   }
 
-  // حذف تصنيف فرعي
   async function handleRemoveSubcategory(subcat) {
     setLoading(true);
     await updateDoc(doc(db, "servicesByClientType", clientType), {
@@ -258,7 +252,6 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
     setLoading(false);
   }
 
-  // إضافة جهة خدمة
   async function handleAddProvider(provider) {
     if (!provider.trim()) return;
     setLoading(true);
@@ -268,7 +261,6 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
     setLoading(false);
   }
 
-  // حذف جهة خدمة
   async function handleRemoveProvider(provider) {
     setLoading(true);
     await updateDoc(doc(db, "servicesByClientType", clientType), {
@@ -277,13 +269,11 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
     setLoading(false);
   }
 
-  // فلترة الخدمات
   const filteredServices =
     filter === "all"
       ? services
       : services.filter((s) => s.category === filter);
 
-  // إدخال جديد للتصنيفات وجهات الخدمة
   const [newSubcatInput, setNewSubcatInput] = useState("");
   const [newProviderInput, setNewProviderInput] = useState("");
 
@@ -325,7 +315,7 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
                   description: "",
                   category: clientType,
                   subcategory: "",
-                  provider: "",
+                  providers: [],
                   price: "",
                   printingFee: "",
                   coins: "",
@@ -513,11 +503,13 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
               ))}
             </select>
             <select
+              multiple
               className="p-2 rounded border text-gray-900 flex-1"
-              value={newService.provider}
-              onChange={e =>
-                setNewService({ ...newService, provider: e.target.value })
-              }
+              value={newService.providers}
+              onChange={e => {
+                const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+                setNewService({ ...newService, providers: selected });
+              }}
             >
               <option value="">
                 {lang === "ar"
@@ -691,7 +683,7 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
                     description: "",
                     category: clientType,
                     subcategory: "",
-                    provider: "",
+                    providers: [],
                     price: "",
                     printingFee: "",
                     coins: "",
@@ -774,11 +766,11 @@ await updateDoc(doc(db, "servicesByClientType", clientType), {
                 <td className="py-2 px-2 text-cyan-700">
                   {service.subcategory}
                 </td>
-<td className="py-2 px-2 text-cyan-700">
-  {Array.isArray(service.providers) && service.providers.length > 0
-    ? service.providers.join(", ")
-    : "-"}
-</td>
+                <td className="py-2 px-2 text-cyan-700">
+                  {Array.isArray(service.providers) && service.providers.length > 0
+                    ? service.providers.join(", ")
+                    : "-"}
+                </td>
                 <td className="py-2 px-2 text-cyan-900">
                   {service.price} د.إ
                 </td>
