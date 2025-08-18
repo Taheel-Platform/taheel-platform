@@ -173,12 +173,25 @@ function MyOrdersSection({ lang = "ar" }) {
   });
 
   // الموظف يشوف الطلبات الجديدة المخصصة له فقط (وليس الطلبات غير المعينة لأي موظف)
-  const newOrders = orders
-    .filter((o) =>
-      (["new", "paid"].includes(o.status)) &&
-      o.assignedTo === currentEmployee.userId
+const employeeProviders =
+  Array.isArray(currentEmployee.providers) ? currentEmployee.providers : [];
+
+const newOrders = orders.filter(o =>
+  (["new", "paid"].includes(o.status)) &&
+  (
+    // الطلب غير معين لأي موظف ومربوط ببروفايدر الموظف
+    (
+      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
+      employeeProviders.some(p =>
+        Array.isArray(services[o.serviceId]?.providers) &&
+        services[o.serviceId].providers.includes(p)
+      )
     )
-    .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+    // أو الطلب معين لهذا الموظف نفسه
+    ||
+    (o.assignedTo === currentEmployee.userId)
+  )
+).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   let filteredOrders = orders.filter((o) => o.assignedTo === currentEmployee.userId);
   filteredOrders = filteredOrders
