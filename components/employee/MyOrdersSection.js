@@ -184,11 +184,17 @@ const newOrders = orders
   .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // الطلبات المعينة لهذا الموظف فقط
-  const filteredOrders = orders.filter((o) => o.assignedTo === employeeData.id)
-    .filter((o) => {
-      const type = getOrderType(o.clientId);
-      if (tab !== "all" && type !== tab) return false;
-      if (statusFilter !== "all" && (o.status || "new") !== statusFilter) return false;
+const filteredOrders = orders
+  .filter((o) =>
+    o.assignedTo === employeeData.id &&
+    Array.isArray(o.providers) &&
+    o.providers.some(p => employeeProviders.includes(p)) // فقط الطلبات اللي تخص بروفايدرز الموظف الحالي
+  )
+  .filter((o) => {
+    const type = getOrderType(o.clientId);
+    if (tab !== "all" && type !== tab) return false;
+    if (statusFilter !== "all" && (o.status || "new") !== statusFilter) return false;
+    
       const client = clients[o.clientId] || {};
       const svc = services[o.serviceId] || {};
       const searchText =

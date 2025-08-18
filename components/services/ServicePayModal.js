@@ -5,7 +5,7 @@ import {
 import { firestore } from "@/lib/firebase.client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  doc, setDoc, updateDoc, increment, collection, addDoc, getDocs, query, where
+  doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
@@ -54,11 +54,6 @@ export default function ServicePayModal({
     setMsgSuccess(false);
 
     // تحقق من القيم الممررة
-    console.log("customerId:", customerId);
-    console.log("userEmail:", userEmail);
-    console.log("serviceName:", serviceName);
-
-    // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
     if (!customerId || !userEmail || !serviceName) {
       setPayMsg(lang === "ar"
         ? "بيانات العميل أو البريد أو الخدمة ناقصة."
@@ -101,27 +96,41 @@ export default function ServicePayModal({
       // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
       let serviceData = {};
       try {
-        // نفترض أن الخدمات مصنفة حسب نوع العميل: resident, company, ...
-        const q = query(
-          collection(firestore, "servicesByClientType", clientType), // clientType من props أو ثابت حسب الحالة
-          where("name", "==", serviceName)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          serviceData = snap.docs[0].data();
+        const serviceDocRef = doc(firestore, "servicesByClientType", clientType);
+        const serviceDocSnap = await getDoc(serviceDocRef);
+        if (serviceDocSnap.exists()) {
+          const allServices = serviceDocSnap.data();
+          // لو عندك serviceId استخدمه، لو مش موجود ابحث بالاسم
+          serviceData = serviceId && allServices[serviceId]
+            ? allServices[serviceId]
+            : Object.values(allServices).find(s => s.name === serviceName) || {};
         }
       } catch (e) {
         console.log("خطأ في جلب بيانات الخدمة:", e);
       }
 
-      // استخراج البروفايدرات والمعرف
+      // استخراج البروفايدرز كما هو من الخدمة الأصلية
       const providers =
         Array.isArray(serviceData.providers)
           ? serviceData.providers
-          : serviceData.provider
-            ? [serviceData.provider]
+          : serviceData.providers
+            ? [serviceData.providers]
             : [];
-      const serviceId = serviceData.serviceId || "";
+
+      // سجل الريكويست وفيه جميع البروفايدرز كما هو
+      await setDoc(doc(firestore, "requests", orderNumber), {
+        requestId: orderNumber,
+        customerId: customerId,
+        serviceName,
+        serviceId: serviceData.serviceId || "",
+        providers, // ← هنا زي اللي في الخدمة بالظبط
+        paidAmount: finalPrice,
+        coinsUsed: useCoins ? coinDiscountValue : 0,
+        coinsGiven: willGetCashback ? cashbackCoins : 0,
+        createdAt: new Date().toISOString(),
+        status: "paid",
+        attachments: uploadedDocs || {}
+      });
 
       // إشعار العميل
       await addDoc(collection(firestore, "notifications"), {
@@ -133,21 +142,6 @@ export default function ServicePayModal({
         timestamp: new Date().toISOString(),
         isRead: false
       });
-
-      // حفظ بيانات الطلب والمرفقات مع البروفايدرات والمعرف
-await setDoc(doc(firestore, "requests", orderNumber), {
-  requestId: orderNumber,
-  customerId: customerId,
-  serviceName,
-  serviceId,
-  providers: Array.isArray(serviceData.providers) ? serviceData.providers : serviceData.provider ? [serviceData.provider] : [],
-  paidAmount: finalPrice,
-  coinsUsed: useCoins ? coinDiscountValue : 0,
-  coinsGiven: willGetCashback ? cashbackCoins : 0,
-  createdAt: new Date().toISOString(),
-  status: "paid",
-  attachments: uploadedDocs || {}
-});
 
       // إرسال إيميل تأكيد
       await fetch("/api/sendOrderEmail", {
