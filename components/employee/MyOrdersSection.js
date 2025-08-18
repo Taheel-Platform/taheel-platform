@@ -213,13 +213,15 @@ const newOrders = orders.filter(o =>
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // قبول طلب جديد
-  async function acceptOrder(order) {
-    await updateDoc(doc(db, "requests", order.requestId), {
-      assignedTo: employeeData.id,
-      assignedToName: employeeData.name || "موظف",
-      lastUpdated: new Date().toISOString()
-    });
-  }
+async function acceptOrder(order) {
+  await updateDoc(doc(db, "requests", order.requestId), {
+    assignedTo: employeeData.id,
+    assignedToName: employeeData.name || "موظف",
+    lastUpdated: new Date().toISOString()
+  });
+  setNewSidebarOpen(false); // لإغلاق الشريط الجانبي بعد قبول الطلب
+setSelected(null);        // لإغلاق تفاصيل الطلب لو مفتوحة
+}
 
   // إرسال إشعار تلقائي بتغيير الحالة
   async function sendAutoNotification(order, newStatus) {
