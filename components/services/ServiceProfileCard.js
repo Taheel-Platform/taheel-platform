@@ -92,6 +92,7 @@ export default function ServiceProfileCard({
   userEmail,
   longDescription,
   longDescription_en,
+  provider,
 }) {
   // تحقق من customerId في أول الكومبوننت
   useEffect(() => {
@@ -531,6 +532,7 @@ export default function ServiceProfileCard({
         userEmail={userEmail}
         uploadedDocs={uploadedDocs}
         onPaid={handlePaid}
+        provider={provider}
       />
       <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
