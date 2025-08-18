@@ -19,7 +19,6 @@ const categories = [
   { key: "other", label_ar: "أخرى", label_en: "Other" },
 ];
 
-// رقم خدمة فريد مع بادئة نوع العميل
 function generateServiceId(clientType) {
   const prefix = {
     resident: "RES",
@@ -32,7 +31,6 @@ function generateServiceId(clientType) {
   return `${prefix}-000-${num}${rand}`;
 }
 
-// حساب الضريبة 5% على رسوم الطباعة فقط + السعر النهائي للعميل
 function calcAll(price, printingFee) {
   const p = Number(price) || 0;
   const print = Number(printingFee) || 0;
@@ -51,7 +49,6 @@ export default function ServicesSection({ lang = "ar" }) {
   const [documentsFields, setDocumentsFields] = useState([""]);
   const [subcategories, setSubcategories] = useState([]);
   const [providers, setProviders] = useState([]);
-
   const [newService, setNewService] = useState({
     name: "",
     description: "",
@@ -75,10 +72,8 @@ export default function ServicesSection({ lang = "ar" }) {
       const docRef = doc(db, "servicesByClientType", clientType);
       const snap = await getDoc(docRef);
       const data = snap.exists() ? snap.data() : {};
-
       setSubcategories(Array.isArray(data.subcategories) ? data.subcategories : []);
       setProviders(Array.isArray(data.providers) ? data.providers : []);
-
       const arr = Object.entries(data)
         .filter(([key, val]) => key.startsWith("service") && typeof val === "object")
         .map(([key, val]) => ({
@@ -87,9 +82,7 @@ export default function ServicesSection({ lang = "ar" }) {
           tax: val.tax !== undefined ? val.tax : calcAll(val.price, val.printingFee).tax,
           clientPrice: val.clientPrice !== undefined ? val.clientPrice : calcAll(val.price, val.printingFee).clientPrice,
         }));
-      setServices(
-        arr.sort((a, b) => a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en"))
-      );
+      setServices(arr.sort((a, b) => a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en")));
     }
     fetchData();
   }, [loading, lang, clientType]);
@@ -97,10 +90,7 @@ export default function ServicesSection({ lang = "ar" }) {
   useEffect(() => {
     if (documentsCount < 1) setDocumentsCount(1);
     setDocumentsFields(
-      Array.from(
-        { length: documentsCount },
-        (_, i) => newService.requiredDocuments[i] || ""
-      )
+      Array.from({ length: documentsCount }, (_, i) => newService.requiredDocuments[i] || "")
     );
   }, [documentsCount, newService.requiredDocuments]);
 
@@ -113,10 +103,7 @@ export default function ServicesSection({ lang = "ar" }) {
     }
   }, [newService.price]);
 
-  const { tax, clientPrice, print } = calcAll(
-    newService.price,
-    newService.printingFee
-  );
+  const { tax, clientPrice, print } = calcAll(newService.price, newService.printingFee);
 
   async function handleAddService(e) {
     e.preventDefault();
@@ -278,9 +265,9 @@ export default function ServicesSection({ lang = "ar" }) {
   const [newProviderInput, setNewProviderInput] = useState("");
 
   return (
-    <div className="bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow p-4 sm:p-8 max-w-7xl mx-auto">
+    <div className="bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow p-4 sm:p-8 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:justify-between items-center mb-6 gap-3">
-        <span className="text-2xl font-bold text-cyan-900">
+        <span className="text-xl font-bold text-cyan-900">
           {lang === "ar" ? "إدارة الخدمات" : "Services Management"}
         </span>
         <div className="flex gap-2">
@@ -294,15 +281,13 @@ export default function ServicesSection({ lang = "ar" }) {
                 category: e.target.value,
               }));
             }}
-            className="p-2 rounded border text-cyan-800 font-bold bg-cyan-50"
+            className="p-2 rounded border text-cyan-800 font-bold bg-cyan-50 text-sm"
           >
-            {categories
-              .filter((c) => c.key !== "all")
-              .map((cat) => (
-                <option value={cat.key} key={cat.key}>
-                  {lang === "ar" ? cat.label_ar : cat.label_en}
-                </option>
-              ))}
+            {categories.filter((c) => c.key !== "all").map((cat) => (
+              <option value={cat.key} key={cat.key}>
+                {lang === "ar" ? cat.label_ar : cat.label_en}
+              </option>
+            ))}
           </select>
           <button
             onClick={() => {
@@ -328,7 +313,7 @@ export default function ServicesSection({ lang = "ar" }) {
                 setDocumentsCount(1);
               }
             }}
-            className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer"
+            className="px-3 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer text-sm"
           >
             {lang === "ar"
               ? showAdd
@@ -345,21 +330,19 @@ export default function ServicesSection({ lang = "ar" }) {
       <div className="flex gap-4 mb-6 flex-wrap">
         {/* التصنيفات الفرعية */}
         <div>
-          <span className="font-bold text-cyan-800">
+          <span className="font-bold text-cyan-800 text-sm">
             {lang === "ar" ? "التصنيفات الفرعية:" : "Subcategories:"}
           </span>
           <div className="flex flex-wrap gap-2 mt-1">
             {subcategories.map((cat) => (
-              <span key={cat} className="bg-cyan-100 px-3 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold">
+              <span key={cat} className="bg-cyan-100 px-2 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold text-xs">
                 {cat}
                 <button
                   onClick={() => handleRemoveSubcategory(cat)}
                   className="ml-1 text-red-500 font-bold hover:text-red-700"
                   title={lang === "ar" ? "حذف" : "Remove"}
                   type="button"
-                >
-                  ×
-                </button>
+                >×</button>
               </span>
             ))}
             <form
@@ -374,34 +357,30 @@ export default function ServicesSection({ lang = "ar" }) {
                 value={newSubcatInput}
                 onChange={e => setNewSubcatInput(e.target.value)}
                 placeholder={lang === "ar" ? "جديد..." : "New..."}
-                className="p-1 rounded border text-cyan-900"
+                className="p-1 rounded border text-cyan-900 text-xs"
               />
               <button
                 type="submit"
-                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold"
-              >
-                +
-              </button>
+                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold text-xs"
+              >+</button>
             </form>
           </div>
         </div>
         {/* جهات الخدمة */}
         <div>
-          <span className="font-bold text-cyan-800">
+          <span className="font-bold text-cyan-800 text-sm">
             {lang === "ar" ? "جهات الخدمة:" : "Providers:"}
           </span>
           <div className="flex flex-wrap gap-2 mt-1">
             {providers.map((prov) => (
-              <span key={prov} className="bg-cyan-100 px-3 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold">
+              <span key={prov} className="bg-cyan-100 px-2 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold text-xs">
                 {prov}
                 <button
                   onClick={() => handleRemoveProvider(prov)}
                   className="ml-1 text-red-500 font-bold hover:text-red-700"
                   title={lang === "ar" ? "حذف" : "Remove"}
                   type="button"
-                >
-                  ×
-                </button>
+                >×</button>
               </span>
             ))}
             <form
@@ -416,14 +395,12 @@ export default function ServicesSection({ lang = "ar" }) {
                 value={newProviderInput}
                 onChange={e => setNewProviderInput(e.target.value)}
                 placeholder={lang === "ar" ? "جديد..." : "New..."}
-                className="p-1 rounded border text-cyan-900"
+                className="p-1 rounded border text-cyan-900 text-xs"
               />
               <button
                 type="submit"
-                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold"
-              >
-                +
-              </button>
+                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold text-xs"
+              >+</button>
             </form>
           </div>
         </div>
@@ -435,7 +412,7 @@ export default function ServicesSection({ lang = "ar" }) {
           <button
             key={cat.key}
             onClick={() => setFilter(cat.key)}
-            className={`px-4 py-1 rounded-lg border font-semibold transition cursor-pointer ${
+            className={`px-3 py-1 rounded-lg border font-semibold transition cursor-pointer text-xs ${
               filter === cat.key
                 ? "bg-cyan-700 text-white border-cyan-700"
                 : "bg-white text-cyan-700 border-cyan-300 hover:bg-cyan-50"
@@ -455,7 +432,7 @@ export default function ServicesSection({ lang = "ar" }) {
           <div className="flex flex-col md:flex-row gap-2">
             <input
               required
-              className="p-2 rounded border text-gray-900 font-semibold flex-1"
+              className="p-2 rounded border text-gray-900 font-semibold flex-1 text-sm"
               placeholder={lang === "ar" ? "اسم الخدمة" : "Service name"}
               value={newService.name}
               onChange={(e) =>
@@ -463,9 +440,9 @@ export default function ServicesSection({ lang = "ar" }) {
               }
             />
             <textarea
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               placeholder={lang === "ar" ? "وصف الخدمة" : "Service Description"}
-              rows={3}
+              rows={2}
               value={newService.description}
               onChange={(e) =>
                 setNewService({ ...newService, description: e.target.value })
@@ -474,7 +451,7 @@ export default function ServicesSection({ lang = "ar" }) {
           </div>
           <div className="flex flex-col md:flex-row gap-2">
             <select
-              className="p-2 rounded border text-gray-900 font-semibold flex-1"
+              className="p-2 rounded border text-gray-900 font-semibold flex-1 text-sm"
               value={newService.category}
               disabled
             >
@@ -485,7 +462,7 @@ export default function ServicesSection({ lang = "ar" }) {
               </option>
             </select>
             <select
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               value={newService.subcategory}
               onChange={e =>
                 setNewService({ ...newService, subcategory: e.target.value })
@@ -504,18 +481,13 @@ export default function ServicesSection({ lang = "ar" }) {
             </select>
             <select
               multiple
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               value={newService.providers}
               onChange={e => {
                 const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
                 setNewService({ ...newService, providers: selected });
               }}
             >
-              <option value="">
-                {lang === "ar"
-                  ? "جهة الخدمة (اختياري)"
-                  : "Provider (optional)"}
-              </option>
               {providers.map(prov => (
                 <option value={prov} key={prov}>
                   {prov}
@@ -528,7 +500,7 @@ export default function ServicesSection({ lang = "ar" }) {
               required
               type="number"
               min="0"
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               placeholder={
                 lang === "ar"
                   ? "سعر الخدمة (بدون رسوم الطباعة)"
@@ -542,7 +514,7 @@ export default function ServicesSection({ lang = "ar" }) {
             <input
               type="number"
               min="0"
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               placeholder={
                 lang === "ar" ? "رسوم الطباعة" : "Printing Fee"
               }
@@ -556,12 +528,12 @@ export default function ServicesSection({ lang = "ar" }) {
               type="number"
               min="0"
               readOnly
-              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100"
+              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100 text-sm"
               placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
               value={newService.coins}
             />
             <input
-              className="p-2 rounded border text-gray-900 flex-1"
+              className="p-2 rounded border text-gray-900 flex-1 text-sm"
               placeholder={lang === "ar" ? "وقت الإنجاز" : "Estimated Duration"}
               value={newService.duration}
               onChange={(e) =>
@@ -570,7 +542,7 @@ export default function ServicesSection({ lang = "ar" }) {
             />
           </div>
           <div className="flex flex-col md:flex-row gap-2">
-            <div className="flex-1 flex flex-col gap-1 bg-gray-50 p-2 rounded border border-gray-200 text-gray-900">
+            <div className="flex-1 flex flex-col gap-1 bg-gray-50 p-2 rounded border border-gray-200 text-gray-900 text-xs">
               <span className="font-bold text-cyan-800">
                 {lang === "ar" ? "التكلفة النهائية للعميل:" : "Client Final Price:"}
               </span>
@@ -596,7 +568,7 @@ export default function ServicesSection({ lang = "ar" }) {
               </span>
             </div>
           </div>
-          <label className="flex items-center gap-2 mt-2 select-none cursor-pointer text-cyan-800 font-semibold">
+          <label className="flex items-center gap-2 mt-2 select-none cursor-pointer text-cyan-800 font-semibold text-xs">
             <input
               type="checkbox"
               checked={!!newService.requireUpload}
@@ -628,7 +600,7 @@ export default function ServicesSection({ lang = "ar" }) {
                   type="number"
                   min={1}
                   max={10}
-                  className="p-1 w-16 rounded border text-cyan-900 font-bold"
+                  className="p-1 w-16 rounded border text-cyan-900 font-bold text-xs"
                   value={documentsCount}
                   onChange={(e) =>
                     setDocumentsCount(Number(e.target.value))
@@ -638,7 +610,7 @@ export default function ServicesSection({ lang = "ar" }) {
               {Array.from({ length: documentsCount }).map((_, i) => (
                 <input
                   key={i}
-                  className="p-2 rounded border text-gray-900"
+                  className="p-2 rounded border text-gray-900 text-xs"
                   placeholder={
                     lang === "ar"
                       ? `اسم المستند #${i + 1}`
@@ -658,7 +630,7 @@ export default function ServicesSection({ lang = "ar" }) {
               ))}
             </div>
           )}
-          <label className="flex items-center gap-2 mt-1 select-none cursor-pointer text-cyan-800 font-semibold">
+          <label className="flex items-center gap-2 mt-1 select-none cursor-pointer text-cyan-800 font-semibold text-xs">
             <input
               type="checkbox"
               checked={!!newService.repeatable}
@@ -696,14 +668,14 @@ export default function ServicesSection({ lang = "ar" }) {
                   setDocumentsCount(1);
                   setShowAdd(false);
                 }}
-                className="px-4 py-2 rounded bg-gray-400 hover:bg-gray-600 text-white font-bold shadow mt-2 transition cursor-pointer"
+                className="px-3 py-2 rounded bg-gray-400 hover:bg-gray-600 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
               >
                 {lang === "ar" ? "إلغاء التعديل" : "Cancel Edit"}
               </button>
             )}
             <button
               disabled={loading}
-              className="px-4 py-2 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 transition cursor-pointer"
+              className="px-3 py-2 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
             >
               {lang === "ar"
                 ? editMode
@@ -722,129 +694,75 @@ export default function ServicesSection({ lang = "ar" }) {
         <table className="w-full text-center border rounded-lg bg-white text-xs sm:text-sm">
           <thead className="bg-cyan-100 text-cyan-900">
             <tr>
-              <th className="py-2 px-2">ID</th>
-              <th className="py-2 px-2">{lang === "ar" ? "الاسم" : "Name"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "الوصف" : "Description"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "التصنيف" : "Category"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "فرعي" : "Subcategory"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "جهة" : "Provider"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "سعر الخدمة" : "Service Price"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "ضريبة الطباعة (5%)" : "Printing Tax (5%)"}</th>
-              <th className="py-2 px-2 font-bold text-emerald-700">{lang === "ar" ? "الإجمالى للعميل" : "Client Total"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "كوينات" : "Coins"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "مدة" : "Duration"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "مستندات" : "Documents"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "رفع مستند؟" : "Upload?"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "متعددة؟" : "Repeatable?"}</th>
-              <th className="py-2 px-2">{lang === "ar" ? "تحكم" : "Actions"}</th>
+              <th className="py-2 px-1">ID</th>
+              <th className="py-2 px-1">{lang === "ar" ? "الاسم" : "Name"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "الوصف" : "Description"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "التصنيف" : "Category"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "فرعي" : "Subcategory"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "جهة" : "Provider"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "السعر" : "Price"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "طباعة" : "Printing"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "ضريبة" : "Tax"}</th>
+              <th className="py-2 px-1 font-bold text-emerald-700">{lang === "ar" ? "للعميل" : "Client"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "كوينات" : "Coins"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "مدة" : "Duration"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "مستندات" : "Documents"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "رفع؟" : "Upload?"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "متعددة؟" : "Repeatable?"}</th>
+              <th className="py-2 px-1">{lang === "ar" ? "تحكم" : "Actions"}</th>
             </tr>
           </thead>
           <tbody>
             {filteredServices.map((service) => (
               <tr
                 key={service.id}
-                className="border-b hover:bg-cyan-50 transition"
+                className="border-b hover:bg-cyan-50 transition text-xs"
               >
-                <td className="py-2 px-2 text-xs font-mono text-cyan-800">
-                  {service.serviceId}
-                </td>
-                <td className="py-2 px-2 font-bold text-cyan-900">
-                  {service.name}
-                </td>
-                <td className="py-2 px-2 text-cyan-700 whitespace-pre-line">
-                  {service.description}
-                </td>
-                <td className="py-2 px-2">
+                <td className="py-2 px-1 font-mono text-cyan-800">{service.serviceId}</td>
+                <td className="py-2 px-1 font-bold text-cyan-900">{service.name}</td>
+                <td className="py-2 px-1 text-cyan-700 whitespace-pre-line">{service.description}</td>
+                <td className="py-2 px-1">
                   {
-                    categories.find(
-                      (c) => c.key === service.category
-                    )?.[lang === "ar" ? "label_ar" : "label_en"] ||
+                    categories.find((c) => c.key === service.category)?.[lang === "ar" ? "label_ar" : "label_en"] ||
                     service.category
                   }
                 </td>
-                <td className="py-2 px-2 text-cyan-700">
-                  {service.subcategory}
-                </td>
-                <td className="py-2 px-2 text-cyan-700">
+                <td className="py-2 px-1 text-cyan-700">{service.subcategory}</td>
+                <td className="py-2 px-1 text-cyan-700">
                   {Array.isArray(service.providers) && service.providers.length > 0
                     ? service.providers.join(", ")
                     : "-"}
                 </td>
-                <td className="py-2 px-2 text-cyan-900">
-                  {service.price} د.إ
-                </td>
-                <td className="py-2 px-2 text-cyan-900">
-                  {service.printingFee || 0} د.إ
-                </td>
-                <td className="py-2 px-2 text-cyan-800 bg-gray-100 font-bold">
-                  {service.tax}
-                </td>
-                <td className="py-2 px-2 text-emerald-800 bg-gray-100 font-bold">
-                  {service.clientPrice}
-                </td>
-                <td className="py-2 px-2 text-cyan-900">
-                  {service.coins}
-                </td>
-                <td className="py-2 px-2 text-cyan-700">
-                  {service.duration}
-                </td>
-                <td className="py-2 px-2 text-xs text-cyan-800">
+                <td className="py-2 px-1 text-cyan-900">{service.price} د.إ</td>
+                <td className="py-2 px-1 text-cyan-900">{service.printingFee || 0} د.إ</td>
+                <td className="py-2 px-1 text-cyan-800 bg-gray-100 font-bold">{service.tax}</td>
+                <td className="py-2 px-1 text-emerald-800 bg-gray-100 font-bold">{service.clientPrice}</td>
+                <td className="py-2 px-1 text-cyan-900">{service.coins}</td>
+                <td className="py-2 px-1 text-cyan-700">{service.duration}</td>
+                <td className="py-2 px-1 text-cyan-800">
                   {Array.isArray(service.requiredDocuments) && service.requiredDocuments.length > 0
                     ? service.requiredDocuments.map((d, i) => <div key={i}>{d}</div>)
                     : "-"}
                 </td>
-                <td className="py-2 px-2">
+                <td className="py-2 px-1">
                   {service.requireUpload ? (
-                    <span
-                      title={
-                        lang === "ar"
-                          ? "يتطلب رفع مستند"
-                          : "Requires document upload"
-                      }
-                      className="inline-block w-5 h-5 bg-cyan-700 rounded text-white font-bold text-center leading-5"
-                    >
-                      ✓
-                    </span>
+                    <span title={lang === "ar" ? "يتطلب رفع مستند" : "Requires document upload"}
+                      className="inline-block w-5 h-5 bg-cyan-700 rounded text-white font-bold text-center leading-5">✓</span>
                   ) : (
-                    <span
-                      title={
-                        lang === "ar"
-                          ? "لا يتطلب"
-                          : "Not required"
-                      }
-                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
-                    >
-                      ×
-                    </span>
+                    <span title={lang === "ar" ? "لا يتطلب" : "Not required"}
+                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5">×</span>
                   )}
                 </td>
-                <td className="py-2 px-2">
+                <td className="py-2 px-1">
                   {service.repeatable ? (
-                    <span
-                      title={
-                        lang === "ar"
-                          ? "خدمة متعددة"
-                          : "Repeatable"
-                      }
-                      className="inline-block w-5 h-5 bg-emerald-700 rounded text-white font-bold text-center leading-5"
-                    >
-                      ✓
-                    </span>
+                    <span title={lang === "ar" ? "خدمة متعددة" : "Repeatable"}
+                      className="inline-block w-5 h-5 bg-emerald-700 rounded text-white font-bold text-center leading-5">✓</span>
                   ) : (
-                    <span
-                      title={
-                        lang === "ar"
-                          ? "خدمة مرة واحدة"
-                          : "One time"
-                      }
-                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5"
-                    >
-                      ×
-                    </span>
+                    <span title={lang === "ar" ? "خدمة مرة واحدة" : "One time"}
+                      className="inline-block w-5 h-5 bg-gray-200 rounded text-gray-500 font-bold text-center leading-5">×</span>
                   )}
                 </td>
-                <td className="py-2 px-2">
+                <td className="py-2 px-1">
                   <button
                     onClick={() => {
                       setEditMode(true);
@@ -872,13 +790,13 @@ export default function ServicesSection({ lang = "ar" }) {
                           : 1
                       );
                     }}
-                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer"
+                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer text-xs"
                   >
                     {lang === "ar" ? "تعديل" : "Edit"}
                   </button>
                   <button
                     onClick={() => handleDeleteService(service.id)}
-                    className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer"
+                    className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer text-xs"
                   >
                     {lang === "ar" ? "حذف" : "Delete"}
                   </button>
@@ -887,7 +805,7 @@ export default function ServicesSection({ lang = "ar" }) {
             ))}
             {filteredServices.length === 0 && (
               <tr>
-                <td colSpan={16} className="py-6 text-gray-400">
+                <td colSpan={16} className="py-6 text-gray-400 text-xs">
                   {lang === "ar"
                     ? "لا توجد خدمات"
                     : "No services found"}
