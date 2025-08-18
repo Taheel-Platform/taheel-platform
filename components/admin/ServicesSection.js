@@ -131,27 +131,29 @@ export default function ServicesSection({ lang = "ar" }) {
     e.preventDefault();
     setLoading(true);
     const serviceFieldName = `service${Date.now()}`;
-    await updateDoc(
-      doc(db, "servicesByClientType", clientType),
-      {
-        [serviceFieldName]: {
-          ...newService,
-          category: clientType,
-          price: Number(newService.price),
-          printingFee: Number(newService.printingFee),
-          coins: Number(newService.coins),
-          profit: Number(newService.printingFee),
-          tax: Number(tax),
-          clientPrice: Number(clientPrice),
-          requiredDocuments: newService.requireUpload
-            ? documentsFields.map((s) => s.trim()).filter(Boolean)
-            : [],
-          serviceId: generateServiceId(clientType),
-          createdAt: serverTimestamp(),
-          active: true,
-        },
-      }
-    );
+await updateDoc(
+  doc(db, "servicesByClientType", clientType),
+  {
+    [serviceFieldName]: {
+      ...newService,
+      providers: [newService.provider].filter(Boolean), // هذا هو الحقل الموحد
+      // احذف الحقل provider
+      category: clientType,
+      price: Number(newService.price),
+      printingFee: Number(newService.printingFee),
+      coins: Number(newService.coins),
+      profit: Number(newService.printingFee),
+      tax: Number(tax),
+      clientPrice: Number(clientPrice),
+      requiredDocuments: newService.requireUpload
+        ? documentsFields.map((s) => s.trim()).filter(Boolean)
+        : [],
+      serviceId: generateServiceId(clientType),
+      createdAt: serverTimestamp(),
+      active: true,
+    },
+  }
+);
     setNewService({
       name: "",
       description: "",
@@ -199,20 +201,22 @@ export default function ServicesSection({ lang = "ar" }) {
       newService.price,
       newService.printingFee
     );
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      [editingId]: {
-        ...newService,
-        price: Number(newService.price),
-        printingFee: Number(newService.printingFee),
-        coins: Number(newService.coins),
-        profit: Number(newService.printingFee),
-        tax: Number(tax),
-        clientPrice: Number(clientPrice),
-        requiredDocuments: newService.requireUpload
-          ? documentsFields.map((s) => s.trim()).filter(Boolean)
-          : [],
-      },
-    });
+await updateDoc(doc(db, "servicesByClientType", clientType), {
+  [editingId]: {
+    ...newService,
+    providers: [newService.provider].filter(Boolean), // هذا هو الحقل الموحد
+    // احذف الحقل provider
+    price: Number(newService.price),
+    printingFee: Number(newService.printingFee),
+    coins: Number(newService.coins),
+    profit: Number(newService.printingFee),
+    tax: Number(tax),
+    clientPrice: Number(clientPrice),
+    requiredDocuments: newService.requireUpload
+      ? documentsFields.map((s) => s.trim()).filter(Boolean)
+      : [],
+  },
+});
     setEditingId(null);
     setEditMode(false);
     setNewService({
@@ -770,9 +774,11 @@ export default function ServicesSection({ lang = "ar" }) {
                 <td className="py-2 px-2 text-cyan-700">
                   {service.subcategory}
                 </td>
-                <td className="py-2 px-2 text-cyan-700">
-                  {service.provider}
-                </td>
+<td className="py-2 px-2 text-cyan-700">
+  {Array.isArray(service.providers) && service.providers.length > 0
+    ? service.providers.join(", ")
+    : "-"}
+</td>
                 <td className="py-2 px-2 text-cyan-900">
                   {service.price} د.إ
                 </td>

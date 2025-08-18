@@ -135,19 +135,19 @@ export default function ServicePayModal({
       });
 
       // حفظ بيانات الطلب والمرفقات مع البروفايدرات والمعرف
-      await setDoc(doc(firestore, "requests", orderNumber), {
-        requestId: orderNumber,
-        customerId: customerId,
-        serviceName,
-        serviceId,
-        providers: provider ? ([provider]) : [],
-        paidAmount: finalPrice,
-        coinsUsed: useCoins ? coinDiscountValue : 0,
-        coinsGiven: willGetCashback ? cashbackCoins : 0,
-        createdAt: new Date().toISOString(),
-        status: "paid",
-        attachments: uploadedDocs || {}
-      });
+await setDoc(doc(firestore, "requests", orderNumber), {
+  requestId: orderNumber,
+  customerId: customerId,
+  serviceName,
+  serviceId,
+  providers: Array.isArray(serviceData.providers) ? serviceData.providers : serviceData.provider ? [serviceData.provider] : [],
+  paidAmount: finalPrice,
+  coinsUsed: useCoins ? coinDiscountValue : 0,
+  coinsGiven: willGetCashback ? cashbackCoins : 0,
+  createdAt: new Date().toISOString(),
+  status: "paid",
+  attachments: uploadedDocs || {}
+});
 
       // إرسال إيميل تأكيد
       await fetch("/api/sendOrderEmail", {

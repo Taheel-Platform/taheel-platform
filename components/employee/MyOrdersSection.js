@@ -178,9 +178,7 @@ const newOrders = orders
     // ويخص بروفايدرات الموظف الحالي
     &&
     (
-      (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
-      ||
-      (typeof o.provider === "string" && employeeProviders.includes(o.provider))
+      Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p))
     )
   )
   .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
