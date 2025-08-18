@@ -170,20 +170,21 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   // فلترة الطلبات الجديدة حسب البروفايدر
   const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
 
-  const newOrders = orders.filter(o =>
-    (["new", "paid"].includes(o.status)) &&
+const newOrders = orders.filter(o =>
+  (["new", "paid"].includes(o.status)) &&
+  (
     (
+      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
       (
-        (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
-        employeeProviders.some(p =>
-          Array.isArray(services[o.serviceId]?.providers) &&
-          services[o.serviceId].providers.includes(p)
-        )
+        (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
+        ||
+        (typeof o.provider === "string" && employeeProviders.includes(o.provider))
       )
-      ||
-      (o.assignedTo === employeeData.id)
     )
-  ).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+    ||
+    (o.assignedTo === employeeData.id)
+  )
+).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // فلترة الطلبات المعينة لهذا الموظف
   let filteredOrders = orders.filter((o) => o.assignedTo === employeeData.id);
