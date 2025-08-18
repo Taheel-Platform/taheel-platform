@@ -172,16 +172,11 @@ function MyOrdersSection({ lang = "ar" }) {
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
-  // هنا التعديل! الطلبات الجديدة تظهر فقط للموظف إذا كانت مخصصة له أو غير مخصصة لأي موظف.
+  // الموظف يشوف الطلبات الجديدة المخصصة له فقط (وليس الطلبات غير المعينة لأي موظف)
   const newOrders = orders
     .filter((o) =>
       (["new", "paid"].includes(o.status)) &&
-      (
-        // الطلب غير معين لأي موظف
-        !o.assignedTo || o.assignedTo === "" || o.assignedTo === null
-        // أو معين للموظف الحالي فقط
-        || o.assignedTo === currentEmployee.userId
-      )
+      o.assignedTo === currentEmployee.userId
     )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
@@ -835,7 +830,7 @@ function renderOrderDetails(order) {
               تغيير حالة الطلب
             </div>
             <div className="mb-3">هل أنت متأكد أنك تريد تعيين هذه الحالة للطلب؟ سيتم إرسال إشعار تلقائي للعميل.</div>
-            <div className="flex gap-3 و-full">
+            <div className="flex gap-3 w-full">
               <button style={btnStyle} onMouseOver={e=>Object.assign(e.target.style,btnHover)} onMouseOut={e=>Object.assign(e.target.style,btnStyle)} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
               <button style={{...btnStyle, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
             </div>
