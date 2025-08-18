@@ -430,13 +430,14 @@ function StaffAddModal({ onClose, staffList }) {
         uid: user.uid,
         role: data.type
       };
-      await setDoc(doc(firestore, "users", user.uid), userData);
-      onClose();
-    } catch (err) {
-      setError(err.message || "حدث خطأ!");
-    }
-    setLoading(false);
-  };
+    await setDoc(doc(firestore, "users", user.uid), userData);
+    onClose();
+  } catch (err) {
+    setError(err.message || "حدث خطأ!");
+    console.error("Add user error:", err);
+  }
+  setLoading(false);
+};
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
