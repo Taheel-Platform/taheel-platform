@@ -171,21 +171,19 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
 
   // الطلبات الجديدة التي لم تعين بعد وتخص تخصص الموظف (أو طلباته هو فقط)
-  const newOrders = orders.filter(o =>
-    (["new", "paid"].includes(o.status)) &&
+const newOrders = orders
+  .filter(o =>
+    // الطلب غير معين لأي موظف
+    (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
+    // ويخص بروفايدرات الموظف الحالي
+    &&
     (
-      (
-        (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
-        (
-          (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
-          ||
-          (typeof o.provider === "string" && employeeProviders.includes(o.provider))
-        )
-      )
+      (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
       ||
-      (o.assignedTo === employeeData.id)
+      (typeof o.provider === "string" && employeeProviders.includes(o.provider))
     )
-  ).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+  )
+  .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // الطلبات المعينة لهذا الموظف فقط
   const filteredOrders = orders.filter((o) => o.assignedTo === employeeData.id)
