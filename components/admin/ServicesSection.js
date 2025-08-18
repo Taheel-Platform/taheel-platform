@@ -6,6 +6,8 @@ import {
   updateDoc,
   serverTimestamp,
   deleteField,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 
@@ -47,6 +49,9 @@ export default function ServicesSection({ lang = "ar" }) {
   const [loading, setLoading] = useState(false);
   const [documentsCount, setDocumentsCount] = useState(1);
   const [documentsFields, setDocumentsFields] = useState([""]);
+  const [subcategories, setSubcategories] = useState([]); // جديد
+  const [providers, setProviders] = useState([]); // جديد
+
   const [newService, setNewService] = useState({
     name: "",
     description: "",
@@ -64,13 +69,18 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editingId, setEditingId] = useState(null);
   const [editMode, setEditMode] = useState(false); // الجديد: وضع التعديل
 
-  // جلب كل الخدمات من Firestore كحقول داخل document الفئة
+  // جلب كل الخدمات وقوائم التصنيفات الفرعية وجهات الخدمة
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
       const docRef = doc(db, "servicesByClientType", clientType);
       const snap = await getDoc(docRef);
       const data = snap.exists() ? snap.data() : {};
+
+      // التصنيفات الفرعية وجهات الخدمة
+      setSubcategories(Array.isArray(data.subcategories) ? data.subcategories : []);
+      setProviders(Array.isArray(data.providers) ? data.providers : []);
+
       // فقط الحقول التي تبدأ بـ service (لو عندك حقول أخرى تجاهلها)
       const arr = Object.entries(data)
         .filter(([key]) => key.startsWith("service"))
@@ -225,11 +235,53 @@ export default function ServicesSection({ lang = "ar" }) {
     setLoading(false);
   }
 
+  // إضافة تصنيف فرعي
+  async function handleAddSubcategory(subcat) {
+    if (!subcat.trim()) return;
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      subcategories: arrayUnion(subcat.trim()),
+    });
+    setLoading(false);
+  }
+
+  // حذف تصنيف فرعي
+  async function handleRemoveSubcategory(subcat) {
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      subcategories: arrayRemove(subcat),
+    });
+    setLoading(false);
+  }
+
+  // إضافة جهة خدمة
+  async function handleAddProvider(provider) {
+    if (!provider.trim()) return;
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      providers: arrayUnion(provider.trim()),
+    });
+    setLoading(false);
+  }
+
+  // حذف جهة خدمة
+  async function handleRemoveProvider(provider) {
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      providers: arrayRemove(provider),
+    });
+    setLoading(false);
+  }
+
   // فلترة الخدمات
   const filteredServices =
     filter === "all"
       ? services
       : services.filter((s) => s.category === filter);
+
+  // إدخال جديد للتصنيفات وجهات الخدمة
+  const [newSubcatInput, setNewSubcatInput] = useState("");
+  const [newProviderInput, setNewProviderInput] = useState("");
 
   return (
     <div className="bg-gradient-to-br from-white to-cyan-50 rounded-2xl shadow p-4 sm:p-8 max-w-7xl mx-auto">
@@ -295,6 +347,94 @@ export default function ServicesSection({ lang = "ar" }) {
         </div>
       </div>
 
+      {/* إدارة التصنيفات الفرعية وجهات الخدمة */}
+      <div className="flex gap-4 mb-6 flex-wrap">
+        {/* التصنيفات الفرعية */}
+        <div>
+          <span className="font-bold text-cyan-800">
+            {lang === "ar" ? "التصنيفات الفرعية:" : "Subcategories:"}
+          </span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {subcategories.map((cat) => (
+              <span key={cat} className="bg-cyan-100 px-3 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold">
+                {cat}
+                <button
+                  onClick={() => handleRemoveSubcategory(cat)}
+                  className="ml-1 text-red-500 font-bold hover:text-red-700"
+                  title={lang === "ar" ? "حذف" : "Remove"}
+                  type="button"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleAddSubcategory(newSubcatInput);
+                setNewSubcatInput("");
+              }}
+              className="flex gap-1"
+            >
+              <input
+                value={newSubcatInput}
+                onChange={e => setNewSubcatInput(e.target.value)}
+                placeholder={lang === "ar" ? "جديد..." : "New..."}
+                className="p-1 rounded border text-cyan-900"
+              />
+              <button
+                type="submit"
+                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold"
+              >
+                +
+              </button>
+            </form>
+          </div>
+        </div>
+        {/* جهات الخدمة */}
+        <div>
+          <span className="font-bold text-cyan-800">
+            {lang === "ar" ? "جهات الخدمة:" : "Providers:"}
+          </span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {providers.map((prov) => (
+              <span key={prov} className="bg-cyan-100 px-3 py-1 rounded flex items-center gap-1 text-cyan-900 font-semibold">
+                {prov}
+                <button
+                  onClick={() => handleRemoveProvider(prov)}
+                  className="ml-1 text-red-500 font-bold hover:text-red-700"
+                  title={lang === "ar" ? "حذف" : "Remove"}
+                  type="button"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleAddProvider(newProviderInput);
+                setNewProviderInput("");
+              }}
+              className="flex gap-1"
+            >
+              <input
+                value={newProviderInput}
+                onChange={e => setNewProviderInput(e.target.value)}
+                placeholder={lang === "ar" ? "جديد..." : "New..."}
+                className="p-1 rounded border text-cyan-900"
+              />
+              <button
+                type="submit"
+                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-800 text-white rounded font-bold"
+              >
+                +
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
       {/* فلاتر الفئات */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {categories.map((cat) => (
@@ -350,30 +490,42 @@ export default function ServicesSection({ lang = "ar" }) {
                   : categories.find((c) => c.key === clientType)?.label_en}
               </option>
             </select>
-            <input
+            <select
               className="p-2 rounded border text-gray-900 flex-1"
-              placeholder={
-                lang === "ar"
-                  ? "تصنيف فرعي (اختياري)"
-                  : "Subcategory (optional)"
-              }
               value={newService.subcategory}
-              onChange={(e) =>
+              onChange={e =>
                 setNewService({ ...newService, subcategory: e.target.value })
               }
-            />
-            <input
+            >
+              <option value="">
+                {lang === "ar"
+                  ? "تصنيف فرعي (اختياري)"
+                  : "Subcategory (optional)"}
+              </option>
+              {subcategories.map(cat => (
+                <option value={cat} key={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+            <select
               className="p-2 rounded border text-gray-900 flex-1"
-              placeholder={
-                lang === "ar"
-                  ? "جهة الخدمة (اختياري)"
-                  : "Provider (optional)"
-              }
               value={newService.provider}
-              onChange={(e) =>
+              onChange={e =>
                 setNewService({ ...newService, provider: e.target.value })
               }
-            />
+            >
+              <option value="">
+                {lang === "ar"
+                  ? "جهة الخدمة (اختياري)"
+                  : "Provider (optional)"}
+              </option>
+              {providers.map(prov => (
+                <option value={prov} key={prov}>
+                  {prov}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex flex-col md:flex-row gap-2">
             <input
