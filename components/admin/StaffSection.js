@@ -2,7 +2,6 @@
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-
 import {
   FaCheckCircle, FaRegCircle, FaSearch, FaEye, FaTimes, FaDownload, FaUserPlus, FaEdit, FaCamera, FaStickyNote
 } from "react-icons/fa";
@@ -11,7 +10,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   doc,
-  getDocs,
+  getDoc,
   setDoc,
   updateDoc,
   onSnapshot,
@@ -44,7 +43,7 @@ function generateEmployeeNumber(staffList) {
   return `EMP-${year}-${String(nextNum).padStart(3, "0")}`;
 }
 
- function StaffSection() {
+function StaffSection() {
   const [staff, setStaff] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -284,6 +283,7 @@ function StaffCard({ staff, onClose, onImageChange, onAddNote }) {
               <div><span className="font-bold text-emerald-700">ساعات العمل (اليوم):</span> <span className="text-gray-700">{staff.workHoursToday ? staff.workHoursToday + " ساعة" : "-"}</span></div>
               <div><span className="font-bold text-emerald-700">ساعات العمل (الشهر):</span> <span className="text-gray-700">{totalHours !== undefined ? totalHours + " ساعة" : "-"}</span></div>
               <div><span className="font-bold text-emerald-700">طلبات منجزة (الشهر):</span> <span className="text-gray-700">{doneCount}</span></div>
+              <div><span className="font-bold text-emerald-700">الجهات المرتبطة:</span> <span className="text-gray-700">{Array.isArray(staff.providers) ? staff.providers.join(", ") : "-"}</span></div>
             </div>
           </div>
         </div>
@@ -349,12 +349,34 @@ function StaffAddModal({ onClose, staffList }) {
     jobTitle: "",
     profilePic: "",
     status: "offline",
-    password: ""
+    password: "",
+    providers: [],
   });
   const [img, setImg] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [providersList, setProvidersList] = useState([]);
+  const [allSelected, setAllSelected] = useState(false);
+
+  useEffect(() => {
+    // جلب جميع الجهات من كل الجذور (مقيمين/غير مقيمين/شركات/أخرى)
+    async function fetchAllProviders() {
+      const roots = ["resident", "nonresident", "company", "other"];
+      let all = [];
+      for (const root of roots) {
+        const docRef = doc(firestore, "servicesByClientType", root);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.providers)) all = [...all, ...data.providers];
+        }
+      }
+      // إزالة التكرار
+      setProvidersList([...new Set(all)]);
+    }
+    fetchAllProviders();
+  }, []);
 
   function handleImg(e) {
     const file = e.target.files[0];
@@ -365,6 +387,29 @@ function StaffAddModal({ onClose, staffList }) {
       setData(d => ({ ...d, profilePic: e.target.result }));
     };
     reader.readAsDataURL(file);
+  }
+
+  // اختيار كل الجهات/إلغاء الكل
+  function handleSelectAllProviders() {
+    if (allSelected) {
+      setData(d => ({ ...d, providers: [] }));
+      setAllSelected(false);
+    } else {
+      setData(d => ({ ...d, providers: providersList }));
+      setAllSelected(true);
+    }
+  }
+
+  // اختيار جهة واحدة
+  function handleProviderChange(provider) {
+    let arr = [...data.providers];
+    if (arr.includes(provider)) {
+      arr = arr.filter(p => p !== provider);
+    } else {
+      arr.push(provider);
+    }
+    setData(d => ({ ...d, providers: arr }));
+    setAllSelected(arr.length === providersList.length);
   }
 
   const handleSubmit = async (e) => {
@@ -378,13 +423,13 @@ function StaffAddModal({ onClose, staffList }) {
       // 2. احفظ بياناته في Firestore تحت uid
       const employeeNumber = generateEmployeeNumber(staffList);
       const userData = {
-  ...data,
-  profilePic: img,
-  registeredAt: new Date().toISOString(),
-  employeeNumber,
-  uid: user.uid,
-  role: data.type // هذه أهم إضافة!
-};
+        ...data,
+        profilePic: img,
+        registeredAt: new Date().toISOString(),
+        employeeNumber,
+        uid: user.uid,
+        role: data.type
+      };
       await setDoc(doc(firestore, "users", user.uid), userData);
       onClose();
     } catch (err) {
@@ -452,6 +497,32 @@ function StaffAddModal({ onClose, staffList }) {
             <option value="employee">موظف</option>
             <option value="admin">مدير</option>
           </select>
+        </div>
+        {/* اختيار الجهات */}
+        <div className="mt-4">
+          <div className="font-bold text-emerald-700 mb-2">جهات الخدمة المرتبطة:</div>
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer font-semibold text-indigo-700 bg-indigo-100 px-3 py-1 rounded">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={handleSelectAllProviders}
+                className="mr-1 accent-indigo-600"
+              />
+              كل الجهات
+            </label>
+            {providersList.map((prov) => (
+              <label key={prov} className="cursor-pointer font-semibold text-emerald-700 bg-emerald-100 px-3 py-1 rounded">
+                <input
+                  type="checkbox"
+                  checked={data.providers.includes(prov)}
+                  onChange={() => handleProviderChange(prov)}
+                  className="mr-1 accent-emerald-600"
+                />
+                {prov}
+              </label>
+            ))}
+          </div>
         </div>
         <button type="submit" disabled={loading} className="mt-6 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-full px-8 py-3 font-bold flex items-center gap-2 shadow transition cursor-pointer">
           {loading ? "جاري الإضافة..." : <><FaUserPlus /> إضافة</>}
