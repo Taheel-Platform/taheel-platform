@@ -73,7 +73,35 @@ const SERVICE_SECTIONS = {
   ],
 };
 
-export default function Sidebar({ selected, onSelect, lang = "ar", clientType = "resident" }) {
+// يمكنك تعديل هذا لجلب السابكاتوجري من API أو فايرستور بناءً على القسم
+const SUBCATEGORIES = {
+  residentServices: [
+    "فرعي 1",
+    "فرعي 2",
+    "فرعي 3",
+  ],
+  nonresidentServices: [
+    "فرعي أ",
+    "فرعي ب",
+  ],
+  companyServices: [
+    "فرعي الشركات 1",
+    "فرعي الشركات 2",
+  ],
+  otherServices: [
+    "فرعي آخر 1",
+    "فرعي آخر 2",
+  ]
+};
+
+export default function Sidebar({
+  selected,
+  onSelect,
+  lang = "ar",
+  clientType = "resident",
+  selectedSubcategory,
+  onSelectSubcategory
+}) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
@@ -90,6 +118,7 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
   }, [opened]);
 
   const serviceSections = SERVICE_SECTIONS[clientType] || [];
+  const [isHovered, setIsHovered] = useState(false);
 
   // زر عائم صغير على الحافة الخارجية (يمين أو يسار حسب اللغة)
   const floatingBtnStyle = {
@@ -121,9 +150,6 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
     borderColor: "#059669",
     boxShadow: "0 4px 24px 0 rgba(16,185,129,0.32)",
   };
-
-  // دمج ستايل التحويم
-  const [isHovered, setIsHovered] = useState(false);
 
   return (
     <aside
@@ -201,26 +227,55 @@ export default function Sidebar({ selected, onSelect, lang = "ar", clientType = 
 
         {/* أقسام الخدمات حسب نوع العميل */}
         {serviceSections.map((section) => (
-          <button
-            key={section.key}
-            className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
-              ${selected === section.key
-                ? "bg-emerald-700/20 text-emerald-300 shadow"
-                : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
-              }
-              `}
-            onClick={() => onSelect(section.key)}
-            style={{
-              justifyContent: "flex-start",
-              cursor: "pointer",
-            }}
-            tabIndex={0}
-          >
-            <span className={`transition-all ${opened ? "" : "mx-auto"}`}>{section.icon}</span>
-            {opened && (
-              <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
+          <div key={section.key}>
+            <button
+              className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
+                ${selected === section.key
+                  ? "bg-emerald-700/20 text-emerald-300 shadow"
+                  : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
+                }
+                `}
+              onClick={() => onSelect(section.key)}
+              style={{
+                justifyContent: "flex-start",
+                cursor: "pointer",
+              }}
+              tabIndex={0}
+            >
+              <span className={`transition-all ${opened ? "" : "mx-auto"}`}>{section.icon}</span>
+              {opened && (
+                <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
+              )}
+            </button>
+            {/* قائمة السابكاتوجري تظهر فقط لو القسم مختار */}
+            {selected === section.key && SUBCATEGORIES[section.key] && opened && (
+              <div className="flex flex-col gap-1 pl-8 pr-2 mt-1 mb-2">
+                <button
+                  onClick={() => onSelectSubcategory("")}
+                  className={`text-sm rounded-full px-3 py-1 font-bold transition border
+                    ${!selectedSubcategory ? "bg-emerald-400 text-white" : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
+                  `}
+                  style={{ cursor: "pointer" }}
+                >
+                  {lang === "ar" ? "كل التصنيفات" : "All categories"}
+                </button>
+                {SUBCATEGORIES[section.key].map(subcat => (
+                  <button
+                    key={subcat}
+                    onClick={() => onSelectSubcategory(subcat)}
+                    className={`text-sm rounded-full px-3 py-1 font-bold transition border
+                      ${selectedSubcategory === subcat
+                        ? "bg-emerald-400 text-white"
+                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
+                    `}
+                    style={{ cursor: "pointer" }}
+                  >
+                    {subcat}
+                  </button>
+                ))}
+              </div>
             )}
-          </button>
+          </div>
         ))}
       </nav>
 
