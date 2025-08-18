@@ -84,7 +84,7 @@ const typeTabs = [
   { key: "other", label: "أخرى", icon: <FaUserAlt /> }
 ];
 
-function MyOrdersSection({ lang = "ar" }) {
+function MyOrdersSection({ employeeData, lang = "ar" }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState({});
   const [employees, setEmployees] = useState([]);
@@ -103,6 +103,7 @@ function MyOrdersSection({ lang = "ar" }) {
   const [lastNewOrdersCount, setLastNewOrdersCount] = useState(0);
   const [clientDocs, setClientDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -172,7 +173,7 @@ function MyOrdersSection({ lang = "ar" }) {
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
-  // الموظف يشوف الطلبات الجديدة المخصصة له فقط (وليس الطلبات غير المعينة لأي موظف)
+
 const employeeProviders =
   Array.isArray(currentEmployee.providers) ? currentEmployee.providers : [];
 

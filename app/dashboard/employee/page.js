@@ -206,7 +206,7 @@ function EmployeeDashboardPageInner({ employeeData }) {
       case "attendance":
         return <AttendanceSection employeeData={employeeData} lang={lang} />;
       case "myorders":
-        return <MyOrdersSection employeeId={employeeData.id} lang={lang} />;
+        return <MyOrdersSection employeeData={employeeData} lang={lang} />;
       case "notifications":
         return <NotificationsSection userId={employeeData.id} lang={lang} />;
       case "support":
