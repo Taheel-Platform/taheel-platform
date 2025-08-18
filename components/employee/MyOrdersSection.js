@@ -172,10 +172,16 @@ function MyOrdersSection({ lang = "ar" }) {
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
+  // هنا التعديل! الطلبات الجديدة تظهر فقط للموظف إذا كانت مخصصة له أو غير مخصصة لأي موظف.
   const newOrders = orders
     .filter((o) =>
       (["new", "paid"].includes(o.status)) &&
-      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
+      (
+        // الطلب غير معين لأي موظف
+        !o.assignedTo || o.assignedTo === "" || o.assignedTo === null
+        // أو معين للموظف الحالي فقط
+        || o.assignedTo === currentEmployee.userId
+      )
     )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
