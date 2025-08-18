@@ -658,7 +658,7 @@ function ClientProfilePageInner({ userId }) {
                 {/* عنوان الطلبات الحالية */}
               </div>
               <ClientOrdersTracking
-                clientId={client.userId}
+                clientId={client.customerId}
                 lang={lang}
                 orders={orders}
                 showStatus

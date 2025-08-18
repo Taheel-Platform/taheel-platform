@@ -290,7 +290,7 @@ export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" })
         console.log("clientId used for query:", clientId);
 
         // جلب الطلبات من مجموعة requests باسم معرف العميل الصحيح
-        const q = query(collection(db, "requests"), where("customerId", "==", clientId));
+        const q = query(collection(firestore, "requests"), where("customerId", "==", clientId));
         console.log("Firestore query:", q);
 
         const snapshot = await getDocs(q);
