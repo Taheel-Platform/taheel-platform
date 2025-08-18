@@ -170,25 +170,25 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   // فلترة الطلبات الجديدة حسب البروفايدر
   const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
 
-const newOrders = orders.filter(o =>
-  (["new", "paid"].includes(o.status)) &&
-  (
+  // الطلبات الجديدة التي لم تعين بعد وتخص تخصص الموظف (أو طلباته هو فقط)
+  const newOrders = orders.filter(o =>
+    (["new", "paid"].includes(o.status)) &&
     (
-      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
       (
-        (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
-        ||
-        (typeof o.provider === "string" && employeeProviders.includes(o.provider))
+        (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null) &&
+        (
+          (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
+          ||
+          (typeof o.provider === "string" && employeeProviders.includes(o.provider))
+        )
       )
+      ||
+      (o.assignedTo === employeeData.id)
     )
-    ||
-    (o.assignedTo === employeeData.id)
-  )
-).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+  ).sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // فلترة الطلبات المعينة لهذا الموظف
-  let filteredOrders = orders.filter((o) => o.assignedTo === employeeData.id);
-  filteredOrders = filteredOrders
+  // الطلبات المعينة لهذا الموظف فقط
+  const filteredOrders = orders.filter((o) => o.assignedTo === employeeData.id)
     .filter((o) => {
       const type = getOrderType(o.clientId);
       if (tab !== "all" && type !== tab) return false;
@@ -213,15 +213,17 @@ const newOrders = orders.filter(o =>
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // قبول طلب جديد
-async function acceptOrder(order) {
-  await updateDoc(doc(db, "requests", order.requestId), {
-    assignedTo: employeeData.id,
-    assignedToName: employeeData.name || "موظف",
-    lastUpdated: new Date().toISOString()
-  });
-  setNewSidebarOpen(false); // لإغلاق الشريط الجانبي بعد قبول الطلب
-setSelected(null);        // لإغلاق تفاصيل الطلب لو مفتوحة
-}
+  async function acceptOrder(order) {
+    // حماية من تكرار القبول في نفس اللحظة (optimistic locking)
+    if (order.assignedTo && order.assignedTo !== "") return;
+    await updateDoc(doc(db, "requests", order.requestId), {
+      assignedTo: employeeData.id,
+      assignedToName: employeeData.name || "موظف",
+      lastUpdated: new Date().toISOString()
+    });
+    setNewSidebarOpen(false); // لإغلاق الشريط الجانبي بعد قبول الطلب
+    setSelected(null);        // لإغلاق تفاصيل الطلب لو مفتوحة
+  }
 
   // إرسال إشعار تلقائي بتغيير الحالة
   async function sendAutoNotification(order, newStatus) {
@@ -643,7 +645,7 @@ setSelected(null);        // لإغلاق تفاصيل الطلب لو مفتو�
           {newOrders.length === 0 && (
             <div className="text-center text-gray-400 mt-6">لا يوجد طلبات جديدة</div>
           )}
-          {newOrders.map((order) => {
+          {newOrders.filter(o => !o.assignedTo || o.assignedTo === "" || o.assignedTo === null).map((order) => {
             const client = clients[order.clientId];
             const service = services[order.serviceId];
             const created = order.createdAt ? new Date(order.createdAt) : null;
