@@ -285,12 +285,13 @@ export default function ClientOrdersTrackingFirestore({ clientId, lang = "ar" })
     async function fetchOrders() {
       setLoading(true);
       try {
+        // تعريف قاعدة البيانات مرة واحدة
         const db = getFirestore(app);
         console.log("Firebase DB instance:", db);
         console.log("clientId used for query:", clientId);
 
-        // جلب الطلبات من مجموعة requests باسم معرف العميل الصحيح
-        const q = query(collection(firestore, "requests"), where("customerId", "==", clientId));
+        // جلب الطلبات للحساب الصحيح
+        const q = query(collection(db, "requests"), where("customerId", "==", clientId));
         console.log("Firestore query:", q);
 
         const snapshot = await getDocs(q);
