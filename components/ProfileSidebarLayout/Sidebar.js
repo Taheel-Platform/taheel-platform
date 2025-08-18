@@ -48,7 +48,7 @@ export default function Sidebar({
   // السابكاتوجري الديناميكية لكل قسم خدمات
   const [subcategories, setSubcategories] = useState({});
 
-  // جلب السابكاتوجري الديناميكية عند فتح القسم
+  // جلب السابكاتوجري الديناميكية من الخدمات تحت القسم
   async function fetchSubcategories(sectionKey) {
     let docKey = "";
     if (sectionKey === "residentServices") docKey = "resident";
@@ -56,16 +56,15 @@ export default function Sidebar({
     else if (sectionKey === "companyServices") docKey = "company";
     else if (sectionKey === "otherServices") docKey = "other";
     if (!docKey) return;
-
     try {
       const snap = await getDoc(doc(firestore, "servicesByClientType", docKey));
       if (!snap.exists()) return;
       const data = snap.data();
       // استخراج الخدمات فقط من الداتا (تجاهل الحقول الأخرى)
-      const servicesArr = Object.values(data).filter(
-        s => typeof s === "object" && s.subcategory
-      );
-      // استخراج التصنيفات الفريدة
+      const servicesArr = Object.entries(data)
+        .filter(([key, val]) => key.startsWith("service") && typeof val === "object")
+        .map(([key, val]) => val);
+      // استخراج التصنيفات الفرعية الفريدة
       const uniqueSubcats = [
         ...new Set(servicesArr.map(s => s.subcategory).filter(Boolean))
       ];
@@ -123,7 +122,7 @@ export default function Sidebar({
     } else {
       setShowSubcatsFor(sectionKey);
       onSelectSubcategory("");
-      // جلب التصنيفات الديناميكية
+      // جلب التصنيفات الفرعية من الخدمات
       await fetchSubcategories(sectionKey);
     }
   };
