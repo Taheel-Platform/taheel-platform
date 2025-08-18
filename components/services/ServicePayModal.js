@@ -96,57 +96,52 @@ export default function ServicePayModal({
 
       const orderNumber = generateOrderNumber();
 
-      // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
-      let serviceData = {};
-      try {
-        // نفترض أن الخدمات مصنفة حسب نوع العميل: resident, company, ...
-        const q = query(
-          collection(firestore, "servicesByClientType", clientType), // clientType من props أو ثابت حسب الحالة
-          where("name", "==", serviceName)
-        );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          serviceData = snap.docs[0].data();
-        }
-      } catch (e) {
-        console.log("خطأ في جلب بيانات الخدمة:", e);
-      }
+      // لو عندك serviceId من اختيار العميل مرره هنا!
+let serviceData = {};
+try {
+  let snap;
+  if (serviceId) {
+    const q = query(
+      collection(firestore, "servicesByClientType", clientType),
+      where("serviceId", "==", serviceId)
+    );
+    snap = await getDocs(q);
+  } else if (serviceName) {
+    const q = query(
+      collection(firestore, "servicesByClientType", clientType),
+      where("name", "==", serviceName)
+    );
+    snap = await getDocs(q);
+  }
+  if (snap && !snap.empty) {
+    serviceData = snap.docs[0].data();
+  }
+} catch (e) {
+  console.log("خطأ في جلب بيانات الخدمة:", e);
+}
 
-      // استخراج البروفايدرات والمعرف
-      const providers =
-        Array.isArray(serviceData.providers)
-          ? serviceData.providers
-          : serviceData.provider
-            ? [serviceData.provider]
-            : [];
-      const serviceId = serviceData.serviceId || "";
+const providers =
+  Array.isArray(serviceData.providers)
+    ? serviceData.providers
+    : serviceData.provider
+      ? [serviceData.provider]
+      : [];
+const realServiceId = serviceData.serviceId || "";
 
-      // إشعار العميل
-      await addDoc(collection(firestore, "notifications"), {
-        targetId: customerId,
-        title: lang === "ar" ? "تم الدفع" : "Payment Successful",
-        body: lang === "ar"
-          ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
-          : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
-        timestamp: new Date().toISOString(),
-        isRead: false
-      });
-
-      // حفظ بيانات الطلب والمرفقات مع البروفايدرات والمعرف
-      await setDoc(doc(firestore, "requests", orderNumber), {
-        requestId: orderNumber,
-        customerId: customerId,
-        serviceName,
-        serviceId,
-        providers,
-        paidAmount: finalPrice,
-        coinsUsed: useCoins ? coinDiscountValue : 0,
-        coinsGiven: willGetCashback ? cashbackCoins : 0,
-        createdAt: new Date().toISOString(),
-        status: "paid",
-        attachments: uploadedDocs || {}
-      });
-
+// ثم استخدمهم في الطلب:
+await setDoc(doc(firestore, "requests", orderNumber), {
+  requestId: orderNumber,
+  customerId: customerId,
+  serviceName,
+  serviceId: realServiceId,
+  providers,
+  paidAmount: finalPrice,
+  coinsUsed: useCoins ? coinDiscountValue : 0,
+  coinsGiven: willGetCashback ? cashbackCoins : 0,
+  createdAt: new Date().toISOString(),
+  status: "paid",
+  attachments: uploadedDocs || {}
+});
       // إرسال إيميل تأكيد
       await fetch("/api/sendOrderEmail", {
         method: "POST",
