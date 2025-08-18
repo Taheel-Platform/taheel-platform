@@ -356,6 +356,7 @@ function StaffAddModal({ onClose, staffList }) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [providersList, setProvidersList] = useState([]);
   const [allSelected, setAllSelected] = useState(false);
 
@@ -416,6 +417,7 @@ function StaffAddModal({ onClose, staffList }) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setSuccess("");
     try {
       // 1. سجل الموظف في Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -434,13 +436,16 @@ function StaffAddModal({ onClose, staffList }) {
   ...userData,
   uid: user.uid, // احتفظ بالـ UID للربط مع Authentication إذا احتجته
 });
-    onClose();
-  } catch (err) {
-    setError(err.message || "حدث خطأ!");
-    console.error("Add user error:", err);
-  }
-  setLoading(false);
-};
+      setSuccess("تم إنشاء موظف جديد بنجاح!"); // ✅ أضف رسالة النجاح هنا
+      setLoading(false);
+      setTimeout(() => {
+        onClose(); // ✅ يغلق المودال بعد 1.8 ثانية
+      }, 1800);
+    } catch (err) {
+      setError(err.message || "حدث خطأ!");
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
