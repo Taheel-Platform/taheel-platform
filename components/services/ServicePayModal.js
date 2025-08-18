@@ -5,7 +5,7 @@ import {
 import { firestore } from "@/lib/firebase.client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  doc, setDoc, updateDoc, increment, collection, addDoc
+  doc, setDoc, updateDoc, increment, collection, addDoc, getDocs, query, where
 } from "firebase/firestore";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
@@ -29,7 +29,8 @@ export default function ServicePayModal({
   userId,       // الـ UID الخاص بفيريبيز (لو احتجته)
   userEmail,
   uploadedDocs,
-  onPaid
+  onPaid,
+  clientType = "resident" // نوع العميل, مرره من الأعلى حسب الحالة
 }) {
   const [useCoins, setUseCoins] = useState(false);
   const [payMethod, setPayMethod] = useState("wallet");
@@ -45,24 +46,24 @@ export default function ServicePayModal({
   const willGetCashback = !useCoins;
 
   // دفع المحفظة
-async function handlePayment() {
-  setIsPaying(true);
-  setPayMsg("");
-  setMsgSuccess(false);
+  async function handlePayment() {
+    setIsPaying(true);
+    setPayMsg("");
+    setMsgSuccess(false);
 
-  // تحقق من القيم الممررة
-  console.log("customerId:", customerId);
-  console.log("userEmail:", userEmail);
-  console.log("serviceName:", serviceName);
+    // تحقق من القيم الممررة
+    console.log("customerId:", customerId);
+    console.log("userEmail:", userEmail);
+    console.log("serviceName:", serviceName);
 
-  // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
-  if (!customerId || !userEmail || !serviceName) {
-    setPayMsg(lang === "ar"
-      ? "بيانات العميل أو البريد أو الخدمة ناقصة."
-      : "Customer ID, email or service name missing."
-    );
-    setIsPaying(false);
-    return;
+    // حماية: تأكد أن رقم العميل والإيميل والخدمة موجودين
+    if (!customerId || !userEmail || !serviceName) {
+      setPayMsg(lang === "ar"
+        ? "بيانات العميل أو البريد أو الخدمة ناقصة."
+        : "Customer ID, email or service name missing."
+      );
+      setIsPaying(false);
+      return;
     }
 
     try {
@@ -95,6 +96,31 @@ async function handlePayment() {
 
       const orderNumber = generateOrderNumber();
 
+      // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
+      let serviceData = {};
+      try {
+        // نفترض أن الخدمات مصنفة حسب نوع العميل: resident, company, ...
+        const q = query(
+          collection(firestore, "servicesByClientType", clientType), // clientType من props أو ثابت حسب الحالة
+          where("name", "==", serviceName)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          serviceData = snap.docs[0].data();
+        }
+      } catch (e) {
+        console.log("خطأ في جلب بيانات الخدمة:", e);
+      }
+
+      // استخراج البروفايدرات والمعرف
+      const providers =
+        Array.isArray(serviceData.providers)
+          ? serviceData.providers
+          : serviceData.provider
+            ? [serviceData.provider]
+            : [];
+      const serviceId = serviceData.serviceId || "";
+
       // إشعار العميل
       await addDoc(collection(firestore, "notifications"), {
         targetId: customerId,
@@ -106,11 +132,13 @@ async function handlePayment() {
         isRead: false
       });
 
-      // حفظ بيانات الطلب والمرفقات
+      // حفظ بيانات الطلب والمرفقات مع البروفايدرات والمعرف
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
         customerId: customerId,
         serviceName,
+        serviceId,
+        providers,
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
         coinsGiven: willGetCashback ? cashbackCoins : 0,
