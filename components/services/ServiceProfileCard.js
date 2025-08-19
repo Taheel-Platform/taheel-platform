@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   FaFileAlt,
   FaBuilding,
@@ -65,11 +65,64 @@ const CATEGORY_STYLES = {
   },
 };
 
+// استخراج مفتاح ثابت لكل مستند (لا يُعرض للمستخدم)
+function pickDocKey(doc) {
+  if (typeof doc === "string") return doc;
+  if (!doc || typeof doc !== "object") return "";
+  return (
+    doc.key ||
+    doc.id ||
+    doc.slug ||
+    doc.code ||
+    doc.name ||
+    doc.ar ||
+    doc.label ||
+    doc.title ||
+    doc.text ||
+    ""
+  );
+}
+
+// استخراج نص للعرض من الكائن (بدون ترجمة)
+function pickDocLabelRaw(doc, lang = "ar") {
+  if (typeof doc === "string") return doc;
+  if (!doc || typeof doc !== "object") return "";
+  if (lang === "en") {
+    return (
+      doc.en ||
+      doc.name_en ||
+      doc.title_en ||
+      doc.label_en ||
+      doc.text_en ||
+      doc.name ||
+      doc.title ||
+      doc.label ||
+      doc.ar ||
+      doc.text ||
+      ""
+    );
+  }
+  // عربي
+  return (
+    doc.ar ||
+    doc.name ||
+    doc.title ||
+    doc.label ||
+    doc.text ||
+    doc.en ||
+    doc.name_en ||
+    doc.title_en ||
+    doc.label_en ||
+    doc.text_en ||
+    ""
+  );
+}
+
 export default function ServiceProfileCard({
   category = "resident",
   name,
   name_en,
-  customerId,
+  customerId, // ضروري
   description,
   description_en,
   price,
@@ -100,8 +153,8 @@ export default function ServiceProfileCard({
     }
   }, [customerId]);
 
-  const requiredDocs = requiredDocuments || [];
   const style = CATEGORY_STYLES[category] || CATEGORY_STYLES.resident;
+
   const [wallet, setWallet] = useState(userWallet);
   const [coinsBalance, setCoinsBalance] = useState(userCoins);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -117,8 +170,8 @@ export default function ServiceProfileCard({
   const [currentDocName, setCurrentDocName] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
-  // NEW: ترجمة المستندات المطلوبة للعرض فقط (المفاتيح الأصلية تبقى كما هي)
-  const [requiredDocsEn, setRequiredDocsEn] = useState([]);
+  // لعرض المتطلبات فقط
+  const [docsForUI, setDocsForUI] = useState([]);
 
   // Tooltip
   const [showTooltip, setShowTooltip] = useState(false);
@@ -127,16 +180,63 @@ export default function ServiceProfileCard({
   useEffect(() => {
     setWallet(userWallet);
   }, [userWallet]);
-
   useEffect(() => {
     setCoinsBalance(userCoins);
   }, [userCoins]);
-
   useEffect(() => {
     setIsPaid(false);
   }, [serviceId, userId]);
 
-  // حفظ الطلب في فايرستور مع customerId
+  // 1) حضّر مفاتيح المستندات الثابتة (لا تتغير بتغيير اللغة)
+  const docKeys = useMemo(() => {
+    const list = Array.isArray(requiredDocuments) ? requiredDocuments : [];
+    return list.map((d, i) => {
+      const k = pickDocKey(d);
+      // لو لم نجد مفتاحًا، نستخدم نسخة عربية/نص خام إن وجدت، وإلا آخر حل نولّد مفتاحًا ثابتًا بالخدمة والفهرس
+      if (k) return String(k);
+      const fallback = pickDocLabelRaw(d, "ar") || pickDocLabelRaw(d, "en") || `doc-${serviceId || name}-${i}`;
+      return String(fallback);
+    });
+  }, [requiredDocuments, serviceId, name]);
+
+  // 2) حضّر نصوص العرض للـ UI مع الترجمة عند الحاجة
+  useEffect(() => {
+    let cancel = false;
+    async function run() {
+      const list = Array.isArray(requiredDocuments) ? requiredDocuments : [];
+      // خام بدون ترجمة
+      const rawLabels = list.map((d) => pickDocLabelRaw(d, lang));
+      if (lang === "en") {
+        // ترجم العناصر الفارغة أو العربية
+        const translated = await Promise.all(
+          rawLabels.map((txt, i) =>
+            translateText({
+              text: String(txt || ""),
+              target: "en",
+              source: "ar",
+              fieldKey: `service:${serviceId || name}:doc:${i}:en`,
+            })
+          )
+        );
+        if (!cancel) setDocsForUI(translated.map((t) => String(t || "")));
+      } else {
+        if (!cancel) setDocsForUI(rawLabels.map((t) => String(t || "")));
+      }
+    }
+    run();
+    return () => {
+      cancel = true;
+    };
+  }, [requiredDocuments, lang, serviceId, name]);
+
+  // 3) تتحقق من رفع كل المستندات باستخدام المفاتيح الثابتة فقط
+  const allDocsUploaded =
+    !requireUpload || docKeys.every((key) => uploadedDocs[key]);
+
+  const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
+  const canPay = allDocsUploaded && isPaperCountReady;
+
+  // حفظ الطلب في فايرستور
   async function saveServiceOrder() {
     try {
       const orderData = {
@@ -200,30 +300,6 @@ export default function ServiceProfileCard({
     return () => { ignore = true; };
   }, [lang, name, name_en, description, description_en, longDescription, longDescription_en, serviceId]);
 
-  // NEW: ترجمة المستندات المطلوبة للعرض فقط
-  useEffect(() => {
-    let canceled = false;
-    async function translateDocs() {
-      if (lang !== "en" || !requiredDocs?.length) {
-        if (!canceled) setRequiredDocsEn([]);
-        return;
-      }
-      const translated = await Promise.all(
-        requiredDocs.map((doc, i) =>
-          translateText({
-            text: String(doc || ""),
-            target: "en",
-            source: "ar",
-            fieldKey: `service:${serviceId || name}:doc:${i}:en`,
-          })
-        )
-      );
-      if (!canceled) setRequiredDocsEn(translated);
-    }
-    translateDocs();
-    return () => { canceled = true; };
-  }, [lang, requiredDocs, serviceId, name]);
-
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
   const servicePriceTotal = (Number(price) || 0) * baseServiceCount;
@@ -235,12 +311,6 @@ export default function ServiceProfileCard({
     typeof clientPrice !== "undefined"
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
-
-  // مهم: التحقق يستخدم المستندات الأصلية بالعربي (كمفاتيح للـ uploadedDocs)
-  const allDocsUploaded =
-    !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
-  const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
-  const canPay = allDocsUploaded && isPaperCountReady;
 
   function openDocsModal() {
     setShowDocsModal(true);
@@ -254,11 +324,6 @@ export default function ServiceProfileCard({
   }
 
   function renderTooltip() {
-    const docsForUI =
-      lang === "en" && requiredDocsEn.length === requiredDocs.length
-        ? requiredDocsEn
-        : requiredDocs;
-
     return (
       <div
         className="fixed z-[200] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
@@ -362,6 +427,7 @@ export default function ServiceProfileCard({
         justifyContent: 'space-between'
       }}
     >
+      {/* الكوينات */}
       <div className="absolute top-3 left-3 flex items-center group/coins z-10">
         <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[30px] cursor-help">
           <FaCoins className="text-yellow-500" size={12} />
@@ -372,6 +438,7 @@ export default function ServiceProfileCard({
         </div>
       </div>
 
+      {/* التصنيف */}
       <div
         className={`flex items-center justify-center gap-2 px-2 py-1
         text-[10px] font-extrabold rounded-full shadow
@@ -383,6 +450,7 @@ export default function ServiceProfileCard({
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
 
+      {/* اسم الخدمة + محتوى */}
       <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
         <h3
           className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
@@ -410,6 +478,7 @@ export default function ServiceProfileCard({
         </h3>
         {showTooltip && renderTooltip()}
 
+        {/* السعر */}
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2 mt-1 mb-2">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
@@ -450,6 +519,7 @@ export default function ServiceProfileCard({
           </table>
         </div>
 
+        {/* عدادات */}
         {repeatable && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
             <label className="text-[10px] font-bold text-gray-600 mb-0">
@@ -468,7 +538,6 @@ export default function ServiceProfileCard({
             />
           </div>
         )}
-
         {allowPaperCount && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
             <label className="text-[10px] font-bold text-gray-600 mb-0">
@@ -490,6 +559,7 @@ export default function ServiceProfileCard({
           </div>
         )}
 
+        {/* رفع المستندات */}
         {requireUpload && (
           <div className="w-full flex flex-col max-w-full mt-1 mb-1">
             <button
@@ -501,7 +571,7 @@ export default function ServiceProfileCard({
                 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
-                openDocsModal();
+                setShowDocsModal(true);
               }}
             >
               {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload required documents"}
@@ -509,28 +579,32 @@ export default function ServiceProfileCard({
           </div>
         )}
 
-        {/* نحافظ على الأصل كمفاتيح */}
         {typeof window !== "undefined" && showDocsModal &&
           createPortal(
             <ServiceUploadModal
               open={showDocsModal}
-              onClose={() => setShowDocsModal(false)}
-              requiredDocs={requiredDocs}
+              onClose={closeDocsModal}
+              // نمرر مفاتيح ثابتة للتعامل مع حالة الرفع والتحقق
+              requiredDocs={docKeys}
               uploadedDocs={uploadedDocs}
-              setUploadedDocs={(newDocs) => setUploadedDocs(newDocs)}
+              setUploadedDocs={handleDocsUploaded}
               userId={userId}
               lang={lang}
               service={{ serviceId, name: name }}
               onAllDocsUploaded={handleAllDocsUploaded}
+              // ملاحظة: لو أردت عرض النصوص المترجمة داخل المودال،
+              // عدّل ServiceUploadModal ليقبل prop اختياري displayDocs=docsForUI
             />,
             document.body
           )
         }
 
+        {/* زرار التقديم */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             setShowPayModal(true);
+            setPayMsg("");
           }}
           className={`
             w-full py-1 rounded-full font-black shadow text-xs transition
@@ -551,6 +625,7 @@ export default function ServiceProfileCard({
         </button>
       </div>
 
+      {/* مدوال الدفع */}
       <ServicePayModal
         open={showPayModal}
         onClose={() => setShowPayModal(false)}
@@ -568,7 +643,7 @@ export default function ServiceProfileCard({
         onPaid={handlePaid}
         provider={Array.isArray(provider) ? provider : provider ? [provider] : []}
       />
-      <div className="absolute -bottom-6 right-0 left-0 w-full h-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
+      <div className="absolute -bottom-6 right-0 left-0 w-full ه-8 bg-gradient-to-t from-emerald-100/60 via-white/20 to-transparent blur-2xl opacity-80 z-0 pointer-events-none"></div>
     </div>
   );
 }
