@@ -496,24 +496,25 @@ export default function ServiceProfileCard({
           </div>
         )}
 
-        {typeof window !== "undefined" && showDocsModal &&
-          createPortal(
-            <ServiceUploadModal
-              open={showDocsModal}
-              onClose={() => setShowDocsModal(false)}
-              // مرر مفاتيح منطقية ثابتة فقط
-              requiredDocs={docKeys}
-              uploadedDocs={uploadedDocs}
-              setUploadedDocs={(newDocs) => setUploadedDocs(newDocs)}
-              userId={userId}
-              lang={lang}
-              service={{ serviceId, name }}
-              onAllDocsUploaded={handleAllDocsUploaded}
-              // اختياري: لو عدّلت المودال ليعرض labels، مرر docsForUI في prop جديدة مثل displayDocs
-            />,
-            document.body
-          )
-        }
+// ... نفس الاستيرادات والhelpers التي عندك
+// داخل createPortal الخاص بـ ServiceUploadModal استبدل الكتلة الحالية بهذا الاستدعاء:
+{typeof window !== "undefined" && showDocsModal &&
+  createPortal(
+    <ServiceUploadModal
+      open={showDocsModal}
+      onClose={() => setShowDocsModal(false)}
+      requiredDocs={docKeys}             // مفاتيح منطقية ثابتة
+      displayDocs={docsForUI.map((d) => String(d ?? ""))}  // نصوص العرض
+      uploadedDocs={uploadedDocs}
+      setUploadedDocs={(newDocs) => setUploadedDocs(newDocs)}
+      userId={userId}
+      lang={lang}
+      service={{ serviceId, name }}
+      onAllDocsUploaded={handleAllDocsUploaded}
+    />,
+    document.body
+  )
+}
 
         {/* زرار التقديم */}
         <button
