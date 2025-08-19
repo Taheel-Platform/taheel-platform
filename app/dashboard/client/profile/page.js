@@ -36,7 +36,8 @@ import {
   where,
   orderBy,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  limit,
 } from "firebase/firestore";
 import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
@@ -181,7 +182,17 @@ function ClientProfilePageInner({ userId }) {
         // إن كان مقيم: اجلب كل الشركات المرتبطة به لعرض عدة كروت
         if ((user?.type || user?.accountType || "").toLowerCase() === "resident" && user.customerId) {
           const related = await fetchRelatedCompanies(user.customerId, user);
-          setCompanies(related);
+          // إزالة التكرارات بالاعتماد على doc.id
+          const seen = new Set();
+          const unique = [];
+          for (const c of related) {
+            const id = c.customerId || c.id;
+            if (id && !seen.has(id)) {
+              seen.add(id);
+              unique.push(c);
+            }
+          }
+          setCompanies(unique);
         } else {
           setCompanies([]);
         }

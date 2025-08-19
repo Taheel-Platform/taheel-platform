@@ -5,51 +5,95 @@ import { FaBell, FaCamera, FaEdit, FaCloudUploadAlt, FaSpinner } from "react-ico
 import Image from "next/image";
 import CompanyCardModal from "./CompanyCardModal";
 
-// Firestore imports
+// Firestore
 import { firestore } from "@/lib/firebase.client";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 
-export default function CompanyCardGold({
-  companyId: initialCompanyId,
-  lang = "ar",
-}) {
-  // حالة تحميل البيانات
+export default function CompanyCardGold({ companyId: initialCompanyId, lang = "ar" }) {
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // شعار الشركة (لوجو)
+  // شعار الشركة
   const [localLogo, setLocalLogo] = useState("/company-logo.png");
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  // تعديل رقم الشركة
   const [editingId, setEditingId] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newCompanyId, setNewCompanyId] = useState(initialCompanyId);
 
-  // جلب بيانات الشركة من فايرستور
+  // المعرّف الحقيقي لمستند فايرستور (قد يختلف عن companyId في حسابات قديمة)
+  const [resolvedDocId, setResolvedDocId] = useState(initialCompanyId || "");
+
+  // جلب بيانات الشركة من فايرستور مع Fallback ذكي
   useEffect(() => {
     if (!initialCompanyId) return;
-    setLoading(true);
-    const fetchData = async () => {
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
       try {
-        const ref = doc(firestore, "users", initialCompanyId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          setCompany({
-            ...data,
-            companyId: initialCompanyId,
-          });
-          setLocalLogo(data.logo || "/company-logo.png");
-          setNewCompanyId(initialCompanyId);
-        } else {
-          setCompany(null);
+        // 1) محاولة مباشرة: users/{initialCompanyId}
+        let docId = initialCompanyId;
+        let ref = doc(firestore, "users", docId);
+        let snap = await getDoc(ref);
+
+        // 2) Fallback بالبحث عن customerId أو companyId أو userId
+        if (!snap.exists()) {
+          const usersCol = collection(firestore, "users");
+
+          // customerId == initialCompanyId
+          let qs = await getDocs(query(usersCol, where("customerId", "==", initialCompanyId), limit(1)));
+          if (!qs.empty) {
+            const d = qs.docs[0];
+            docId = d.id;
+            snap = await getDoc(doc(firestore, "users", docId));
+          } else {
+            // companyId == initialCompanyId
+            qs = await getDocs(query(usersCol, where("companyId", "==", initialCompanyId), limit(1)));
+            if (!qs.empty) {
+              const d = qs.docs[0];
+              docId = d.id;
+              snap = await getDoc(doc(firestore, "users", docId));
+            } else {
+              // userId == initialCompanyId
+              qs = await getDocs(query(usersCol, where("userId", "==", initialCompanyId), limit(1)));
+              if (!qs.empty) {
+                const d = qs.docs[0];
+                docId = d.id;
+                snap = await getDoc(doc(firestore, "users", docId));
+              }
+            }
+          }
+        }
+
+        if (!cancelled) {
+          if (snap.exists()) {
+            const data = snap.data() || {};
+            const effectiveCompanyId =
+              data.companyId || data.customerId || data.userId || initialCompanyId;
+
+            setResolvedDocId(snap.id);
+            setCompany({ ...data, companyId: effectiveCompanyId, customerId: data.customerId || snap.id });
+            setLocalLogo(data.logo || "/company-logo.png");
+            setNewCompanyId(effectiveCompanyId);
+          } else {
+            setCompany(null);
+          }
+          setLoading(false);
         }
       } catch (e) {
-        setCompany(null);
+        if (!cancelled) {
+          setCompany(null);
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    };
+    }
+
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [initialCompanyId]);
 
   // نصوص
@@ -104,49 +148,64 @@ export default function CompanyCardGold({
     },
   }[lang === "en" ? "en" : "ar"];
 
-  // تاريخ الانتهاء
-  const expireDate = company?.companyLicenseExpiry || "2026-06-01";
-  const expire = new Date(expireDate);
-  const now = new Date();
-  const diffDays = Math.ceil((expire - now) / (1000 * 60 * 60 * 24));
-  const expiring = diffDays <= 30;
-  const expired = diffDays < 0;
+  // تقدير تاريخ الانتهاء بشكل آمن
+  const derivedExpiry =
+    company?.companyLicenseExpiry ||
+    company?.license?.extracted?.expiryDate ||
+    company?.documents?.license?.extracted?.expiryDate ||
+    null;
 
-  // رفع وتحديث لوجو الشركة في فايرستور
+  let diffDays = null;
+  if (derivedExpiry) {
+    const expire = new Date(derivedExpiry);
+    const now = new Date();
+    if (!isNaN(expire.getTime())) {
+      diffDays = Math.ceil((expire - now) / (1000 * 60 * 60 * 24));
+    }
+  }
+  const expiring = typeof diffDays === "number" && diffDays <= 30;
+  const expired = typeof diffDays === "number" && diffDays < 0;
+
+  const licenseUploaded = Boolean(
+    company?.license?.success ||
+    company?.documents?.license?.success
+  );
+
+  // رفع/تحديث الشعار
   const handleLogoChange = async (e) => {
-    if (e.target.files && e.target.files[0] && company) {
-      setUploadingLogo(true);
-      const file = e.target.files[0];
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', company.companyId);
+    if (!company || !resolvedDocId) return;
+    if (!(e.target.files && e.target.files[0])) return;
 
-      let url = localLogo;
-      try {
-        const res = await fetch('/api/upload-to-gcs', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok || !data.url) throw new Error(data.error || 'Upload failed');
-        url = data.url;
-        setLocalLogo(url);
-        // حفظ الرابط الجديد في فايرستور
-        await updateDoc(doc(firestore, "users", company.companyId), { logo: url });
-        setCompany((prev) => ({ ...prev, logo: url }));
-        setUploadingLogo(false);
-      } catch (error) {
-        setUploadingLogo(false);
-        alert(lang === "ar" ? t.logoUploadError : t.logoUploadError);
-      }
+    setUploadingLogo(true);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    // نمرر معرف الشركة (Customer/Company Id) للتمييز
+    formData.append("sessionId", company.companyId || company.customerId || resolvedDocId);
+
+    try {
+      const res = await fetch("/api/upload-to-gcs", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
+
+      const url = data.url;
+      setLocalLogo(url);
+
+      // حفظ الرابط الجديد
+      await updateDoc(doc(firestore, "users", resolvedDocId), { logo: url });
+      setCompany((prev) => ({ ...prev, logo: url }));
+    } catch (error) {
+      alert(t.logoUploadError);
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
-  // تحديث رقم الشركة في فايرستور (نادراً ما يحتاجه المستخدم)
+  // حفظ تعديل رقم الشركة (يُحدث الحقل داخل المستند الصحيح)
   const handleCompanyIdSave = async () => {
-    if (!company) return;
+    if (!company || !resolvedDocId) return;
     try {
-      await updateDoc(doc(firestore, "users", company.companyId), { companyId: newCompanyId });
+      await updateDoc(doc(firestore, "users", resolvedDocId), { companyId: newCompanyId });
       setCompany((prev) => ({ ...prev, companyId: newCompanyId }));
       setEditingId(false);
     } catch (error) {
@@ -154,11 +213,7 @@ export default function CompanyCardGold({
     }
   };
 
-  // استقبال نتيجة رفع جميع المستندات والرخصة التجارية
-  const handleModalSave = (data) => {
-    setShowModal(false);
-    // يمكن التحديث لو أردت جلب الداتا من جديد بعد الحفظ
-  };
+  const handleModalSave = () => setShowModal(false);
 
   const dir = lang === "ar" ? "rtl" : "ltr";
   const goldMain = "#D4AF37";
@@ -168,8 +223,11 @@ export default function CompanyCardGold({
   const goldGradVia = "#fcedc3";
   const goldGradTo = "#b8a045";
 
-  if (loading) return <div style={{textAlign:"center",padding:"1.5em"}}>...جاري تحميل بيانات الشركة</div>;
-  if (!company) return <div style={{textAlign:"center",padding:"1.5em",color:"#d11"}}>{t.notFound}</div>;
+  if (loading) return <div style={{ textAlign: "center", padding: "1.5em" }}>...جاري تحميل بيانات الشركة</div>;
+  if (!company) return <div style={{ textAlign: "center", padding: "1.5em", color: "#d11" }}>{t.notFound}</div>;
+
+  const qrValue = company.companyId || company.customerId || initialCompanyId || "NO-ID";
+  const displayExpiry = derivedExpiry || (lang === "ar" ? "غير متوفر" : "N/A");
 
   return (
     <div
@@ -192,69 +250,60 @@ export default function CompanyCardGold({
           opacity: 0.09,
           transform: "translate(-50%,-50%)",
           zIndex: 0,
-          userSelect: "none"
+          userSelect: "none",
         }}
       />
 
-      {/* إشعار */}
-      {expiring && (
+      {/* شريط تنبيه */}
+      {typeof diffDays === "number" && diffDays <= 30 && (
         <div className="absolute top-0 left-0 right-0 flex items-center gap-2 bg-gradient-to-r from-yellow-700 to-yellow-400 text-white px-3 py-1 rounded-t-3xl text-xs font-bold z-20 animate-pulse">
           <FaBell className="inline mr-1" />
-          {expired
-            ? t.expired
-            : diffDays === 0
-              ? t.expiresToday
-              : t.expiresIn(diffDays)
-          }
+          {expired ? t.expired : diffDays === 0 ? t.expiresToday : t.expiresIn(diffDays)}
         </div>
       )}
 
       {/* اللوجو الثابت */}
       <div className="w-full flex justify-center items-center mt-5 mb-1 z-10 relative">
-        <div className="w-16 h-16 rounded-full bg-white border flex items-center justify-center shadow-sm"
-          style={{ borderColor: goldBorder }}>
+        <div className="w-16 h-16 rounded-full bg-white border flex items-center justify-center shadow-sm" style={{ borderColor: goldBorder }}>
           <Image src="/logo-transparent-large.png" width={56} height={56} alt="Taheel Logo" />
         </div>
       </div>
 
-      {/* عناوين */}
+      {/* العناوين */}
       <div className="flex flex-col items-center justify-center mb-2 relative z-10">
         <span className="font-extrabold text-lg mb-1" style={{ color: goldMain }}>{t.cardTitle}</span>
         <span className="font-extrabold text-base" style={{ color: goldMain }}>{t.cardType}</span>
       </div>
 
       {/* ديكور جانبي */}
-      <div className="absolute left-0 top-0 h-full w-2 rounded-l-3xl"
-        style={{ background: `linear-gradient(to bottom, ${goldMain} 0%, ${goldDark} 100%)`, zIndex: 10 }} />
+      <div className="absolute left-0 top-0 h-full w-2 rounded-l-3xl" style={{ background: `linear-gradient(to bottom, ${goldMain} 0%, ${goldDark} 100%)`, zIndex: 10 }} />
 
-      {/* صورة وQR */}
+      {/* صورة + QR */}
       <div className="flex items-center justify-between px-6 pt-0 pb-2 gap-2 relative z-10" style={{ marginTop: "-40px" }}>
         <div className="relative group">
-          <Image src={localLogo} width={90} height={90} alt={company.companyNameAr || company.companyNameEn || company.name || ""} className="rounded-xl border-2" style={{ borderColor: goldMain, backgroundColor: "#f7f7f7" }} />
-          {/* زر الكاميرا لتغيير الشعار */}
+          <Image
+            src={localLogo}
+            width={90}
+            height={90}
+            alt={company.companyNameAr || company.companyNameEn || company.name || ""}
+            className="rounded-xl border-2"
+            style={{ borderColor: goldMain, backgroundColor: "#f7f7f7" }}
+          />
+          {/* زر تغيير الشعار */}
           <label className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow-md border border-yellow-400 cursor-pointer group-hover:opacity-100 transition z-10" title={t.edit}>
-            {uploadingLogo ? (
-              <FaSpinner className="text-yellow-700 animate-spin" size={18} />
-            ) : (
-              <FaCamera className="text-yellow-700" size={18} />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={handleLogoChange}
-              disabled={uploadingLogo}
-            />
+            {uploadingLogo ? <FaSpinner className="text-yellow-700 animate-spin" size={18} /> : <FaCamera className="text-yellow-700" size={18} />}
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoChange} disabled={uploadingLogo} />
           </label>
         </div>
+
         <div className="flex flex-col items-center flex-1 px-2" />
+
         <div className="flex flex-col items-center">
-          <div className="bg-white p-0 rounded-xl shadow border-2 w-[90px] h-[90px] flex items-center justify-center"
-            style={{ borderColor: goldBorder }}>
-            <StyledQRCode key={company.companyId} value={company.companyId || "NO-ID"} size={82} />
+          <div className="bg-white p-0 rounded-xl shadow border-2 w-[90px] h-[90px] flex items-center justify-center" style={{ borderColor: goldBorder }}>
+            <StyledQRCode key={qrValue} value={qrValue} size={82} />
           </div>
           <span className="mt-1 text-[11px] font-mono font-bold tracking-widest" style={{ color: goldMain }}>
-            {company.companyId || "NO-ID"}
+            {qrValue}
           </span>
         </div>
       </div>
@@ -265,33 +314,42 @@ export default function CompanyCardGold({
           {company.companyNameAr || company.companyNameEn || company.name}
         </span>
         <span className="text-sm text-gray-600 mt-2 text-center w-full">
-          {t.emirate}: <span className="font-bold" style={{ color: goldMain }}>{company.city || "غير محددة"}</span>
+          {t.emirate}: <span className="font-bold" style={{ color: goldMain }}>{company.emirate || company.city || (lang === "ar" ? "غير محددة" : "Unknown")}</span>
         </span>
         <span className="text-sm text-gray-600 mt-2 text-center w-full">
-          {t.email}: <span className="font-bold" style={{ color: goldMain }}>{company.email || "غير محدد"}</span>
+          {t.email}: <span className="font-bold" style={{ color: goldMain }}>{company.email || (lang === "ar" ? "غير محدد" : "Unknown")}</span>
         </span>
       </div>
 
-      {/* تاريخ الانتهاء ورقم الشركة */}
+      {/* تاريخ الانتهاء ورقم الشركة + حالة الرخصة */}
       <div className="flex items-end justify-between px-4 pb-4 mt-2 relative z-10">
         <div className="flex flex-col items-end ml-2">
           <span className="text-[13px] font-bold text-gray-700">{t.expiryDate}</span>
           <span className="text-[15px] font-extrabold" style={{ color: expiring ? goldDark : goldMain }}>
-            {expireDate}
+            {displayExpiry}
+          </span>
+          <span className="mt-1 text-[11px]" style={{ color: licenseUploaded ? "#16a34a" : "#9ca3af" }}>
+            {licenseUploaded ? t.licenseUploaded : t.licenseNotUploaded}
           </span>
         </div>
+
         <div className="flex flex-col items-center">
           <div className="mt-1 flex items-center gap-2">
             {editingId ? (
               <>
                 <input
-                  className="border border-yellow-300 rounded px-1 text-xs font-mono w-[110px]"
-                  value={newCompanyId}
-                  onChange={e => setNewCompanyId(e.target.value)}
-                  autoFocus
-                  onKeyDown={e => { if (e.key === "Enter") handleCompanyIdSave(); if (e.key === "Escape") setEditingId(false); }}
-                />
-                <button onClick={handleCompanyIdSave} className="text-yellow-700 text-xs font-bold px-1 rounded hover:bg-yellow-50">{t.save}</button>
+                    className="border border-yellow-300 rounded px-1 text-xs font-mono w-[120px]"
+                    value={newCompanyId}
+                    onChange={(e) => setNewCompanyId(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCompanyIdSave();
+                      if (e.key === "Escape") setEditingId(false);
+                    }}
+                  />
+                <button onClick={handleCompanyIdSave} className="text-yellow-700 text-xs font-bold px-1 rounded hover:bg-yellow-50">
+                  {t.save}
+                </button>
                 <button onClick={() => setEditingId(false)} className="text-red-500 text-xs font-bold px-1 rounded hover:bg-red-50">
                   {t.cancel}
                 </button>
@@ -320,33 +378,20 @@ export default function CompanyCardGold({
         </div>
       </div>
 
-      {/* زر واحد يفتح المودال الموحد */}
+      {/* زر المودال */}
       <div className="flex justify-end items-center px-4 pb-3 relative z-10">
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-1 text-xs px-3 py-1 rounded-full"
-          style={{
-            background: goldMain,
-            borderColor: goldDark,
-            color: "#fff",
-            boxShadow: "0 1px 4px #0002",
-            fontWeight: "bold",
-            cursor: "pointer"
-          }}
+          style={{ background: goldMain, borderColor: goldDark, color: "#fff", boxShadow: "0 1px 4px #0002", fontWeight: "bold", cursor: "pointer" }}
           title={t.upload}
         >
           <FaCloudUploadAlt /> {t.upload}
         </button>
       </div>
 
-      {/* المودال */}
       {showModal && (
-        <CompanyCardModal
-          onSave={handleModalSave}
-          onClose={() => setShowModal(false)}
-          locale={lang}
-          logo={localLogo}
-        />
+        <CompanyCardModal onSave={handleModalSave} onClose={() => setShowModal(false)} locale={lang} logo={localLogo} />
       )}
     </div>
   );
