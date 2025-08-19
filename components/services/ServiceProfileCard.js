@@ -69,7 +69,7 @@ export default function ServiceProfileCard({
   category = "resident",
   name,
   name_en,
-  customerId, // تأكد أن هذا يأتي من الـ props من الكمبوننت الأب
+  customerId,
   description,
   description_en,
   price,
@@ -94,7 +94,6 @@ export default function ServiceProfileCard({
   longDescription_en,
   provider,
 }) {
-  // تحقق من customerId في أول الكومبوننت
   useEffect(() => {
     if (!customerId) {
       console.error("❌ customerId is missing in ServiceProfileCard! يجب تمريره من الكمبوننت الأب.");
@@ -118,6 +117,9 @@ export default function ServiceProfileCard({
   const [currentDocName, setCurrentDocName] = useState("");
   const [isPaid, setIsPaid] = useState(false);
 
+  // NEW: ترجمة المستندات المطلوبة للعرض فقط (المفاتيح الأصلية تبقى كما هي)
+  const [requiredDocsEn, setRequiredDocsEn] = useState([]);
+
   // Tooltip
   const [showTooltip, setShowTooltip] = useState(false);
   const cardRef = useRef();
@@ -139,7 +141,7 @@ export default function ServiceProfileCard({
     try {
       const orderData = {
         userId,
-        clientId: customerId, // أضف clientId لسهولة البحث (customerId الموحد)
+        clientId: customerId,
         serviceId,
         serviceName: name,
         quantity,
@@ -169,27 +171,58 @@ export default function ServiceProfileCard({
     setShowPayModal(true);
   }
 
+  // ترجمة الاسم/الوصف/الوصف الطويل
   useEffect(() => {
     let ignore = false;
     async function doTranslation() {
       if (lang === "en") {
         if (!name_en && name) {
-          const tname = await translateText(name, "en");
+          const tname = await translateText({ text: name, target: "en", fieldKey: `service:${serviceId || name}:name:en` });
           if (!ignore) setTranslatedName(tname);
         }
         if (!description_en && description) {
-          const tdesc = await translateText(description, "en");
+          const tdesc = await translateText({ text: description, target: "en", fieldKey: `service:${serviceId || name}:desc:en` });
           if (!ignore) setTranslatedDescription(tdesc);
         }
         if (!longDescription_en && longDescription) {
-          const tlong = await translateText(longDescription, "en");
+          const tlong = await translateText({ text: longDescription, target: "en", fieldKey: `service:${serviceId || name}:long:en` });
           if (!ignore) setTranslatedLongDescription(tlong);
+        }
+      } else {
+        if (!ignore) {
+          setTranslatedName("");
+          setTranslatedDescription("");
+          setTranslatedLongDescription("");
         }
       }
     }
     doTranslation();
     return () => { ignore = true; };
-  }, [lang, name, name_en, description, description_en, longDescription, longDescription_en]);
+  }, [lang, name, name_en, description, description_en, longDescription, longDescription_en, serviceId]);
+
+  // NEW: ترجمة المستندات المطلوبة للعرض فقط
+  useEffect(() => {
+    let canceled = false;
+    async function translateDocs() {
+      if (lang !== "en" || !requiredDocs?.length) {
+        if (!canceled) setRequiredDocsEn([]);
+        return;
+      }
+      const translated = await Promise.all(
+        requiredDocs.map((doc, i) =>
+          translateText({
+            text: String(doc || ""),
+            target: "en",
+            source: "ar",
+            fieldKey: `service:${serviceId || name}:doc:${i}:en`,
+          })
+        )
+      );
+      if (!canceled) setRequiredDocsEn(translated);
+    }
+    translateDocs();
+    return () => { canceled = true; };
+  }, [lang, requiredDocs, serviceId, name]);
 
   const baseServiceCount = repeatable ? quantity : 1;
   const basePaperCount = allowPaperCount ? paperCount : 1;
@@ -203,6 +236,7 @@ export default function ServiceProfileCard({
       ? Number(clientPrice) * baseServiceCount
       : servicePriceTotal + printingTotal + taxTotal;
 
+  // مهم: التحقق يستخدم المستندات الأصلية بالعربي (كمفاتيح للـ uploadedDocs)
   const allDocsUploaded =
     !requireUpload || requiredDocs.every((doc) => uploadedDocs[doc]);
   const isPaperCountReady = !allowPaperCount || (paperCount && paperCount > 0);
@@ -218,12 +252,13 @@ export default function ServiceProfileCard({
   function handleDocsUploaded(newDocs) {
     setUploadedDocs(newDocs);
   }
-  function openPaymentModal() {
-    setShowPayModal(true);
-    setPayMsg("");
-  }
 
   function renderTooltip() {
+    const docsForUI =
+      lang === "en" && requiredDocsEn.length === requiredDocs.length
+        ? requiredDocsEn
+        : requiredDocs;
+
     return (
       <div
         className="fixed z-[200] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none"
@@ -245,20 +280,19 @@ export default function ServiceProfileCard({
               ? (longDescription_en || translatedLongDescription || description_en || translatedDescription || description || "")
               : (longDescription || longDescription_en || description || description_en || "")}
           </div>
-          {requiredDocs.length > 0 && (
+          {docsForUI.length > 0 && (
             <>
               <div className="font-bold text-emerald-600 mb-1 text-xs text-center">
                 <FaFileAlt className="inline mr-1" />
                 {lang === "ar" ? "المستندات المطلوبة" : "Required Documents"}
               </div>
               <ul className="list-inside list-disc text-xs text-gray-700 mb-2 text-right">
-                {requiredDocs.map((doc, i) => (
+                {docsForUI.map((doc, i) => (
                   <li key={i}>{doc}</li>
                 ))}
               </ul>
             </>
           )}
-          {/* جدول السعر مختصر */}
           <table className="w-full text-xs text-emerald-900 font-bold border border-emerald-200 rounded-xl shadow mb-2 bg-emerald-50 overflow-hidden">
             <tbody>
               <tr>
@@ -328,7 +362,6 @@ export default function ServiceProfileCard({
         justifyContent: 'space-between'
       }}
     >
-      {/* الكوينات */}
       <div className="absolute top-3 left-3 flex items-center group/coins z-10">
         <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-full shadow border border-yellow-100 min-w-[30px] cursor-help">
           <FaCoins className="text-yellow-500" size={12} />
@@ -338,7 +371,7 @@ export default function ServiceProfileCard({
           {lang === "ar" ? `عدد الكوينات: ${coins} كاش باك${repeatable ? ` × ${quantity}` : ""}` : `Coins cashback: ${coins}${repeatable ? ` × ${quantity}` : ""}`}
         </div>
       </div>
-      {/* التصنيف */}
+
       <div
         className={`flex items-center justify-center gap-2 px-2 py-1
         text-[10px] font-extrabold rounded-full shadow
@@ -349,7 +382,7 @@ export default function ServiceProfileCard({
         {style.icon()}
         <span>{lang === "ar" ? style.labelAr : style.labelEn}</span>
       </div>
-      {/* اسم الخدمة بخط مرن واجبارى الظهور مع Tooltip عند الوقوف عليه فقط */}
+
       <div className="flex flex-col items-center px-2 pt-1 pb-1 flex-1 w-full min-h-0">
         <h3
           className={`font-black text-emerald-800 text-center mb-1 drop-shadow-sm tracking-tight max-w-full truncate ${getServiceNameFontSize()}`}
@@ -377,7 +410,6 @@ export default function ServiceProfileCard({
         </h3>
         {showTooltip && renderTooltip()}
 
-        {/* السعر الثابت تحت اسم الخدمة مباشرة */}
         <div className="w-full flex flex-col items-center bg-white/80 rounded-xl border border-emerald-100 shadow p-2 mt-1 mb-2">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-extrabold text-emerald-700 text-2xl drop-shadow text-center">
@@ -417,7 +449,7 @@ export default function ServiceProfileCard({
             </tbody>
           </table>
         </div>
-        {/* عداد عدد مرات الخدمة بشكل صغير */}
+
         {repeatable && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
             <label className="text-[10px] font-bold text-gray-600 mb-0">
@@ -436,7 +468,7 @@ export default function ServiceProfileCard({
             />
           </div>
         )}
-        {/* عداد عدد الأوراق بشكل صغير */}
+
         {allowPaperCount && (
           <div className="flex flex-row items-center justify-center mt-1 gap-1">
             <label className="text-[10px] font-bold text-gray-600 mb-0">
@@ -457,7 +489,7 @@ export default function ServiceProfileCard({
             />
           </div>
         )}
-        {/* رفع المستندات */}
+
         {requireUpload && (
           <div className="w-full flex flex-col max-w-full mt-1 mb-1">
             <button
@@ -476,14 +508,16 @@ export default function ServiceProfileCard({
             </button>
           </div>
         )}
+
+        {/* نحافظ على الأصل كمفاتيح */}
         {typeof window !== "undefined" && showDocsModal &&
           createPortal(
             <ServiceUploadModal
               open={showDocsModal}
-              onClose={closeDocsModal}
+              onClose={() => setShowDocsModal(false)}
               requiredDocs={requiredDocs}
               uploadedDocs={uploadedDocs}
-              setUploadedDocs={handleDocsUploaded}
+              setUploadedDocs={(newDocs) => setUploadedDocs(newDocs)}
               userId={userId}
               lang={lang}
               service={{ serviceId, name: name }}
@@ -492,7 +526,7 @@ export default function ServiceProfileCard({
             document.body
           )
         }
-        {/* زرار التقديم دايما ظاهر في الأسفل */}
+
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -516,7 +550,7 @@ export default function ServiceProfileCard({
             : (lang === "ar" ? "تقدم الآن" : "Apply Now")}
         </button>
       </div>
-      {/* مدوال الدفع */}
+
       <ServicePayModal
         open={showPayModal}
         onClose={() => setShowPayModal(false)}
@@ -527,7 +561,7 @@ export default function ServiceProfileCard({
         cashbackCoins={coins}
         userWallet={wallet}
         lang={lang}
-        customerId={customerId} // تأكد أن هذا يصل بشكل صحيح!
+        customerId={customerId}
         userId={userId}
         userEmail={userEmail}
         uploadedDocs={uploadedDocs}
