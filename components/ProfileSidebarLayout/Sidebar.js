@@ -31,11 +31,11 @@ const SERVICE_SECTIONS = {
 
 export default function Sidebar({
   selected,
-  onSelect,
+  onSelect = () => {}, // تأكد أنها دالة افتراضية
   lang = "ar",
   clientType = "resident",
-  selectedSubcategory,
-  onSelectSubcategory
+  selectedSubcategory = "", // تأكد أنها معرّفة
+  onSelectSubcategory = () => {}, // تأكد أنها دالة افتراضية
 }) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
@@ -47,6 +47,7 @@ export default function Sidebar({
 
   // السابكاتوجري الديناميكية لكل قسم خدمات
   const [subcategories, setSubcategories] = useState({});
+  const [loadingSubcats, setLoadingSubcats] = useState(false);
 
   // جلب السابكاتوجري الديناميكية من الخدمات تحت القسم
   async function fetchSubcategories(sectionKey) {
@@ -56,15 +57,14 @@ export default function Sidebar({
     else if (sectionKey === "companyServices") docKey = "company";
     else if (sectionKey === "otherServices") docKey = "other";
     if (!docKey) return;
+    setLoadingSubcats(true);
     try {
       const snap = await getDoc(doc(firestore, "servicesByClientType", docKey));
       if (!snap.exists()) return;
       const data = snap.data();
-      // استخراج الخدمات فقط من الداتا (تجاهل الحقول الأخرى)
       const servicesArr = Object.entries(data)
         .filter(([key, val]) => key.startsWith("service") && typeof val === "object")
         .map(([key, val]) => val);
-      // استخراج التصنيفات الفرعية الفريدة
       const uniqueSubcats = [
         ...new Set(servicesArr.map(s => s.subcategory).filter(Boolean))
       ];
@@ -72,6 +72,7 @@ export default function Sidebar({
     } catch (error) {
       setSubcategories(prev => ({ ...prev, [sectionKey]: [] }));
     }
+    setLoadingSubcats(false);
   }
 
   useEffect(() => {
@@ -122,7 +123,6 @@ export default function Sidebar({
     } else {
       setShowSubcatsFor(sectionKey);
       onSelectSubcategory("");
-      // جلب التصنيفات الفرعية من الخدمات
       await fetchSubcategories(sectionKey);
     }
   };
@@ -230,33 +230,57 @@ export default function Sidebar({
               )}
             </button>
             {/* قائمة السابكاتوجري تظهر فقط لو القسم مفتوح ومختار */}
-            {showSubcatsFor === section.key && subcategories[section.key] && opened && !!subcategories[section.key].length && (
-              <div className="flex flex-col gap-1 pl-8 pr-2 mt-1 mb-2">
-                <button
-                  onClick={() => onSelectSubcategory("")}
-                  className={`text-sm rounded-full px-3 py-1 font-bold transition border
-                    ${!selectedSubcategory ? "bg-emerald-400 text-white" : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
-                  `}
-                  style={{ cursor: "pointer" }}
-                >
-                  {lang === "ar" ? "كل التصنيفات" : "All categories"}
-                </button>
-                {subcategories[section.key].map(subcat => (
+            <div
+              style={{
+                maxHeight:
+                  showSubcatsFor === section.key &&
+                  subcategories[section.key] &&
+                  opened &&
+                  subcategories[section.key].length
+                    ? "500px"
+                    : "0px",
+                opacity:
+                  showSubcatsFor === section.key &&
+                  subcategories[section.key] &&
+                  opened &&
+                  subcategories[section.key].length
+                    ? 1
+                    : 0,
+                overflow: "hidden",
+                transition: "max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s",
+              }}
+              className="pl-8 pr-2 mt-1 mb-2 flex flex-col gap-1"
+            >
+              {loadingSubcats ? (
+                <div className="text-xs text-gray-400 py-2">جاري التحميل...</div>
+              ) : (
+                <>
                   <button
-                    key={subcat}
-                    onClick={() => onSelectSubcategory(subcat)}
+                    onClick={() => onSelectSubcategory("")}
                     className={`text-sm rounded-full px-3 py-1 font-bold transition border
-                      ${selectedSubcategory === subcat
-                        ? "bg-emerald-400 text-white"
-                        : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
+                      ${!selectedSubcategory ? "bg-emerald-400 text-white" : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
                     `}
                     style={{ cursor: "pointer" }}
                   >
-                    {subcat}
+                    {lang === "ar" ? "كل التصنيفات" : "All categories"}
                   </button>
-                ))}
-              </div>
-            )}
+                  {subcategories[section.key]?.map(subcat => (
+                    <button
+                      key={subcat}
+                      onClick={() => onSelectSubcategory(subcat)}
+                      className={`text-sm rounded-full px-3 py-1 font-bold transition border
+                        ${selectedSubcategory === subcat
+                          ? "bg-emerald-400 text-white"
+                          : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
+                      `}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {subcat}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
           </div>
         ))}
       </nav>
