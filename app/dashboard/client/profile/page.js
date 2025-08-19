@@ -425,6 +425,22 @@ function ClientProfilePageInner({ userId }) {
       .includes(search.trim().toLowerCase());
   }
 
+  function advancedServiceFilter(service) {
+  const term = search.trim().toLowerCase();
+  if (!term) return true;
+  const fields = [
+    service.name || "",
+    service.name_en || "",
+    service.description || "",
+    service.description_en || "",
+    service.subcategory || "",
+    String(service.price || ""),
+    String(service.duration || ""),
+    (service.requiredDocuments || []).join(" "),
+  ].map(f => f.toLowerCase());
+  return fields.some(f => f.includes(term));
+}
+
   // ---------- Conditional Rendering ----------
   if (loading) return <GlobalLoader />;
   if (!client) {
@@ -721,7 +737,7 @@ function ClientProfilePageInner({ userId }) {
           return matchesSearch && matchesSubcat;
         })
         .map((srv, i) => (
-          
+
       <ServiceProfileCard
         key={srv.name + i}
         category={selectedSection.replace("Services", "")}
