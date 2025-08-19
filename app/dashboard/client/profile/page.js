@@ -43,6 +43,7 @@ import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
 import NotificationWidget from "@/components/clientheader/NotificationWidget";
 import { translateServiceFields } from "@/utils/translate";
+import ClientProfilePageInner from "./ClientProfilePageInner";
 
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
@@ -943,9 +944,11 @@ async function fetchRelatedCompanies(customerId, user) {
 
 export default function ClientProfilePage(props) {
   const searchParams = useSearchParams();
+  const userId = searchParams.get("userId") || "";
+
   return (
     <Suspense fallback={null}>
-      <ClientProfilePageInner {...props} userId={searchParams.get("userId")} />
+      <ClientProfilePageInner {...props} userId={userId} />
     </Suspense>
   );
 }
