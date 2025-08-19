@@ -4,10 +4,7 @@ import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   FaSignOutAlt,
-  FaBell,
-  FaCoins,
   FaEnvelopeOpenText,
-  FaWallet,
   FaWhatsapp,
   FaComments,
   FaBuilding,
@@ -50,12 +47,12 @@ import { translateServiceFields } from "@/utils/translate";
 function getDayGreeting(lang = "ar") {
   const hour = new Date().getHours();
   if (lang === "ar") {
-    if (hour >= 0 && hour < 12) return "صباح الخير";
-    if (hour >= 12 && hour < 18) return "مساء الخير";
+    if (hour < 12) return "صباح الخير";
+    if (hour < 18) return "مساء الخير";
     return "مساء الخير";
   } else {
-    if (hour >= 0 && hour < 12) return "Good morning";
-    if (hour >= 12 && hour < 18) return "Good afternoon";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
     return "Good evening";
   }
 }
@@ -65,15 +62,10 @@ function getFullName(client, lang = "ar") {
   if (lang === "ar") {
     return [client.firstName, client.lastName].filter(Boolean).join(" ");
   }
-  if (client.nameEn) {
-    return client.nameEn;
-  }
+  if (client.nameEn) return client.nameEn;
   return [client.firstName, client.lastName].filter(Boolean).join(" ");
 }
 
-function getWelcome(name, lang = "ar") {
-  return lang === "ar" ? `مرحباً ${name || ""}` : `Welcome, ${name || ""}`;
-}
 async function addNotification(customerId, title, body, type = "wallet") {
   const notif = {
     notificationId: `notif-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
@@ -86,6 +78,7 @@ async function addNotification(customerId, title, body, type = "wallet") {
   };
   await setDoc(doc(firestore, "notifications", notif.notificationId), notif);
 }
+
 function objectToArray(obj) {
   if (Array.isArray(obj)) return obj;
   if (obj && typeof obj === "object") return Object.values(obj);
@@ -96,7 +89,7 @@ function objectToArray(obj) {
 const sectionTitles = {
   residentServices: { icon: "resident", color: "emerald", ar: "خدمات المقيم", en: "Resident Services" },
   companyServices: { icon: "company", color: "blue", ar: "خدمات الشركات", en: "Company Services" },
-  nonresidentServices: { icon: "nonresident", color: "yellow", ar: "Non-Resident Services" },
+  nonresidentServices: { icon: "nonresident", color: "yellow", ar: "خدمات غير المقيم", en: "Non-Resident Services" },
   otherServices: { icon: "other", color: "gray", ar: "خدمات أخرى", en: "Other Services" },
 };
 
@@ -123,44 +116,25 @@ function ClientProfilePageInner({ userId }) {
   const router = useRouter();
 
   // ---------- States & Refs ----------
-  const [lang, setLang] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("lang") || "ar";
-    }
-    return "ar";
-  });
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("darkMode") === "true";
-    }
-    return false;
-  });
+  const [lang, setLang] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("lang") || "ar" : "ar"));
+  const [darkMode, setDarkMode] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("darkMode") === "true" : false));
   const [openChat, setOpenChat] = useState(false);
-  const [selectedSection, setSelectedSection] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("selectedSection") || "personal";
-    }
-    return "personal";
-  });
+  const [selectedSection, setSelectedSection] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("selectedSection") || "personal" : "personal"));
   const [client, setClient] = useState(null);
-  const [companies, setCompanies] = useState([]);
+  const [companies, setCompanies] = useState([]); // شركات المالك (لعرض عدة كروت)
   const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ownerResident, setOwnerResident] = useState(null);
-  const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showCoinsMenu, setShowCoinsMenu] = useState(false);
   const [showWalletMenu, setShowWalletMenu] = useState(false);
   const [showMessagesMenu, setShowMessagesMenu] = useState(false);
   const [search, setSearch] = useState("");
-  const notifRef = useRef();
   const coinsRef = useRef();
   const walletRef = useRef();
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
-  const [activeNotif, setActiveNotif] = useState(null);
-  const [activeMessage, setActiveMessage] = useState(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
 
   // ========= SESSION AUTO LOGOUT =========
@@ -179,16 +153,17 @@ function ClientProfilePageInner({ userId }) {
     }
   }, [client, loading, router]);
 
-  // ========= جلب بيانات العميل لحظيا =========
+  // ========= جلب بيانات العميل لحظيا + جلب الشركات المملوكة =========
   useEffect(() => {
     if (!userId) return;
     const userRef = doc(firestore, "users", userId);
-    const unsubscribe = onSnapshot(userRef, (snap) => {
+    const unsubscribe = onSnapshot(userRef, async (snap) => {
       if (snap.exists()) {
         const user = snap.data();
-        user.customerId = snap.id;
+        user.customerId = snap.id; // doc id كمُعرّف العميل
         setClient(user);
 
+        // إن كان حساب شركة احتفظ ببيانات المالك للعرض
         if ((user?.type === "company" || user?.accountType === "company")) {
           setOwnerResident({
             firstName: user.ownerFirstName,
@@ -203,18 +178,10 @@ function ClientProfilePageInner({ userId }) {
           setOwnerResident(null);
         }
 
-        let relatedCompanies = [];
-        if (user?.type === "resident" && user?.userId) {
-          getDocs(
-            query(
-              collection(firestore, "users"),
-              where("type", "==", "company"),
-              where("owner", "in", [user.name, user.userId])
-            )
-          ).then((companiesSnap) => {
-            relatedCompanies = companiesSnap.docs.map(doc => doc.data());
-            setCompanies(relatedCompanies);
-          });
+        // إن كان مقيم: اجلب كل الشركات المرتبطة به لعرض عدة كروت
+        if ((user?.type || user?.accountType || "").toLowerCase() === "resident" && user.customerId) {
+          const related = await fetchRelatedCompanies(user.customerId, user);
+          setCompanies(related);
         } else {
           setCompanies([]);
         }
@@ -229,12 +196,7 @@ function ClientProfilePageInner({ userId }) {
       setLoading(true);
 
       const types = ["resident", "company", "nonresident", "other"];
-      let servicesByType = {
-        resident: [],
-        nonresident: [],
-        company: [],
-        other: [],
-      };
+      const servicesByType = { resident: [], nonresident: [], company: [], other: [] };
 
       for (const type of types) {
         const docRef = doc(firestore, "servicesByClientType", type);
@@ -243,27 +205,18 @@ function ClientProfilePageInner({ userId }) {
         const arr = Object.entries(data)
           .filter(([key]) => key.startsWith("service"))
           .map(([key, val]) => ({ ...val, id: key }));
-        servicesByType[type] = arr.filter(srv => srv.active !== false);
+        servicesByType[type] = arr.filter((srv) => srv.active !== false);
       }
       setServices(servicesByType);
 
       const ordersSnap = await getDocs(
-        query(
-          collection(firestore, "requests"),
-          where("customerId", "==", userId),
-          orderBy("createdAt", "desc")
-        )
+        query(collection(firestore, "requests"), where("customerId", "==", userId), orderBy("createdAt", "desc"))
       );
-      setOrders(ordersSnap.docs.map(doc => doc.data()));
+      setOrders(ordersSnap.docs.map((d) => d.data()));
 
-      const notifsSnap = await getDocs(
-        query(
-          collection(firestore, "notifications"),
-          where("targetId", "==", userId)
-        )
-      );
-      let clientNotifs = notifsSnap.docs.map(d => d.data());
-      clientNotifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      const notifsSnap = await getDocs(query(collection(firestore, "notifications"), where("targetId", "==", userId)));
+      let clientNotifs = notifsSnap.docs.map((d) => d.data());
+      clientNotifs.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
       setNotifications(clientNotifs);
 
       setLoading(false);
@@ -273,7 +226,6 @@ function ClientProfilePageInner({ userId }) {
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (notifRef.current && !notifRef.current.contains(event.target)) setShowNotifMenu(false);
       if (coinsRef.current && !coinsRef.current.contains(event.target)) setShowCoinsMenu(false);
       if (walletRef.current && !walletRef.current.contains(event.target)) setShowWalletMenu(false);
       if (messagesRef.current && !messagesRef.current.contains(event.target)) setShowMessagesMenu(false);
@@ -283,19 +235,13 @@ function ClientProfilePageInner({ userId }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("lang", lang);
-    }
+    if (typeof window !== "undefined") localStorage.setItem("lang", lang);
   }, [lang]);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("darkMode", darkMode);
-    }
+    if (typeof window !== "undefined") localStorage.setItem("darkMode", darkMode);
   }, [darkMode]);
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("selectedSection", selectedSection);
-    }
+    if (typeof window !== "undefined") localStorage.setItem("selectedSection", selectedSection);
   }, [selectedSection]);
 
   // ---------- Data Processing ----------
@@ -312,15 +258,10 @@ function ClientProfilePageInner({ userId }) {
     otherServices,
   };
 
-  const filterFn = typeof filterService === "function" ? filterService : () => true;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   // تجهيز قائمة الخدمات للقسم الحالي + ترجماتها
-  const currentServices = useMemo(
-    () => sectionToServices[selectedSection] || [],
-    // تعيد الحساب عند تغيّر القسم أو الخدمات المجلبة
-    [selectedSection, services]
-  );
+  const currentServices = useMemo(() => sectionToServices[selectedSection] || [], [selectedSection, services]);
 
   const [translationsMap, setTranslationsMap] = useState({}); // {sid: {name, description, longDescription}}
 
@@ -328,7 +269,6 @@ function ClientProfilePageInner({ userId }) {
     let alive = true;
 
     async function run() {
-      // عربي: استخدم النصوص الأصلية كما هي
       if (lang === "ar") {
         const m = {};
         for (const s of currentServices) {
@@ -343,7 +283,6 @@ function ClientProfilePageInner({ userId }) {
         return;
       }
 
-      // إنجليزي: ترجم الحقول المطلوبة لكل خدمة (بدون تعديل الداتا)
       const entries = await Promise.all(
         currentServices.map(async (s) => {
           const sid = s?.serviceId || s?.id || s?.name;
@@ -368,17 +307,15 @@ function ClientProfilePageInner({ userId }) {
 
   // ---------- Event Handlers ----------
   function toggleLang() {
-    setLang(l => {
+    setLang((l) => {
       const newLang = l === "ar" ? "en" : "ar";
-      if (typeof window !== "undefined") {
-        localStorage.setItem("lang", newLang);
-      }
+      if (typeof window !== "undefined") localStorage.setItem("lang", newLang);
       return newLang;
     });
   }
 
   function toggleDarkMode() {
-    setDarkMode(dm => {
+    setDarkMode((dm) => {
       const newVal = !dm;
       if (typeof window !== "undefined") localStorage.setItem("darkMode", newVal);
       return newVal;
@@ -391,27 +328,20 @@ function ClientProfilePageInner({ userId }) {
   }
 
   function handleServicePaid() {
-    setReloadClient(v => !v);
-  }
-
-  async function markNotifAsRead(notifId) {
-    await updateDoc(doc(firestore, "notifications", notifId), { isRead: true });
-    setNotifications(nots => nots.map(n =>
-      n.notificationId === notifId ? { ...n, isRead: true } : n
-    ));
+    setReloadClient((v) => !v);
   }
 
   async function handleWalletCharge(amount) {
     if (!client) return;
-    window.Paytabs.open({
+    window.Paytabs?.open?.({
       secretKey: "PUT_YOUR_SECRET_KEY",
       merchantEmail: "your@email.com",
       amount,
       currency: "AED",
       customer_phone: client.phone || "",
       customer_email: client.email || "",
-      order_id: `wallet_${client.userId}_${Date.now()}`,
-      site_url: window.location.origin,
+      order_id: `wallet_${client.customerId}_${Date.now()}`, // موحّد على customerId
+      site_url: typeof window !== "undefined" ? window.location.origin : "",
       product_name: "Wallet Topup",
       onSuccess: async () => {
         let bonus = 0;
@@ -423,14 +353,17 @@ function ClientProfilePageInner({ userId }) {
         const newWallet = (client.walletBalance || 0) + amount;
         const newCoins = (client.coins || 0) + bonus;
 
-        await updateDoc(doc(firestore, "users", client.userId), { walletBalance: newWallet });
+        // المهم: التحديث على users/{customerId}
+        await updateDoc(doc(firestore, "users", client.customerId), { walletBalance: newWallet });
+
         await addNotification(
           client.customerId,
           lang === "ar" ? "تم شحن المحفظة" : "Wallet Charged",
           lang === "ar" ? `تم شحن محفظتك بمبلغ ${amount} درهم.` : `Your wallet was charged with ${amount} AED.`
         );
+
         if (bonus > 0) {
-          await updateDoc(doc(firestore, "users", client.userId), { coins: newCoins });
+          await updateDoc(doc(firestore, "users", client.customerId), { coins: newCoins });
           await addNotification(
             client.customerId,
             lang === "ar" ? "تم إضافة كوينات" : "Coins Added",
@@ -439,7 +372,8 @@ function ClientProfilePageInner({ userId }) {
               : `You received ${bonus} coins as wallet charge bonus.`
           );
         }
-        setReloadClient(v => !v);
+
+        setReloadClient((v) => !v);
         alert(lang === "ar" ? "تم شحن المحفظة بنجاح!" : "Wallet charged successfully!");
       },
       onFailure: () => {
@@ -449,26 +383,21 @@ function ClientProfilePageInner({ userId }) {
   }
 
   async function handleLogout() {
-    if (client?.userId) {
-      const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
-      const deletes = [];
-      msgsSnap.forEach((msg) => {
-        deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
-      });
-      await Promise.all(deletes);
-      await deleteDoc(doc(firestore, "chatRooms", client.userId));
-    }
+    try {
+      if (client?.userId) {
+        const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
+        const deletes = [];
+        msgsSnap.forEach((msg) => {
+          deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
+        });
+        await Promise.all(deletes);
+        await deleteDoc(doc(firestore, "chatRooms", client.userId));
+      }
+    } catch {}
     await signOut(auth);
     router.replace("/login");
   }
 
-  function filterService(service) {
-    return (lang === "ar" ? service.name : (service.name_en || service.name))
-      .toLowerCase()
-      .includes(search.trim().toLowerCase());
-  }
-
-  // فلترة قوية + تدعم الترجمة
   function advancedServiceFilter(service) {
     const term = search.trim().toLowerCase();
     if (!term) return true;
@@ -502,9 +431,7 @@ function ClientProfilePageInner({ userId }) {
           <div className="w-20 h-20 flex items-center justify-center animate-bounce">
             <Image src="/logo-transparent-large.png" alt="شعار الشركة" width={80} height={80} className="rounded-full bg-white ring-2 ring-red-400 shadow-lg" priority />
           </div>
-          <span className="text-red-400 text-2xl font-bold animate-pulse">
-            العميل غير موجود في قاعدة البيانات
-          </span>
+          <span className="text-red-400 text-2xl font-bold animate-pulse">العميل غير موجود في قاعدة البيانات</span>
         </div>
       </div>
     );
@@ -522,10 +449,7 @@ function ClientProfilePageInner({ userId }) {
     <div
       className={`
         min-h-screen flex font-sans relative transition-colors duration-700
-        ${darkMode
-          ? "bg-gray-900 text-white"
-          : "bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] text-gray-900"
-        }
+        ${darkMode ? "bg-gray-900 text-white" : "bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40] text-gray-900"}
       `}
       dir={dir}
       lang={lang}
@@ -585,13 +509,13 @@ function ClientProfilePageInner({ userId }) {
           {/* Greeting */}
           <div className="flex-1 flex flex-col justify-center items-center px-2">
             <span className={`${darkMode ? "text-gray-100" : "text-white"} text-base sm:text-lg font-bold whitespace-nowrap`}>
-              {`${getDayGreeting(lang)}, مرحباً ${getFullName(client, lang)}`}
+              {`${getDayGreeting(lang)}, ${lang === "ar" ? "مرحباً" : "Welcome"} ${getFullName(client, lang)}`}
             </span>
           </div>
           {/* Action icons */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Coins */}
-            <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu(v => !v)}>
+            <div ref={coinsRef} className="relative group cursor-pointer" onClick={() => setShowCoinsMenu((v) => !v)}>
               <CoinsWidget coins={client.coins || 0} lang={lang} />
               <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "الرصيد" : "Coins"}
@@ -601,15 +525,13 @@ function ClientProfilePageInner({ userId }) {
                   <div className="font-bold text-yellow-600 mb-2">{lang === "ar" ? "رصيد الكوينات" : "Coins Balance"}</div>
                   <div className="text-2xl font-black text-yellow-500">{client.coins || 0}</div>
                   <div className="text-xs text-gray-600 mt-2">
-                    {lang === "ar"
-                      ? "يمكنك استخدام الكوينات في خدمات مختارة."
-                      : "You can use coins in selected services."}
+                    {lang === "ar" ? "يمكنك استخدام الكوينات في خدمات مختارة." : "You can use coins in selected services."}
                   </div>
                 </div>
               )}
             </div>
             {/* Wallet */}
-            <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu(v => !v)}>
+            <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu((v) => !v)}>
               <WalletWidget balance={client.walletBalance || 0} onCharge={handleWalletCharge} lang={lang} />
               <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "المحفظة" : "Wallet"}
@@ -619,13 +541,13 @@ function ClientProfilePageInner({ userId }) {
             <NotificationWidget userId={client.customerId} lang={lang} darkMode={darkMode} />
 
             {/* Messages */}
-            <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu(v => !v)}>
+            <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu((v) => !v)}>
               <motion.button
                 type="button"
                 className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
                 tabIndex={0}
                 style={{ minWidth: 36, minHeight: 36 }}
-                onClick={() => setShowMessagesMenu(v => !v)}
+                onClick={() => setShowMessagesMenu((v) => !v)}
                 whileHover={{ scale: 1.18, rotate: -8, filter: "brightness(1.12)" }}
                 whileTap={{ scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 250, damping: 18 }}
@@ -674,18 +596,10 @@ function ClientProfilePageInner({ userId }) {
             </span>
             <button
               onClick={toggleDarkMode}
-              className={`
-                relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition
-                w-9 h-9
-                ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}
-              `}
+              className={`relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition w-9 h-9 ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}`}
               title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
             >
-              {darkMode ? (
-                <FaSun className="text-yellow-400 text-[22px] drop-shadow" />
-              ) : (
-                <FaMoon className="text-gray-700 text-[22px] drop-shadow" />
-              )}
+              {darkMode ? <FaSun className="text-yellow-400 text-[22px] drop-shadow" /> : <FaMoon className="text-gray-700 text-[22px] drop-shadow" />}
             </button>
             <button
               onClick={toggleLang}
@@ -709,15 +623,38 @@ function ClientProfilePageInner({ userId }) {
           {selectedSection === "personal" && (
             <>
               {clientType === "resident" && (
-                <ResidentCard client={client} lang={lang} />
+                <>
+                  <ResidentCard client={client} lang={lang} />
+                  {companies.length > 0 && (
+                    <div className="w-full mt-8">
+                      <SectionTitle icon="company" color="blue">
+                        {lang === "ar" ? "شركاتي" : "My Companies"}
+                      </SectionTitle>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {companies.map((cmp, idx) => {
+                          const cmpId = cmp.customerId || cmp.id; // doc.id = customerId
+                          return (
+                            <div key={(cmpId || "cmp") + idx} className="flex flex-col gap-3">
+                              <CompanyCardGold companyId={cmpId} lang={lang} />
+                              <OwnerCard companyId={cmpId} lang={lang} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
-              {(client.type === "nonResident" || client.type === "nonresident") && (
+
+              {(client.type === "nonResident" || client.type === "nonresident" || clientType === "nonresident") && (
                 <NonResidentCard client={client} lang={lang} />
               )}
+
               {clientType === "company" && (
                 <>
-                  <CompanyCardGold companyId={client.userId} lang={lang} />
-                  <OwnerCard companyId={client.userId} lang={lang} />
+                  {/* عرض بطاقة الشركة الحالية */}
+                  <CompanyCardGold companyId={client.customerId} lang={lang} />
+                  <OwnerCard companyId={client.customerId} lang={lang} />
                 </>
               )}
             </>
@@ -725,9 +662,7 @@ function ClientProfilePageInner({ userId }) {
 
           {selectedSection === "orders" && (
             <>
-              <div className="w-full flex items-center my-8 select-none">
-                {/* عنوان الطلبات الحالية */}
-              </div>
+              <div className="w-full flex items-center my-8 select-none" />
               <ClientOrdersTracking
                 clientId={client.customerId}
                 lang={lang}
@@ -743,17 +678,15 @@ function ClientProfilePageInner({ userId }) {
                 icon={sectionTitles[selectedSection].icon}
                 color={sectionTitles[selectedSection].color}
               >
-                {lang === "ar"
-                  ? sectionTitles[selectedSection].ar
-                  : sectionTitles[selectedSection].en}
+                {lang === "ar" ? sectionTitles[selectedSection].ar : sectionTitles[selectedSection].en}
               </SectionTitle>
 
-              {/* مربع بحث احترافي */}
+              {/* مربع بحث */}
               <div className="w-full flex items-center gap-2 mb-5">
                 <input
                   type="search"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder={lang === "ar" ? "ابحث عن خدمة أو كلمة..." : "Search for any service..."}
                   className={`
                     flex-1 px-5 py-3 rounded-full border-2
@@ -761,29 +694,26 @@ function ClientProfilePageInner({ userId }) {
                     shadow-lg outline-none focus:border-emerald-500 transition-all duration-300
                     text-lg font-semibold
                   `}
-                  style={{minWidth: 0}}
+                  style={{ minWidth: 0 }}
                   autoFocus
                 />
                 <button
-                  className={`
-                    px-2 py-2 rounded-full bg-emerald-500 hover:bg-emerald-700
-                    text-white text-xl flex items-center justify-center shadow transition
-                  `}
+                  className="px-2 py-2 rounded-full bg-emerald-500 text-white text-xl flex items-center justify-center shadow transition"
                   tabIndex={-1}
                   type="button"
                   disabled
-                  style={{cursor: "default"}}
+                  style={{ cursor: "default" }}
                 >
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
-                    <line x1="17" y1="17" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                    <line x1="17" y1="17" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 {currentServices
-                  .filter(srv => {
+                  .filter((srv) => {
                     const matchesSearch = advancedServiceFilter(srv);
                     const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
                     return matchesSearch && matchesSubcat;
@@ -792,20 +722,9 @@ function ClientProfilePageInner({ userId }) {
                     const sid = srv?.serviceId || srv?.id || srv?.name;
                     const tr = translationsMap[sid];
 
-                    const displayName =
-                      lang === "ar"
-                        ? (srv.name || "")
-                        : tr?.name || srv.name_en || srv.name || "";
-
-                    const displayDesc =
-                      lang === "ar"
-                        ? (srv.description || "")
-                        : tr?.description || srv.description_en || srv.description || "";
-
-                    const displayLong =
-                      lang === "ar"
-                        ? (srv.longDescription || "")
-                        : tr?.longDescription || srv.longDescription_en || srv.longDescription || "";
+                    const displayName = lang === "ar" ? (srv.name || "") : tr?.name || srv.name_en || srv.name || "";
+                    const displayDesc = lang === "ar" ? (srv.description || "") : tr?.description || srv.description_en || srv.description || "";
+                    const displayLong = lang === "ar" ? (srv.longDescription || "") : tr?.longDescription || srv.longDescription_en || srv.longDescription || "";
 
                     return (
                       <ServiceProfileCard
@@ -824,13 +743,13 @@ function ClientProfilePageInner({ userId }) {
                         requireUpload={srv.requireUpload}
                         coins={srv.coins || 0}
                         lang={lang}
-                        userId={client.userId}
+                        userId={client.userId}                  // اتركها كما هي لو مكون الخدمة يعتمد عليها
                         userWallet={client.walletBalance || 0}
                         userCoins={client.coins || 0}
                         userEmail={client.email}
                         longDescription={displayLong}
                         longDescription_en={displayLong}
-                        setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
+                        setCoinsBalance={(val) => setClient((c) => ({ ...c, coins: val }))}
                         onPaid={handleServicePaid}
                         coinsPercent={0.1}
                         addNotification={addNotification}
@@ -838,7 +757,7 @@ function ClientProfilePageInner({ userId }) {
                         repeatable={srv.repeatable}
                         allowPaperCount={srv.allowPaperCount}
                         pricePerPage={srv.pricePerPage}
-                        customerId={client.customerId}
+                        customerId={client.customerId}          // المعرف الموحد
                       />
                     );
                   })}
@@ -856,9 +775,7 @@ function ClientProfilePageInner({ userId }) {
             height={48}
             className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-3"
           />
-          <div className="text-gray-400 text-xs mt-2">
-            © 2025 تأهيل. جميع الحقوق محفوظة
-          </div>
+          <div className="text-gray-400 text-xs mt-2">© 2025 تأهيل. جميع الحقوق محفوظة</div>
         </footer>
       </div>
 
@@ -881,6 +798,7 @@ function ClientProfilePageInner({ userId }) {
           <FaWhatsapp />
         </a>
       </div>
+
       {openChat && (
         <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
           <ChatWidgetFull
@@ -893,11 +811,59 @@ function ClientProfilePageInner({ userId }) {
             className="absolute -top-3 -left-3 bg-red-600 hover:bg-red-800 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
             title="إغلاق المحادثة"
             tabIndex={0}
-          >×</button>
+          >
+            ×
+          </button>
         </div>
       )}
     </div>
   );
+}
+
+// -------- Helper: fetch resident companies with fallbacks --------
+async function fetchRelatedCompanies(customerId, user) {
+  const out = [];
+  try {
+    // 1) الموصى به: مصفوفة معرفات ملاك الشركات
+    const q1 = query(
+      collection(firestore, "users"),
+      where("type", "==", "company"),
+      where("ownerCustomerIds", "array-contains", customerId)
+    );
+    const s1 = await getDocs(q1);
+    s1.forEach((d) => out.push({ id: d.id, ...d.data(), customerId: d.id }));
+    if (out.length > 0) return out;
+  } catch {}
+
+  try {
+    // 2) لو كان عندك حقل وحيد للمالك
+    const q2 = query(
+      collection(firestore, "users"),
+      where("type", "==", "company"),
+      where("ownerCustomerId", "==", customerId)
+    );
+    const s2 = await getDocs(q2);
+    s2.forEach((d) => out.push({ id: d.id, ...d.data(), customerId: d.id }));
+    if (out.length > 0) return out;
+  } catch {}
+
+  try {
+    // 3) fallback قديم: بالمطابقة على حقل owner (اسم/uid)
+    const ownerVals = [];
+    if (user?.name) ownerVals.push(user.name);
+    if (user?.userId) ownerVals.push(user.userId);
+    if (ownerVals.length > 0) {
+      const q3 = query(
+        collection(firestore, "users"),
+        where("type", "==", "company"),
+        where("owner", "in", ownerVals.slice(0, 10))
+      );
+      const s3 = await getDocs(q3);
+      s3.forEach((d) => out.push({ id: d.id, ...d.data(), customerId: d.id }));
+    }
+  } catch {}
+
+  return out;
 }
 
 export default function ClientProfilePage(props) {

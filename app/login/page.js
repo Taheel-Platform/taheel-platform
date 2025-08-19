@@ -10,12 +10,12 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-export const dynamic = 'force-dynamic';
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+export const dynamic = "force-dynamic";
 
 const LANGUAGES = {
   ar: {
@@ -67,7 +67,7 @@ const LANGUAGES = {
     sending: "Sending...",
     resendSuccess: "Activation link sent to your email!",
     resendError: "Error sending activation link.",
-  }
+  },
 };
 
 function LoginPageInner() {
@@ -94,7 +94,7 @@ function LoginPageInner() {
 
   // تحميل مكتبة reCAPTCHA v3 مرة واحدة فقط
   useEffect(() => {
-    if (typeof window !== "undefined" && !window.grecaptcha) {
+    if (typeof window !== "undefined" && !window.grecaptcha && RECAPTCHA_SITE_KEY) {
       const script = document.createElement("script");
       script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
       script.async = true;
@@ -112,7 +112,7 @@ function LoginPageInner() {
       const res = await fetch("/api/recaptcha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ token }),
       });
       const data = await res.json();
       return data.success && (typeof data.score !== "number" || data.score > 0.5);
@@ -121,7 +121,7 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه حسب الدور، منطقي موحد عبر Firebase Auth فقط
+  // تسجيل الدخول والتوجيه حسب الدور/نوع الحساب
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -131,7 +131,7 @@ function LoginPageInner() {
 
     // reCAPTCHA v3
     let recaptchaToken = "";
-    if (typeof window !== "undefined" && window.grecaptcha) {
+    if (typeof window !== "undefined" && window.grecaptcha && RECAPTCHA_SITE_KEY) {
       try {
         await new Promise((resolve) => window.grecaptcha.ready(resolve));
         recaptchaToken = await window.grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: "login" });
@@ -141,7 +141,7 @@ function LoginPageInner() {
           setErrorMsg(t.recaptchaCheck);
           return;
         }
-      } catch (err) {
+      } catch {
         setLoading(false);
         setRecaptchaOk(false);
         setErrorMsg(t.recaptchaCheck);
@@ -169,26 +169,22 @@ function LoginPageInner() {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
     } catch (err) {
       setLoading(false);
-      setErrorMsg("خطأ في تعيين حالة الجلسة");
+      setErrorMsg(lang === "ar" ? "خطأ في تعيين حالة الجلسة" : "Failed to set session persistence");
       return;
     }
 
     // تحديد الإيميل الذي سيتم استخدامه
     let emailToUse = loginId.trim();
-    let customerId = "";
+    let resolvedCustomerId = "";
     if (!isEmail(emailToUse)) {
-      // البحث عن الإيميل المطابق للرقم في Firestore (customerId فريد وعليه Index)
+      // البحث عن الإيميل المطابق للرقم في Firestore (customerId فريد)
       try {
-        const q = query(
-          collection(firestore, "users"),
-          where("customerId", "==", emailToUse)
-        );
+        const q = query(collection(firestore, "users"), where("customerId", "==", emailToUse));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
-          // تطبيع الإيميل قبل الاستخدام
           const userDoc = querySnapshot.docs[0].data();
           emailToUse = (userDoc.email || "").trim().toLowerCase();
-          customerId = userDoc.customerId;
+          resolvedCustomerId = String(userDoc.customerId || "");
           if (!emailToUse) {
             setLoading(false);
             setErrorMsg(t.wrongClient);
@@ -199,89 +195,99 @@ function LoginPageInner() {
           setErrorMsg(t.wrongClient);
           return;
         }
-      } catch (err) {
+      } catch {
         setLoading(false);
         setErrorMsg(t.wrongClient);
         return;
       }
     } else {
-      // تطبيع الإيميل المدخل مباشرة
       emailToUse = emailToUse.toLowerCase().trim();
     }
 
     // الدخول عبر Firebase Auth فقط
-try {
-  const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
-  const user = userCredential.user;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
+      const user = userCredential.user;
 
-  // التحقق من تفعيل البريد فقط
-  if (!user.emailVerified) {
-    setLoading(false);
-    setErrorMsg(t.emailVerify);
-    setUnverifiedUser(user);
-    return;
-  }
+      // التحقق من تفعيل البريد فقط
+      if (!user.emailVerified) {
+        setLoading(false);
+        setErrorMsg(t.emailVerify);
+        setUnverifiedUser(user);
+        return;
+      }
 
-  let data = null;
-  let querySnapshot;
+      // جلب بيانات المستخدم من Firestore: uid أولاً ثم email
+      let data = null;
+      let qs = await getDocs(query(collection(firestore, "users"), where("uid", "==", user.uid)));
+      if (!qs.empty) {
+        data = qs.docs[0].data();
+      } else {
+        qs = await getDocs(query(collection(firestore, "users"), where("email", "==", user.email)));
+        if (!qs.empty) data = qs.docs[0].data();
+      }
+      if (!data) {
+        setLoading(false);
+        setErrorMsg(t.notFound);
+        return;
+      }
 
-  // جلب بيانات المستخدم من Firestore:
-  // الموظف أو الأدمن بالـ uid فقط
-  // العميل بالـ email فقط
+      // معرّفات أساسية
+      const customerId = String(data.customerId || resolvedCustomerId || "");
+      const accountType = String(data.accountType || data.type || "").toLowerCase();
+      // companyId مرن + بديل customerId لو مش موجود
+      const companyId = String(
+        data.companyId ||
+          (data.company && (data.company.id || data.company.companyId)) ||
+          data.id ||
+          customerId ||
+          ""
+      );
 
-  // سنبحث أولاً بالـ uid (للأدمن والموظف)
-  const qUid = query(
-    collection(firestore, "users"),
-    where("uid", "==", user.uid)
-  );
-  querySnapshot = await getDocs(qUid);
+      // حفظ بيانات المستخدم في localStorage (اختياري)
+      if (customerId) window.localStorage.setItem("userId", customerId);
+      window.localStorage.setItem("userName", data.name || data.firstName || "موظف");
+      window.localStorage.setItem("userRole", data.role || "client");
+      window.localStorage.setItem("accountType", accountType);
+      if (companyId) window.localStorage.setItem("companyId", companyId);
 
-  if (!querySnapshot.empty) {
-    // وجدنا موظف أو أدمن بالـ uid
-    data = querySnapshot.docs[0].data();
-  } else {
-    // لم نجد موظف أو أدمن، نبحث كعميل بالـ email
-    const qEmail = query(
-      collection(firestore, "users"),
-      where("email", "==", user.email)
-    );
-    querySnapshot = await getDocs(qEmail);
+      // التوجيه حسب الدور/نوع الحساب
+      let targetUrl = `/dashboard/client?userId=${customerId}&lang=${lang}`;
+      if (data.role === "admin") {
+        targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
+      } else if (data.role === "employee") {
+        targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
+      } else if (accountType === "company") {
+        if (!companyId) {
+          setLoading(false);
+          setErrorMsg(lang === "ar" ? "لا يوجد معرف شركة لهذا الحساب." : "Company ID is missing for this account.");
+          return;
+        }
+        targetUrl = `/dashboard/company?companyId=${companyId}&lang=${lang}`;
+      }
 
-    if (!querySnapshot.empty) {
-      data = querySnapshot.docs[0].data();
-    } else {
+      // احترام prev إن وجد
+      if (prev) {
+        try {
+          const url = new URL(prev, window.location.origin);
+          url.searchParams.set("lang", lang);
+          targetUrl = url.pathname + "?" + url.searchParams.toString();
+        } catch {
+          // تجاهل لو prev غير صالح
+        }
+      }
+
+      router.replace(targetUrl);
       setLoading(false);
-      setErrorMsg(t.notFound);
-      return;
+    } catch (e) {
+      setErrorMsg(t.wrongLogin);
+      setLoading(false);
     }
-  }
-
-  // حفظ بيانات المستخدم في localStorage (اختياري)
-  window.localStorage.setItem("userId", data.customerId || "");
-  window.localStorage.setItem("userName", data.name || "موظف");
-  window.localStorage.setItem("userRole", data.role || "client");
-
-  // التوجيه حسب الدور
-let targetUrl = `/dashboard/client?userId=${data.customerId || ""}&lang=${lang}`;
-if (data.role === "admin") {
-  targetUrl = `/dashboard/admin?userId=${data.uid || ""}&lang=${lang}`;
-} else if (data.role === "employee") {
-  targetUrl = `/dashboard/employee?userId=${data.uid || ""}&lang=${lang}`;
-}
-router.replace(targetUrl);
-
-  setLoading(false);
-  return;
-} catch (e) {
-  setErrorMsg(t.wrongLogin);
-  setLoading(false);
-}
-    // End of handleLogin try-catch
-  }
+  };
 
   const handleLang = (lng) => {
     setLang(lng);
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
     params.set("lang", lng);
     router.replace(`?${params.toString()}`);
   };
@@ -315,6 +321,7 @@ router.replace(targetUrl);
           <path d="M0 80 Q250 0 500 80V100H0V80Z" fill="#10b981" />
         </svg>
       </div>
+
       {/* زر تبديل اللغة */}
       <div className="absolute left-4 top-4 z-20 flex gap-2">
         <button
@@ -332,6 +339,7 @@ router.replace(targetUrl);
           English
         </button>
       </div>
+
       {/* الهيدر والشعار */}
       <header className="flex flex-col items-center justify-center py-10 z-10 relative">
         <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center rounded-full bg-white shadow-lg ring-4 ring-emerald-400 mb-6">
@@ -380,6 +388,7 @@ router.replace(targetUrl);
             )}
           </div>
         )}
+
         <form onSubmit={handleLogin} autoComplete="on" className="space-y-5">
           {/* رقم العميل أو البريد الإلكتروني */}
           <div className="relative">
@@ -389,13 +398,14 @@ router.replace(targetUrl);
               autoFocus
               autoComplete="username"
               value={loginId}
-              onChange={e => setLoginId(e.target.value)}
+              onChange={(e) => setLoginId(e.target.value)}
               placeholder={t.clientOrEmail}
               className="w-full py-3 px-4 pr-12 rounded-xl bg-[#1e2e41] text-emerald-200 placeholder-gray-400 border border-emerald-700 focus:ring-2 focus:ring-emerald-400 outline-none transition font-semibold text-lg shadow"
               dir={lang === "ar" ? "rtl" : "ltr"}
             />
             <FaUser className="absolute top-1/2 right-4 -translate-y-1/2 text-emerald-400" size={20} />
           </div>
+
           {/* كلمة المرور */}
           <div className="relative">
             <input
@@ -403,7 +413,7 @@ router.replace(targetUrl);
               required
               autoComplete="current-password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder={t.password}
               className="w-full py-3 px-4 pr-12 rounded-xl bg-[#1e2e41] text-emerald-200 placeholder-gray-400 border border-emerald-700 focus:ring-2 focus:ring-emerald-400 outline-none transition font-semibold text-lg shadow"
               dir={lang === "ar" ? "rtl" : "ltr"}
@@ -412,27 +422,37 @@ router.replace(targetUrl);
             <button
               type="button"
               className="absolute top-1/2 left-4 -translate-y-1/2 text-emerald-200 hover:text-emerald-400 transition"
-              onClick={() => setShowPass(s => !s)}
+              onClick={() => setShowPass((s) => !s)}
               tabIndex={-1}
-              aria-label={showPass ? (lang === "ar" ? "إخفاء كلمة المرور" : "Hide password") : (lang === "ar" ? "عرض كلمة المرور" : "Show password")}
+              aria-label={
+                showPass
+                  ? lang === "ar"
+                    ? "إخفاء كلمة المرور"
+                    : "Hide password"
+                  : lang === "ar"
+                  ? "عرض كلمة المرور"
+                  : "Show password"
+              }
             >
               {showPass ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
             </button>
           </div>
-          {/* زر واتساب فوق الريكابتشا */}
+
+          {/* زر واتساب */}
           <div className="flex justify-end w-full mb-2">
             <a
               href="https://wa.me/971555555555"
               target="_blank"
               rel="noopener noreferrer"
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg p-3 text-xl transition-all"
-              title="تواصل عبر واتساب"
+              title={lang === "ar" ? "تواصل عبر واتساب" : "Contact via WhatsApp"}
               style={{ zIndex: 10 }}
             >
               <FaWhatsapp />
             </a>
           </div>
-          {/* الريكابتشا Google reCAPTCHA v3 (مخفي - تنفيذي فقط) */}
+
+          {/* reCAPTCHA v3 حالة */}
           <div className="my-2 flex justify-center">
             <div className="w-full flex justify-center">
               {recaptchaOk ? (
@@ -440,19 +460,18 @@ router.replace(targetUrl);
                   <span>{t.verified}</span>
                 </span>
               ) : (
-                <span className="text-gray-400 text-xs flex items-center gap-1">
-                  {t.recaptcha} v3
-                </span>
+                <span className="text-gray-400 text-xs flex items-center gap-1">{t.recaptcha} v3</span>
               )}
             </div>
           </div>
+
           {/* تذكرني ونسيت كلمة المرور */}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-emerald-100 cursor-pointer select-none font-medium">
               <input
                 type="checkbox"
                 checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="accent-emerald-500 scale-110"
               />
               {t.remember}
@@ -465,12 +484,12 @@ router.replace(targetUrl);
               {t.forgot}
             </button>
           </div>
+
           {/* زر الدخول */}
           <button
             type="submit"
             disabled={loading}
-            className="btn-global w-full py-3 rounded-2xl text-xl shadow-xl mt-2 flex items-center justify-center gap-2
-              focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
+            className="btn-global w-full py-3 rounded-2xl text-xl shadow-xl mt-2 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
             style={{ cursor: loading ? "wait" : "pointer" }}
           >
             {loading ? (
@@ -480,6 +499,7 @@ router.replace(targetUrl);
             )}
           </button>
         </form>
+
         {/* مستخدم جديد */}
         <div className="flex flex-col items-center mt-3 gap-2">
           <button
@@ -490,6 +510,7 @@ router.replace(targetUrl);
           </button>
         </div>
       </main>
+
       {loading && <GlobalLoader />}
       <div className="h-10 z-0" />
 
@@ -502,9 +523,7 @@ router.replace(targetUrl);
           height={50}
           className="rounded-full bg-white ring-2 ring-emerald-400 shadow mb-4"
         />
-        <div className="text-sm text-gray-400 text-center font-bold">
-          {t.rights}
-        </div>
+        <div className="text-sm text-gray-400 text-center font-bold">{t.rights}</div>
       </footer>
     </div>
   );

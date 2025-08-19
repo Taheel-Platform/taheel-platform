@@ -125,11 +125,18 @@ export default function RegisterPage() {
     router.replace(`?${params.toString()}`);
   }
 
-  // التسجيل الآمن والمتكامل
+  // التسجيل الآمن والمتكامل (بأقل تغييرات)
   const handleRegister = async () => {
     setRegError(""); setRegLoading(true);
 
     try {
+      // تحقق بسيط
+      if (!form.accountType) {
+        setRegLoading(false);
+        setRegError(lang === "ar" ? "يرجى اختيار نوع الحساب." : "Please select account type.");
+        return;
+      }
+
       const email = form.email.trim().toLowerCase();
 
       // 1. حجز رقم العميل الموحد من السيرفر
@@ -146,6 +153,7 @@ export default function RegisterPage() {
 
       // 2. تحقق reCAPTCHA سيرفر سايد
       const recaptchaToken = await executeRecaptcha?.("register");
+      if (!recaptchaToken) throw new Error("recaptcha_failed");
       const recaptchaRes = await fetch("/api/recaptcha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,7 +165,7 @@ export default function RegisterPage() {
       const cred = await createUserWithEmailAndPassword(auth, email, form.password);
       const user = cred.user;
 
-      // 4. إرسال تفعيل البريد لو تستخدم Firebase Auth
+      // 4. إرسال تفعيل البريد
       await sendEmailVerification(user);
 
       // 5. حذف الحقول المؤقتة قبل الحفظ
@@ -169,33 +177,36 @@ export default function RegisterPage() {
         ...safeForm
       } = form;
 
-      // 6. حفظ بيانات المستخدم الموحدة في فايرستور
+      // 6. حفظ بيانات المستخدم الموحدة في فايرستور (users/{customerId})
       await setDoc(
         firestoreDoc(db, "users", customerId),
         {
           ...safeForm,
-          email,                // موحد، صغير وحيد
-          customerId,           // موحد ومميز، هو معرف المستند
-          uid: user.uid,        // معرف حساب الـ Auth
-          userId: user.uid,     // نوحده أيضًا لسهولة البحث (اختياري)
+          email,                // lowercase
+          customerId,           // Doc ID
+          uid: user.uid,        // Auth UID
+          userId: user.uid,     // للاسناد القديم فقط
           role: "client",
-          accountType: form.accountType?.toLowerCase(), // نوع الحساب
-          type: form.accountType?.toLowerCase(),        // نوع الحساب
+          accountType: form.accountType?.toLowerCase(),
+          type: form.accountType?.toLowerCase(),
           emailVerified: false,
           phoneVerified: false,
-          walletBalance: 0,     // الرصيد يبدأ بصفر
-          coins: 0,             // الكوينات تبدأ بصفر
+          walletBalance: 0,
+          coins: 0,
           createdAt: new Date().toISOString(),
         },
         { merge: true }
       );
 
       setRegSuccess(true);
-      router.replace(`/dashboard/client/profile?lang=${lang}`);
+
+      // 7. التوجيه مع تمرير userId=customerId (مهم)
+      router.replace(`/dashboard/client?userId=${customerId}&lang=${lang}`);
 
     } catch (err) {
-      const m = (code => {
-        switch (code) {
+      const code = err?.code || err?.message;
+      const m = (c) => {
+        switch (c) {
           case "auth/email-already-in-use": return lang==="ar"?"هذا البريد مستخدم بالفعل.":"Email already in use.";
           case "auth/weak-password": return lang==="ar"?"كلمة المرور ضعيفة.":"Weak password.";
           case "auth/invalid-email": return lang==="ar"?"بريد غير صالح.":"Invalid email.";
@@ -203,8 +214,8 @@ export default function RegisterPage() {
           case "customerId_failed": return lang==="ar"?"خطأ في حجز رقم العميل، حاول مرة أخرى.":"Customer ID reservation failed.";
           default: return lang==="ar"?"حدث خطأ أثناء تسجيل الحساب، حاول مرة أخرى.":"An error occurred during registration.";
         }
-      })(err?.code || err?.message);
-      setRegError(m);
+      };
+      setRegError(m(code));
     }
 
     setRegLoading(false);
