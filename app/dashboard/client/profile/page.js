@@ -122,7 +122,7 @@ function ClientProfilePageInner({ userId }) {
   const [openChat, setOpenChat] = useState(false);
   const [selectedSection, setSelectedSection] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("selectedSection") || "personal" : "personal"));
   const [client, setClient] = useState(null);
-  const [companies, setCompanies] = useState([]); // شركات المالك (لعرض عدة كروت)
+  const [companies, setCompanies] = useState([]);
   const [services, setServices] = useState({ resident: [], nonresident: [], company: [], other: [] });
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -137,6 +137,8 @@ function ClientProfilePageInner({ userId }) {
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [resolvedUserId, setResolvedUserId] = useState(null);   // NEW: المعرّف الفعلي لمستند المستخدم
+  const [resolving, setResolving] = useState(true);             // NEW: حالة الحلّ
 
   // ========= SESSION AUTO LOGOUT =========
   useEffect(() => {
@@ -149,22 +151,80 @@ function ClientProfilePageInner({ userId }) {
 
   // ========= SECURE SESSION =========
   useEffect(() => {
-    if (client === null && !loading) {
+    if (client === null && !loading && !resolving) {
       router.replace("/login");
     }
-  }, [client, loading, router]);
+  }, [client, loading, resolving, router]);
 
-  // ========= جلب بيانات العميل لحظيا + جلب الشركات المملوكة =========
+  // ========= Resolve userId -> real Firestore doc.id =========
   useEffect(() => {
-    if (!userId) return;
-    const userRef = doc(firestore, "users", userId);
+    let cancelled = false;
+    async function resolveId(param) {
+      if (!param) {
+        setResolvedUserId(null);
+        setResolving(false);
+        return;
+      }
+      setResolving(true);
+      try {
+        // 1) direct doc
+        let ref = doc(firestore, "users", param);
+        let snap = await getDoc(ref);
+        if (snap.exists()) {
+          if (!cancelled) {
+            setResolvedUserId(snap.id);
+            setResolving(false);
+          }
+          return;
+        }
+
+        // 2) fallback queries
+        const usersCol = collection(firestore, "users");
+        const tryField = async (field) => {
+          const qs = await getDocs(query(usersCol, where(field, "==", param), limit(1)));
+          return qs.empty ? null : qs.docs[0].id;
+        };
+
+        let found =
+          (await tryField("customerId")) ||
+          (await tryField("userId")) ||
+          (await tryField("companyId"));
+
+        // 3) last resort: current auth uid
+        if (!found && auth?.currentUser?.uid) {
+          const qs = await getDocs(
+            query(usersCol, where("uid", "==", auth.currentUser.uid), limit(1))
+          );
+          if (!qs.empty) found = qs.docs[0].id;
+        }
+
+        if (!cancelled) {
+          setResolvedUserId(found);
+          setResolving(false);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setResolvedUserId(null);
+          setResolving(false);
+        }
+      }
+    }
+    resolveId(userId);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // ========= جلب بيانات العميل لحظيا + جلب الشركات =========
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    const userRef = doc(firestore, "users", resolvedUserId);
     const unsubscribe = onSnapshot(userRef, async (snap) => {
       if (snap.exists()) {
         const user = snap.data();
-        user.customerId = snap.id; // doc id كمُعرّف العميل
+        user.customerId = snap.id; // المعرف الموحد
         setClient(user);
 
-        // إن كان حساب شركة احتفظ ببيانات المالك للعرض
         if ((user?.type === "company" || user?.accountType === "company")) {
           setOwnerResident({
             firstName: user.ownerFirstName,
@@ -179,10 +239,8 @@ function ClientProfilePageInner({ userId }) {
           setOwnerResident(null);
         }
 
-        // إن كان مقيم: اجلب كل الشركات المرتبطة به لعرض عدة كروت
         if ((user?.type || user?.accountType || "").toLowerCase() === "resident" && user.customerId) {
           const related = await fetchRelatedCompanies(user.customerId, user);
-          // إزالة التكرارات بالاعتماد على doc.id
           const seen = new Set();
           const unique = [];
           for (const c of related) {
@@ -196,14 +254,17 @@ function ClientProfilePageInner({ userId }) {
         } else {
           setCompanies([]);
         }
+      } else {
+        setClient(null);
       }
     });
     return () => unsubscribe();
-  }, [userId]);
+  }, [resolvedUserId]);
 
   // ========= جلب الخدمات والطلبات والإشعارات =========
   useEffect(() => {
     async function fetchData() {
+      if (!resolvedUserId) return;
       setLoading(true);
 
       const types = ["resident", "company", "nonresident", "other"];
@@ -220,12 +281,15 @@ function ClientProfilePageInner({ userId }) {
       }
       setServices(servicesByType);
 
+      // orders/notifications مبنية على customerId = doc.id
       const ordersSnap = await getDocs(
-        query(collection(firestore, "requests"), where("customerId", "==", userId), orderBy("createdAt", "desc"))
+        query(collection(firestore, "requests"), where("customerId", "==", resolvedUserId), orderBy("createdAt", "desc"))
       );
       setOrders(ordersSnap.docs.map((d) => d.data()));
 
-      const notifsSnap = await getDocs(query(collection(firestore, "notifications"), where("targetId", "==", userId)));
+      const notifsSnap = await getDocs(
+        query(collection(firestore, "notifications"), where("targetId", "==", resolvedUserId))
+      );
       let clientNotifs = notifsSnap.docs.map((d) => d.data());
       clientNotifs.sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
       setNotifications(clientNotifs);
@@ -233,7 +297,7 @@ function ClientProfilePageInner({ userId }) {
       setLoading(false);
     }
     fetchData();
-  }, [userId, reloadClient]);
+  }, [resolvedUserId, reloadClient]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -351,7 +415,7 @@ function ClientProfilePageInner({ userId }) {
       currency: "AED",
       customer_phone: client.phone || "",
       customer_email: client.email || "",
-      order_id: `wallet_${client.customerId}_${Date.now()}`, // موحّد على customerId
+      order_id: `wallet_${client.customerId}_${Date.now()}`,
       site_url: typeof window !== "undefined" ? window.location.origin : "",
       product_name: "Wallet Topup",
       onSuccess: async () => {
@@ -364,7 +428,6 @@ function ClientProfilePageInner({ userId }) {
         const newWallet = (client.walletBalance || 0) + amount;
         const newCoins = (client.coins || 0) + bonus;
 
-        // المهم: التحديث على users/{customerId}
         await updateDoc(doc(firestore, "users", client.customerId), { walletBalance: newWallet });
 
         await addNotification(
@@ -395,14 +458,15 @@ function ClientProfilePageInner({ userId }) {
 
   async function handleLogout() {
     try {
-      if (client?.userId) {
-        const msgsSnap = await getDocs(collection(firestore, "chatRooms", client.userId, "messages"));
+      const roomId = client?.userId || client?.customerId;
+      if (roomId) {
+        const msgsSnap = await getDocs(collection(firestore, "chatRooms", roomId, "messages"));
         const deletes = [];
         msgsSnap.forEach((msg) => {
-          deletes.push(deleteDoc(doc(firestore, "chatRooms", client.userId, "messages", msg.id)));
+          deletes.push(deleteDoc(doc(firestore, "chatRooms", roomId, "messages", msg.id)));
         });
         await Promise.all(deletes);
-        await deleteDoc(doc(firestore, "chatRooms", client.userId));
+        await deleteDoc(doc(firestore, "chatRooms", roomId));
       }
     } catch {}
     await signOut(auth);
@@ -434,7 +498,7 @@ function ClientProfilePageInner({ userId }) {
   }
 
   // ---------- Conditional Rendering ----------
-  if (loading) return <GlobalLoader />;
+  if (loading || resolving || resolvedUserId === null) return <GlobalLoader />;
   if (!client) {
     return (
       <div className="flex min-h-screen justify-center items-center bg-gradient-to-br from-[#0b131e] via-[#22304a] to-[#1d4d40]">
@@ -607,7 +671,7 @@ function ClientProfilePageInner({ userId }) {
             </span>
             <button
               onClick={toggleDarkMode}
-              className={`relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition w-9 h-9 ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}`}
+              className={`relative flex items-center justify-center bg-transparent border-none p-0 م-0 rounded-full focus:outline-none cursor-pointer transition w-9 h-9 ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}`}
               title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
             >
               {darkMode ? <FaSun className="text-yellow-400 text-[22px] drop-shadow" /> : <FaMoon className="text-gray-700 text-[22px] drop-shadow" />}
@@ -663,7 +727,6 @@ function ClientProfilePageInner({ userId }) {
 
               {clientType === "company" && (
                 <>
-                  {/* عرض بطاقة الشركة الحالية */}
                   <CompanyCardGold companyId={client.customerId} lang={lang} />
                   <OwnerCard companyId={client.customerId} lang={lang} />
                 </>
@@ -754,7 +817,7 @@ function ClientProfilePageInner({ userId }) {
                         requireUpload={srv.requireUpload}
                         coins={srv.coins || 0}
                         lang={lang}
-                        userId={client.userId || client.customerId}   // fallback مهم
+                        userId={client.userId || client.customerId}   // fallback
                         userWallet={client.walletBalance || 0}
                         userCoins={client.coins || 0}
                         userEmail={client.email}
@@ -768,7 +831,7 @@ function ClientProfilePageInner({ userId }) {
                         repeatable={srv.repeatable}
                         allowPaperCount={srv.allowPaperCount}
                         pricePerPage={srv.pricePerPage}
-                        customerId={client.customerId}               // المعرف الموحد
+                        customerId={client.customerId}
                         accountType={clientType}
                       />
                     );
@@ -814,9 +877,9 @@ function ClientProfilePageInner({ userId }) {
       {openChat && (
         <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
           <ChatWidgetFull
-            userId={client.userId || client.customerId}    // fallback مهم
+            userId={client.userId || client.customerId}
             userName={client.name}
-            roomId={client.userId || client.customerId}    // fallback مهم
+            roomId={client.userId || client.customerId}
           />
           <button
             onClick={() => setOpenChat(false)}

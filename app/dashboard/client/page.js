@@ -1,5 +1,4 @@
-"use client";
-import ClientProfilePage from "./profile/page";
+import ClientProfilePage from "./ClientProfilePage";
 
 export default function ClientPage() {
   return <ClientProfilePage />;
