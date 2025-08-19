@@ -754,7 +754,7 @@ function ClientProfilePageInner({ userId }) {
                         requireUpload={srv.requireUpload}
                         coins={srv.coins || 0}
                         lang={lang}
-                        userId={client.userId}                  // اتركها كما هي لو مكون الخدمة يعتمد عليها
+                        userId={client.userId || client.customerId}   // fallback مهم
                         userWallet={client.walletBalance || 0}
                         userCoins={client.coins || 0}
                         userEmail={client.email}
@@ -768,7 +768,8 @@ function ClientProfilePageInner({ userId }) {
                         repeatable={srv.repeatable}
                         allowPaperCount={srv.allowPaperCount}
                         pricePerPage={srv.pricePerPage}
-                        customerId={client.customerId}          // المعرف الموحد
+                        customerId={client.customerId}               // المعرف الموحد
+                        accountType={clientType}
                       />
                     );
                   })}
@@ -813,9 +814,9 @@ function ClientProfilePageInner({ userId }) {
       {openChat && (
         <div className="fixed z-[100] bottom-28 right-6 shadow-2xl">
           <ChatWidgetFull
-            userId={client.userId}
+            userId={client.userId || client.customerId}    // fallback مهم
             userName={client.name}
-            roomId={client.userId}
+            roomId={client.userId || client.customerId}    // fallback مهم
           />
           <button
             onClick={() => setOpenChat(false)}
