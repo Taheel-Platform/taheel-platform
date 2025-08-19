@@ -20,6 +20,27 @@ function setLocal(key, value) {
   } catch {}
 }
 
+// تنظيف المخرجات (إزالة اقتباسات ومسافات زائدة)
+function sanitizeOut(s) {
+  if (!s || typeof s !== "string") return "";
+  return s.replace(/^["'«»\s]+|["'«»\s]+$/g, "").trim();
+}
+
+// كشف ردود اعتذارية/شرح بدل الترجمة
+function looksBad(s) {
+  if (!s) return true;
+  const bad = [
+    /i'?m sorry/i,
+    /i apologize/i,
+    /as an ai/i,
+    /cannot translate/i,
+    /error in the translation/i,
+    /please provide/i,
+    /unable to/i,
+  ];
+  return bad.some((rx) => rx.test(s));
+}
+
 /**
  * ترجمة نص واحد عبر API داخلي /api/translate
  * - text: النص العربي
@@ -41,18 +62,27 @@ export async function translateText({ text, target = "en", source = "ar", fieldK
     return local;
   }
 
-  const res = await fetch("/api/translate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, targetLang: target, sourceLang: source }),
-  });
+  try {
+    const res = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, targetLang: target, sourceLang: source }),
+    });
 
-  const data = await res.json().catch(() => ({}));
-  const translated = data?.translated ?? text;
+    const data = await res.json().catch(() => ({}));
+    let translated = data?.translated ?? text;
 
-  mem.set(key, translated);
-  setLocal(key, translated);
-  return translated;
+    // فلترة النتائج غير المناسبة + تنظيف
+    if (!translated || looksBad(translated)) translated = text;
+    translated = sanitizeOut(translated);
+
+    mem.set(key, translated);
+    setLocal(key, translated);
+    return translated;
+  } catch {
+    // في حال فشل الشبكة، رجّع الأصل
+    return text;
+  }
 }
 
 /**
@@ -79,19 +109,62 @@ export async function translateServiceFields({
     text: String(service?.[f] || ""),
   }));
 
-  const res = await fetch("/api/translate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, targetLang: target, sourceLang: "ar" }),
-  });
-  const data = await res.json().catch(() => ({}));
-  const list = data?.items || [];
+  try {
+    const res = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, targetLang: target, sourceLang: "ar" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const list = Array.isArray(data?.items) ? data.items : [];
 
-  const out = {};
-  for (const f of fields) {
-    const k = `service:${sid}:${f}:${target}`;
-    const hit = list.find((x) => x.key === k)?.translated ?? service?.[f] ?? "";
-    out[f] = hit;
+    const out = {};
+    for (const f of fields) {
+      const k = `service:${sid}:${f}:${target}`;
+      let hit = list.find((x) => x.key === k)?.translated ?? service?.[f] ?? "";
+      if (!hit || looksBad(hit)) hit = service?.[f] ?? "";
+      out[f] = sanitizeOut(hit);
+    }
+    return out;
+  } catch {
+    // فشل الشبكة => رجّع الأصل
+    const o = {};
+    for (const f of fields) o[f] = service?.[f] || "";
+    return o;
   }
-  return out;
+}
+
+/**
+ * ترجمة قائمة نصوص (مثلاً requiredDocuments) دفعة واحدة
+ * texts: مصفوفة نصوص عربية
+ * lang: "ar" | "en"
+ * fieldKeyPrefix: بادئة للمفتاح (لتحسين الكاش)
+ */
+export async function translateList({ texts = [], lang = "en", fieldKeyPrefix = "list:item" }) {
+  const target = lang === "ar" ? "ar" : "en";
+  if (target === "ar" || !Array.isArray(texts) || texts.length === 0) return texts.map((t) => String(t || ""));
+
+  const items = texts.map((t, i) => ({
+    key: `${fieldKeyPrefix}:${i}:${target}`,
+    text: String(t || ""),
+  }));
+
+  try {
+    const res = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, targetLang: target, sourceLang: "ar" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const list = Array.isArray(data?.items) ? data.items : [];
+
+    return texts.map((t, i) => {
+      const k = `${fieldKeyPrefix}:${i}:${target}`;
+      let out = list.find((x) => x.key === k)?.translated ?? String(t || "");
+      if (!out || looksBad(out)) out = String(t || "");
+      return sanitizeOut(out);
+    });
+  } catch {
+    return texts.map((t) => String(t || ""));
+  }
 }

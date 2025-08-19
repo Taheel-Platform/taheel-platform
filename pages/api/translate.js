@@ -1,16 +1,15 @@
 /* eslint-disable no-console */
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: "1mb",
-    },
+    bodyParser: { sizeLimit: "1mb" },
   },
 };
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_TRANSLATE_MODEL || "gpt-3.5-turbo";
+const TEMPERATURE = 0;
 
-// كاش بسيط بالذاكرة مع TTL (30 يوم)
+// كاش بالذاكرة مع TTL (30 يوم)
 const memCache = new Map(); // key -> { value, expireAt }
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -28,30 +27,44 @@ function setToCache(key, value) {
   memCache.set(key, { value, expireAt: Date.now() + TTL_MS });
 }
 
-async function translateOne({ text, targetLang = "en", sourceLang = "ar", outJson = false }) {
-  // لو الهدف عربي رجّع النص كما هو
-  if (!text || targetLang === "ar") return String(text || "");
+// تنظيف المخرجات
+function sanitizeOut(s) {
+  if (!s || typeof s !== "string") return "";
+  // إزالة اقتباسات ومسافات من الطرفين
+  return s.replace(/^["'«»\s]+|["'«»\s]+$/g, "").trim();
+}
 
+// كشف ردود الاعتذار/الشرح
+function looksLikeApology(s) {
+  if (!s) return true;
+  const p = [
+    /i'?m sorry/i,
+    /i apologize/i,
+    /as an ai/i,
+    /cannot translate/i,
+    /error in the translation/i,
+    /unable to/i,
+    /please provide/i,
+  ];
+  return p.some((rx) => rx.test(s));
+}
+
+async function translateOne({ text, targetLang = "en", sourceLang = "ar" }) {
+  if (!text) return "";
+  if (targetLang === "ar") return String(text || "");
   if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is missing");
 
-  const userMsg = outJson
-    ? [
-        {
-          role: "system",
-          content:
-            "You are a translation engine. Translate user content to the requested target language. Return only the translated text without any additional commentary.",
-        },
-        {
-          role: "user",
-          content: `Source language: ${sourceLang || "auto"}\nTarget language: ${targetLang}\nText:\n${text}`,
-        },
-      ]
-    : [
-        {
-          role: "user",
-          content: `Translate the following text from ${sourceLang || "auto"} to ${targetLang}. Return only the translated text:\n${text}`,
-        },
-      ];
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are a translation engine. Return ONLY the translated text. No apologies, no explanations, no quotes. Preserve bullets, punctuation, and line breaks. If the input is already in the target language, return it as-is.",
+    },
+    {
+      role: "user",
+      content: `Source: ${sourceLang || "auto"}\nTarget: ${targetLang}\nText:\n${text}`,
+    },
+  ];
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -61,8 +74,8 @@ async function translateOne({ text, targetLang = "en", sourceLang = "ar", outJso
     },
     body: JSON.stringify({
       model: MODEL,
-      messages: userMsg,
-      temperature: 0.2,
+      messages,
+      temperature: TEMPERATURE,
     }),
   });
 
@@ -72,8 +85,11 @@ async function translateOne({ text, targetLang = "en", sourceLang = "ar", outJso
   }
 
   const data = await res.json().catch(() => ({}));
-  const translated = data?.choices?.[0]?.message?.content?.trim();
-  return translated ?? "";
+  let translated = data?.choices?.[0]?.message?.content ?? "";
+  translated = sanitizeOut(translated);
+  // لو رد غير مناسب، رجّع النص الأصلي
+  if (!translated || looksLikeApology(translated)) return String(text || "");
+  return translated;
 }
 
 export default async function handler(req, res) {
@@ -84,7 +100,7 @@ export default async function handler(req, res) {
 
     const { text, targetLang = "en", sourceLang = "ar", items } = req.body || {};
 
-    // دعم: إما نص واحد text أو قائمة عناصر items = [{ key, text, sourceLang?, targetLang? }]
+    // ترجمة دفعة عناصر: items = [{ key, text, targetLang?, sourceLang? }]
     if (Array.isArray(items) && items.length) {
       const results = await Promise.all(
         items.map(async (it) => {
@@ -93,13 +109,18 @@ export default async function handler(req, res) {
             targetLang: it.targetLang || targetLang || "en",
             sourceLang: it.sourceLang || sourceLang || "ar",
           };
-          const key = cacheKey({ ...payload, key: it.key });
-          const cached = getFromCache(key);
+          const k = cacheKey({ ...payload, key: it.key });
+          const cached = getFromCache(k);
           if (cached) return { key: it.key, translated: cached, cached: true };
 
-          const translated = await translateOne(payload);
-          setToCache(key, translated);
-          return { key: it.key, translated, cached: false };
+          try {
+            const translated = await translateOne(payload);
+            // خزّن فقط لو الناتج صالح
+            if (translated && translated !== payload.text) setToCache(k, translated);
+            return { key: it.key, translated, cached: false };
+          } catch {
+            return { key: it.key, translated: payload.text, cached: false };
+          }
         })
       );
 
@@ -112,14 +133,14 @@ export default async function handler(req, res) {
       targetLang: targetLang || "en",
       sourceLang: sourceLang || "ar",
     };
-    const key = cacheKey({ ...single, key: "single" });
-    const cached = getFromCache(key);
+    const k = cacheKey({ ...single, key: "single" });
+    const cached = getFromCache(k);
     if (cached) {
       return res.status(200).json({ translated: cached, cached: true, provider: "openai" });
     }
 
     const translated = await translateOne(single);
-    setToCache(key, translated);
+    if (translated && translated !== single.text) setToCache(k, translated);
     return res.status(200).json({ translated, cached: false, provider: "openai" });
   } catch (e) {
     console.error("Translate API error:", e);
