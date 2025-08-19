@@ -4,10 +4,13 @@ import {
   FaBuilding, FaUserTie, FaTag,
   FaChevronLeft, FaChevronRight
 } from "react-icons/fa";
+import { firestore } from "@/lib/firebase.client";
+import { doc, getDoc } from "firebase/firestore";
 
+// الأقسام الأساسية
 const MAIN_SECTIONS = [
   { key: "personal", icon: <FaUser size={22} />, ar: "المعلومات الشخصية", en: "Personal Info" },
-  { key: "orders", icon: <FaClipboardList size={22} />, ar: "الطلبات الحالية", en: "Current Orders" },
+  { key: "orders",   icon: <FaClipboardList size={22} />, ar: "الطلبات الحالية", en: "Current Orders" },
 ];
 
 const SERVICE_SECTIONS = {
@@ -31,20 +34,52 @@ export default function Sidebar({
   onSelect = () => {},
   lang = "ar",
   clientType = "resident",
-  selectedCategory = "",
-  onSelectCategory = () => {},
+  selectedSubcategory = "",
+  onSelectSubcategory = () => {},
 }) {
   const [opened, setOpened] = useState(true);
   const sidebarRef = useRef();
   const dir = lang === "ar" ? "rtl" : "ltr";
   const headerHeight = 140;
+  const [showSubcatsFor, setShowSubcatsFor] = useState(null);
   const serviceSections = SERVICE_SECTIONS[clientType] || [];
   const [isHovered, setIsHovered] = useState(false);
+
+  // السابكاتوجري الديناميكية لكل قسم خدمات
+  const [subcategories, setSubcategories] = useState({});
+  const [loadingSubcats, setLoadingSubcats] = useState(false);
+
+  // جلب السابكاتوجري الديناميكية من الخدمات تحت القسم
+  async function fetchSubcategories(sectionKey) {
+    let docKey = "";
+    if (sectionKey === "residentServices") docKey = "resident";
+    else if (sectionKey === "nonresidentServices") docKey = "nonresident";
+    else if (sectionKey === "companyServices") docKey = "company";
+    else if (sectionKey === "otherServices") docKey = "other";
+    if (!docKey) return;
+    setLoadingSubcats(true);
+    try {
+      const snap = await getDoc(doc(firestore, "servicesByClientType", docKey));
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const servicesArr = Object.entries(data)
+        .filter(([key, val]) => key.startsWith("service") && typeof val === "object")
+        .map(([key, val]) => val);
+      const uniqueSubcats = [
+        ...new Set(servicesArr.map(s => s.subcategory).filter(Boolean))
+      ];
+      setSubcategories(prev => ({ ...prev, [sectionKey]: uniqueSubcats }));
+    } catch (error) {
+      setSubcategories(prev => ({ ...prev, [sectionKey]: [] }));
+    }
+    setLoadingSubcats(false);
+  }
 
   useEffect(() => {
     function handleClick(e) {
       if (opened && sidebarRef.current && !sidebarRef.current.contains(e.target)) {
         setOpened(false);
+        setShowSubcatsFor(null);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -80,6 +115,26 @@ export default function Sidebar({
     boxShadow: "0 4px 24px 0 rgba(16,185,129,0.32)",
   };
 
+  const handleServiceSectionClick = async (sectionKey) => {
+    // لو نفس القسم مفتوح، اقفل السابكاتوجري واظهر كل الخدمات
+    if (showSubcatsFor === sectionKey) {
+      setShowSubcatsFor(null);
+      onSelect(sectionKey); // تظهر كل خدمات النوع فقط
+      onSelectSubcategory(""); // تلغي الفلتر الفرعي
+    } else {
+      setShowSubcatsFor(sectionKey);
+      onSelect(sectionKey); // تظهر كل خدمات النوع فقط
+      onSelectSubcategory(""); // تلغي الفلتر الفرعي
+      await fetchSubcategories(sectionKey);
+    }
+  };
+
+  // عند اختيار سابكاتوجري تظهر خدماته فقط
+  const handleSubcategoryClick = (sectionKey, subcat) => {
+    onSelect(sectionKey); // نوع الخدمة
+    onSelectSubcategory(subcat); // التصنيف الفرعي
+  };
+
   return (
     <aside
       ref={sidebarRef}
@@ -108,7 +163,10 @@ export default function Sidebar({
         style={isHovered ? { ...floatingBtnStyle, ...floatingBtnHoverStyle } : floatingBtnStyle}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => setOpened(v => !v)}
+        onClick={() => {
+          setOpened(v => !v);
+          if (opened) setShowSubcatsFor(null);
+        }}
         title={opened ? (lang === "ar" ? "إغلاق القائمة" : "Close sidebar") : (lang === "ar" ? "فتح القائمة" : "Open sidebar")}
       >
         {opened
@@ -140,7 +198,11 @@ export default function Sidebar({
                 : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
               }
               `}
-            onClick={() => onSelect(section.key)}
+            onClick={() => {
+              setShowSubcatsFor(null);
+              onSelect(section.key);
+              onSelectSubcategory("");
+            }}
             style={{
               justifyContent: "flex-start",
               cursor: "pointer",
@@ -156,29 +218,70 @@ export default function Sidebar({
 
         {/* أقسام الخدمات حسب نوع العميل */}
         {serviceSections.map((section) => (
-          <button
-            key={section.key}
-            className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
-              ${selectedCategory === section.key
-                ? "bg-emerald-700/20 text-emerald-300 shadow"
-                : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
-              }
-              `}
-            onClick={() => {
-              // عند الضغط على نوع الخدمة تظهر خدمات هذا النوع فقط
-              onSelectCategory(section.key);
-            }}
-            style={{
-              justifyContent: "flex-start",
-              cursor: "pointer", // الماوس يتحول ليد
-            }}
-            tabIndex={0}
-          >
-            <span className={`transition-all ${opened ? "" : "mx-auto"}`}>{section.icon}</span>
-            {opened && (
-              <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
-            )}
-          </button>
+          <div key={section.key}>
+            <button
+              className={`flex flex-row items-center gap-3 px-4 py-3 rounded-full transition-all font-bold text-base group
+                ${selected === section.key
+                  ? "bg-emerald-700/20 text-emerald-300 shadow"
+                  : "text-gray-100 hover:bg-emerald-400/20 hover:text-emerald-300"
+                }
+                `}
+              onClick={() => handleServiceSectionClick(section.key)}
+              style={{
+                justifyContent: "flex-start",
+                cursor: "pointer",
+              }}
+              tabIndex={0}
+            >
+              <span className={`transition-all ${opened ? "" : "mx-auto"}`}>{section.icon}</span>
+              {opened && (
+                <span className="whitespace-nowrap">{lang === "ar" ? section.ar : section.en}</span>
+              )}
+            </button>
+            {/* قائمة السابكاتوجري تظهر فقط لو القسم مفتوح ومختار */}
+            <div
+              style={{
+                maxHeight:
+                  showSubcatsFor === section.key &&
+                  subcategories[section.key] &&
+                  opened &&
+                  subcategories[section.key].length
+                    ? "500px"
+                    : "0px",
+                opacity:
+                  showSubcatsFor === section.key &&
+                  subcategories[section.key] &&
+                  opened &&
+                  subcategories[section.key].length
+                    ? 1
+                    : 0,
+                overflow: "hidden",
+                transition: "max-height 0.5s cubic-bezier(.4,0,.2,1), opacity 0.4s",
+              }}
+              className="pl-8 pr-2 mt-1 mb-2 flex flex-col gap-1"
+            >
+              {loadingSubcats ? (
+                <div className="text-xs text-gray-400 py-2">جاري التحميل...</div>
+              ) : (
+                <>
+                  {subcategories[section.key]?.map(subcat => (
+                    <button
+                      key={subcat}
+                      onClick={() => handleSubcategoryClick(section.key, subcat)}
+                      className={`text-sm rounded-full px-3 py-1 font-bold transition border
+                        ${selectedSubcategory === subcat
+                          ? "bg-emerald-400 text-white"
+                          : "bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-100"}
+                      `}
+                      style={{ cursor: "pointer" }} // الماوس يد دائماً
+                    >
+                      {subcat}
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
         ))}
       </nav>
 
