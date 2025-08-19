@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
+import { translateText } from "@/utils/translate"; // ← إضافة الترجمة
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -109,11 +110,25 @@ export default function ServicePayModal({
         console.log("خطأ في جلب بيانات الخدمة:", e);
       }
 
+      // اسم الخدمة الأصلي بالعربي (للتخزين)
+      const originalServiceName = serviceData?.name || serviceName || "";
+
+      // اسم الخدمة للعرض والإشعار/الإيميل حسب اللغة
+      const uiServiceName =
+        lang === "ar"
+          ? originalServiceName
+          : await translateText({
+              text: originalServiceName,
+              target: "en",
+              source: "ar",
+              fieldKey: `service:${serviceId || originalServiceName}:name:en`,
+            });
+
       // استخراج البروفايدرز كما هو من الخدمة الأصلية
       const providers =
-        Array.isArray(serviceData.providers)
+        Array.isArray(serviceData?.providers)
           ? serviceData.providers
-          : serviceData.providers
+          : serviceData?.providers
             ? [serviceData.providers]
             : [];
 
@@ -121,9 +136,9 @@ export default function ServicePayModal({
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
         customerId: customerId,
-        serviceName,
-        serviceId: serviceData.serviceId || "",
-        providers, // ← هنا زي اللي في الخدمة بالظبط
+        serviceName: originalServiceName, // ← تخزين بالعربي لضمان التوافق
+        serviceId: serviceData.serviceId || serviceId || "",
+        providers, // ← كما في الخدمة
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
         coinsGiven: willGetCashback ? cashbackCoins : 0,
@@ -132,25 +147,25 @@ export default function ServicePayModal({
         attachments: uploadedDocs || {}
       });
 
-      // إشعار العميل
+      // إشعار العميل (بلغة الواجهة)
       await addDoc(collection(firestore, "notifications"), {
         targetId: customerId,
         title: lang === "ar" ? "تم الدفع" : "Payment Successful",
         body: lang === "ar"
-          ? `دفعت لخدمة ${serviceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
-          : `You paid for ${serviceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+          ? `دفعت لخدمة ${uiServiceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
+          : `You paid for ${uiServiceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
         timestamp: new Date().toISOString(),
         isRead: false
       });
 
-      // إرسال إيميل تأكيد
+      // إرسال إيميل تأكيد (بلغة الواجهة)
       await fetch("/api/sendOrderEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: userEmail,
           orderNumber,
-          serviceName,
+          serviceName: uiServiceName,
           price: finalPrice.toFixed(2)
         }),
       });
@@ -176,12 +191,23 @@ export default function ServicePayModal({
     setPayMsg("");
     setMsgSuccess(false);
     try {
+      // ترجم اسم الخدمة للواجهة قبل الإرسال للبوابة
+      const uiServiceName =
+        lang === "ar"
+          ? serviceName
+          : await translateText({
+              text: serviceName || "",
+              target: "en",
+              source: "ar",
+              fieldKey: `service:${serviceId || serviceName}:name:en`,
+            });
+
       const response = await fetch("/api/create-payment-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: finalPrice,
-          serviceName,
+          serviceName: uiServiceName, // للعرض في البوابة
           customerId,
           userEmail,
         }),
@@ -241,6 +267,7 @@ export default function ServicePayModal({
             <FaTimes />
           </button>
           <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
+          {/* للعرض فقط: نترجم الاسم حسب اللغة قبل العرض عبر دالة البوابة/الدفع */}
           <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
           <table className="w-full text-xs text-gray-700 font-bold mb-2">
             <tbody>
