@@ -1,4 +1,5 @@
 "use client";
+
 import { Suspense, useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -43,7 +44,6 @@ import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
 import NotificationWidget from "@/components/clientheader/NotificationWidget";
 import { translateServiceFields } from "@/utils/translate";
-import ClientProfilePageInner from "./ClientProfilePageInner";
 
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
@@ -113,7 +113,7 @@ function SectionTitle({ icon, color = "emerald", children }) {
   );
 }
 
-// ========== Main Component ==========
+// ========== Main Component (Inner) ==========
 function ClientProfilePageInner({ userId }) {
   const router = useRouter();
 
@@ -138,8 +138,8 @@ function ClientProfilePageInner({ userId }) {
   const messagesRef = useRef();
   const [reloadClient, setReloadClient] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
-  const [resolvedUserId, setResolvedUserId] = useState(null);   // NEW: المعرّف الفعلي لمستند المستخدم
-  const [resolving, setResolving] = useState(true);             // NEW: حالة الحلّ
+  const [resolvedUserId, setResolvedUserId] = useState(null);
+  const [resolving, setResolving] = useState(true);
 
   // ========= SESSION AUTO LOGOUT =========
   useEffect(() => {
@@ -620,7 +620,7 @@ function ClientProfilePageInner({ userId }) {
             <div ref={messagesRef} className="relative group cursor-pointer" onClick={() => setShowMessagesMenu((v) => !v)}>
               <motion.button
                 type="button"
-                className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
+                className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer"
                 tabIndex={0}
                 style={{ minWidth: 36, minHeight: 36 }}
                 onClick={() => setShowMessagesMenu((v) => !v)}
@@ -672,7 +672,7 @@ function ClientProfilePageInner({ userId }) {
             </span>
             <button
               onClick={toggleDarkMode}
-              className={`relative flex items-center justify-center bg-transparent border-none p-0 م-0 rounded-full focus:outline-none cursor-pointer transition w-9 h-9 ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}`}
+              className={`relative flex items-center justify-center bg-transparent border-none p-0 m-0 rounded-full focus:outline-none cursor-pointer transition w-9 h-9 ${darkMode ? "hover:bg-emerald-700" : "hover:bg-emerald-200"}`}
               title={darkMode ? (lang === "ar" ? "الوضع النهاري" : "Light Mode") : (lang === "ar" ? "الوضع المظلم" : "Dark Mode")}
             >
               {darkMode ? <FaSun className="text-yellow-400 text-[22px] drop-shadow" /> : <FaMoon className="text-gray-700 text-[22px] drop-shadow" />}
@@ -818,7 +818,7 @@ function ClientProfilePageInner({ userId }) {
                         requireUpload={srv.requireUpload}
                         coins={srv.coins || 0}
                         lang={lang}
-                        userId={client.userId || client.customerId}   // fallback
+                        userId={client.userId || client.customerId}
                         userWallet={client.walletBalance || 0}
                         userCoins={client.coins || 0}
                         userEmail={client.email}
@@ -858,7 +858,7 @@ function ClientProfilePageInner({ userId }) {
       {/* زر المحادثة العائم وزر الواتساب */}
       <div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
         <button
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg و-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
           title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
           onClick={() => setOpenChat(true)}
         >
@@ -900,7 +900,6 @@ function ClientProfilePageInner({ userId }) {
 async function fetchRelatedCompanies(customerId, user) {
   const out = [];
   try {
-    // 1) الموصى به: مصفوفة معرفات ملاك الشركات
     const q1 = query(
       collection(firestore, "users"),
       where("type", "==", "company"),
@@ -912,7 +911,6 @@ async function fetchRelatedCompanies(customerId, user) {
   } catch {}
 
   try {
-    // 2) لو كان عندك حقل وحيد للمالك
     const q2 = query(
       collection(firestore, "users"),
       where("type", "==", "company"),
@@ -924,7 +922,6 @@ async function fetchRelatedCompanies(customerId, user) {
   } catch {}
 
   try {
-    // 3) fallback قديم: بالمطابقة على حقل owner (اسم/uid)
     const ownerVals = [];
     if (user?.name) ownerVals.push(user.name);
     if (user?.userId) ownerVals.push(user.userId);
@@ -942,6 +939,7 @@ async function fetchRelatedCompanies(customerId, user) {
   return out;
 }
 
+// ========= Default export: reads userId from search params and renders Inner =========
 export default function ClientProfilePage(props) {
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId") || "";
