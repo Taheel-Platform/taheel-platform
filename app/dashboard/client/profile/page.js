@@ -669,26 +669,59 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
 
-          {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
-            <>
-              <SectionTitle
-                icon={sectionTitles[selectedSection].icon}
-                color={sectionTitles[selectedSection].color}
-              >
-                {lang === "ar"
-                  ? sectionTitles[selectedSection].ar
-                  : sectionTitles[selectedSection].en}
-              </SectionTitle>
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-  {sectionToServices[selectedSection]
-    .filter(srv => {
-      // فلترة بالاسم (search)
-      const matchesSearch = filterFn(srv);
-      // فلترة بالسابكاتوجري إذا تم اختيارها
-      const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
-      return matchesSearch && matchesSubcat;
-    })
-    .map((srv, i) => (
+{["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
+  <>
+    <SectionTitle
+      icon={sectionTitles[selectedSection].icon}
+      color={sectionTitles[selectedSection].color}
+    >
+      {lang === "ar"
+        ? sectionTitles[selectedSection].ar
+        : sectionTitles[selectedSection].en}
+    </SectionTitle>
+
+    {/* مربع بحث احترافي */}
+    <div className="w-full flex items-center gap-2 mb-5">
+      <input
+        type="search"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder={lang === "ar" ? "ابحث عن خدمة أو كلمة..." : "Search for any service..."}
+        className={`
+          flex-1 px-5 py-3 rounded-full border-2
+          ${darkMode ? "border-gray-700 bg-gray-900 text-white placeholder:text-gray-400" : "border-emerald-400 bg-white text-gray-700"}
+          shadow-lg outline-none focus:border-emerald-500 transition-all duration-300
+          text-lg font-semibold
+        `}
+        style={{minWidth: 0}}
+        autoFocus
+      />
+      <button
+        className={`
+          px-2 py-2 rounded-full bg-emerald-500 hover:bg-emerald-700
+          text-white text-xl flex items-center justify-center shadow transition
+        `}
+        tabIndex={-1}
+        type="button"
+        disabled
+        style={{cursor: "default"}}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+          <line x1="17" y1="17" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+      {sectionToServices[selectedSection]
+        .filter(srv => {
+          const matchesSearch = advancedServiceFilter(srv);
+          const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
+          return matchesSearch && matchesSubcat;
+        })
+        .map((srv, i) => (
+          
       <ServiceProfileCard
         key={srv.name + i}
         category={selectedSection.replace("Services", "")}
