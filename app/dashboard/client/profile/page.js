@@ -162,6 +162,7 @@ function ClientProfilePageInner({ userId }) {
   const [reloadClient, setReloadClient] = useState(false);
   const [activeNotif, setActiveNotif] = useState(null);
   const [activeMessage, setActiveMessage] = useState(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
 
   // ========= SESSION AUTO LOGOUT =========
   useEffect(() => {
@@ -482,6 +483,8 @@ function ClientProfilePageInner({ userId }) {
         onSelect={handleSectionChange}
         lang={lang}
         clientType={clientType}
+        selectedSubcategory={selectedSubcategory}
+        onSelectSubcategory={setSelectedSubcategory}
       />
 
       <div className="flex-1 flex flex-col relative z-10">
@@ -676,42 +679,50 @@ function ClientProfilePageInner({ userId }) {
                   ? sectionTitles[selectedSection].ar
                   : sectionTitles[selectedSection].en}
               </SectionTitle>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-                {sectionToServices[selectedSection].filter(filterFn).map((srv, i) => (
-<ServiceProfileCard
-  key={srv.name + i}
-  category={selectedSection.replace("Services", "")}
-  name={srv.name}
-  name_en={srv.name_en}
-  description={srv.description}
-  description_en={srv.description_en}
-  price={srv.price}
-  printingFee={srv.printingFee}
-  tax={srv.tax}
-  clientPrice={srv.clientPrice}
-  duration={srv.duration}
-  requiredDocuments={srv.requiredDocuments || srv.documents || []}
-  requireUpload={srv.requireUpload}
-  coins={srv.coins || 0}
-  lang={lang}
-  userId={client.userId}
-  userWallet={client.walletBalance || 0}
-  userCoins={client.coins || 0}
-  userEmail={client.email}
-  longDescription={srv.longDescription}
-  longDescription_en={srv.longDescription_en}
-  setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
-  onPaid={handleServicePaid}
-  coinsPercent={0.1}
-  addNotification={addNotification}
-  serviceId={srv.serviceId}
-  repeatable={srv.repeatable}
-  allowPaperCount={srv.allowPaperCount}
-  pricePerPage={srv.pricePerPage}
-  customerId={client.customerId}
-/>
-                ))}
-              </div>
+<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+  {sectionToServices[selectedSection]
+    .filter(srv => {
+      // فلترة بالاسم (search)
+      const matchesSearch = filterFn(srv);
+      // فلترة بالسابكاتوجري إذا تم اختيارها
+      const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
+      return matchesSearch && matchesSubcat;
+    })
+    .map((srv, i) => (
+      <ServiceProfileCard
+        key={srv.name + i}
+        category={selectedSection.replace("Services", "")}
+        name={srv.name}
+        name_en={srv.name_en}
+        description={srv.description}
+        description_en={srv.description_en}
+        price={srv.price}
+        printingFee={srv.printingFee}
+        tax={srv.tax}
+        clientPrice={srv.clientPrice}
+        duration={srv.duration}
+        requiredDocuments={srv.requiredDocuments || srv.documents || []}
+        requireUpload={srv.requireUpload}
+        coins={srv.coins || 0}
+        lang={lang}
+        userId={client.userId}
+        userWallet={client.walletBalance || 0}
+        userCoins={client.coins || 0}
+        userEmail={client.email}
+        longDescription={srv.longDescription}
+        longDescription_en={srv.longDescription_en}
+        setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
+        onPaid={handleServicePaid}
+        coinsPercent={0.1}
+        addNotification={addNotification}
+        serviceId={srv.serviceId}
+        repeatable={srv.repeatable}
+        allowPaperCount={srv.allowPaperCount}
+        pricePerPage={srv.pricePerPage}
+        customerId={client.customerId}
+      />
+    ))}
+</div>
             </>
           )}
         </main>
