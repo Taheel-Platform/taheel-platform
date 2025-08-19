@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -44,6 +44,7 @@ import {
 import WalletWidget from "@/components/clientheader/WalletWidget";
 import CoinsWidget from "@/components/clientheader/CoinsWidget";
 import NotificationWidget from "@/components/clientheader/NotificationWidget";
+import { translateServiceFields } from "@/utils/translate";
 
 // ========== Helper functions ==========
 function getDayGreeting(lang = "ar") {
@@ -62,11 +63,9 @@ function getDayGreeting(lang = "ar") {
 function getFullName(client, lang = "ar") {
   if (!client) return "";
   if (lang === "ar") {
-    // فقط الاسم الأول والأخير
     return [client.firstName, client.lastName].filter(Boolean).join(" ");
   }
   if (client.nameEn) {
-    // لو عندك nameEn فيه فقط first/last استخدمه
     return client.nameEn;
   }
   return [client.firstName, client.lastName].filter(Boolean).join(" ");
@@ -78,7 +77,7 @@ function getWelcome(name, lang = "ar") {
 async function addNotification(customerId, title, body, type = "wallet") {
   const notif = {
     notificationId: `notif-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-    targetId: customerId, // هذا هو المعيار الموحد للإشعارات الخاصة بالعميل
+    targetId: customerId,
     title,
     body,
     isRead: false,
@@ -97,7 +96,7 @@ function objectToArray(obj) {
 const sectionTitles = {
   residentServices: { icon: "resident", color: "emerald", ar: "خدمات المقيم", en: "Resident Services" },
   companyServices: { icon: "company", color: "blue", ar: "خدمات الشركات", en: "Company Services" },
-  nonresidentServices: { icon: "nonresident", color: "yellow", ar: "خدمات غير المقيم", en: "Non-Resident Services" },
+  nonresidentServices: { icon: "nonresident", color: "yellow", ar: "Non-Resident Services" },
   otherServices: { icon: "other", color: "gray", ar: "خدمات أخرى", en: "Other Services" },
 };
 
@@ -169,10 +168,9 @@ function ClientProfilePageInner({ userId }) {
     const timer = setTimeout(() => {
       handleLogout();
       alert(lang === "ar" ? "انتهت الجلسة! يرجى تسجيل الدخول مرة أخرى." : "Session expired! Please login again.");
-    }, 1800000); // 30 دقيقة
+    }, 1800000);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line
-  }, [client]);
+  }, [client]); // eslint-disable-line
 
   // ========= SECURE SESSION =========
   useEffect(() => {
@@ -188,10 +186,9 @@ function ClientProfilePageInner({ userId }) {
     const unsubscribe = onSnapshot(userRef, (snap) => {
       if (snap.exists()) {
         const user = snap.data();
-        user.customerId = snap.id; // هذا هو التعديل المهم
+        user.customerId = snap.id;
         setClient(user);
 
-        // بيانات المالك للشركات
         if ((user?.type === "company" || user?.accountType === "company")) {
           setOwnerResident({
             firstName: user.ownerFirstName,
@@ -206,7 +203,6 @@ function ClientProfilePageInner({ userId }) {
           setOwnerResident(null);
         }
 
-        // جلب الشركات المرتبطة لو نوع العميل مقيم
         let relatedCompanies = [];
         if (user?.type === "resident" && user?.userId) {
           getDocs(
@@ -232,7 +228,6 @@ function ClientProfilePageInner({ userId }) {
     async function fetchData() {
       setLoading(true);
 
-      // جلب الخدمات
       const types = ["resident", "company", "nonresident", "other"];
       let servicesByType = {
         resident: [],
@@ -252,7 +247,6 @@ function ClientProfilePageInner({ userId }) {
       }
       setServices(servicesByType);
 
-      // جلب الطلبات
       const ordersSnap = await getDocs(
         query(
           collection(firestore, "requests"),
@@ -262,7 +256,6 @@ function ClientProfilePageInner({ userId }) {
       );
       setOrders(ordersSnap.docs.map(doc => doc.data()));
 
-      // جلب الإشعارات
       const notifsSnap = await getDocs(
         query(
           collection(firestore, "notifications"),
@@ -289,7 +282,6 @@ function ClientProfilePageInner({ userId }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // حفظ اللغة والدارك مود والقسم المختار بعد التغيير
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("lang", lang);
@@ -322,6 +314,57 @@ function ClientProfilePageInner({ userId }) {
 
   const filterFn = typeof filterService === "function" ? filterService : () => true;
   const dir = lang === "ar" ? "rtl" : "ltr";
+
+  // تجهيز قائمة الخدمات للقسم الحالي + ترجماتها
+  const currentServices = useMemo(
+    () => sectionToServices[selectedSection] || [],
+    // تعيد الحساب عند تغيّر القسم أو الخدمات المجلبة
+    [selectedSection, services]
+  );
+
+  const [translationsMap, setTranslationsMap] = useState({}); // {sid: {name, description, longDescription}}
+
+  useEffect(() => {
+    let alive = true;
+
+    async function run() {
+      // عربي: استخدم النصوص الأصلية كما هي
+      if (lang === "ar") {
+        const m = {};
+        for (const s of currentServices) {
+          const sid = s?.serviceId || s?.id || s?.name;
+          m[sid] = {
+            name: s?.name || "",
+            description: s?.description || "",
+            longDescription: s?.longDescription || "",
+          };
+        }
+        if (alive) setTranslationsMap(m);
+        return;
+      }
+
+      // إنجليزي: ترجم الحقول المطلوبة لكل خدمة (بدون تعديل الداتا)
+      const entries = await Promise.all(
+        currentServices.map(async (s) => {
+          const sid = s?.serviceId || s?.id || s?.name;
+          const tr = await translateServiceFields({
+            service: s,
+            lang,
+            fields: ["name", "description", "longDescription"],
+            idKey: "serviceId",
+          });
+          return [sid, tr];
+        })
+      );
+
+      if (alive) setTranslationsMap(Object.fromEntries(entries));
+    }
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [lang, currentServices]);
 
   // ---------- Event Handlers ----------
   function toggleLang() {
@@ -425,21 +468,30 @@ function ClientProfilePageInner({ userId }) {
       .includes(search.trim().toLowerCase());
   }
 
+  // فلترة قوية + تدعم الترجمة
   function advancedServiceFilter(service) {
-  const term = search.trim().toLowerCase();
-  if (!term) return true;
-  const fields = [
-    service.name || "",
-    service.name_en || "",
-    service.description || "",
-    service.description_en || "",
-    service.subcategory || "",
-    String(service.price || ""),
-    String(service.duration || ""),
-    (service.requiredDocuments || []).join(" "),
-  ].map(f => f.toLowerCase());
-  return fields.some(f => f.includes(term));
-}
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+
+    const sid = service?.serviceId || service?.id || service?.name;
+    const tr = translationsMap[sid] || {};
+
+    const fields = [
+      service.name || "",
+      service.name_en || "",
+      service.description || "",
+      service.description_en || "",
+      service.subcategory || "",
+      String(service.price || ""),
+      String(service.duration || ""),
+      (service.requiredDocuments || []).join(" "),
+      tr.name || "",
+      tr.description || "",
+      tr.longDescription || "",
+    ].map((f) => (f || "").toLowerCase());
+
+    return fields.some((f) => f.includes(term));
+  }
 
   // ---------- Conditional Rendering ----------
   if (loading) return <GlobalLoader />;
@@ -685,93 +737,112 @@ function ClientProfilePageInner({ userId }) {
             </>
           )}
 
-{["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
-  <>
-    <SectionTitle
-      icon={sectionTitles[selectedSection].icon}
-      color={sectionTitles[selectedSection].color}
-    >
-      {lang === "ar"
-        ? sectionTitles[selectedSection].ar
-        : sectionTitles[selectedSection].en}
-    </SectionTitle>
+          {["residentServices", "companyServices", "nonresidentServices", "otherServices"].includes(selectedSection) && (
+            <>
+              <SectionTitle
+                icon={sectionTitles[selectedSection].icon}
+                color={sectionTitles[selectedSection].color}
+              >
+                {lang === "ar"
+                  ? sectionTitles[selectedSection].ar
+                  : sectionTitles[selectedSection].en}
+              </SectionTitle>
 
-    {/* مربع بحث احترافي */}
-    <div className="w-full flex items-center gap-2 mb-5">
-      <input
-        type="search"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder={lang === "ar" ? "ابحث عن خدمة أو كلمة..." : "Search for any service..."}
-        className={`
-          flex-1 px-5 py-3 rounded-full border-2
-          ${darkMode ? "border-gray-700 bg-gray-900 text-white placeholder:text-gray-400" : "border-emerald-400 bg-white text-gray-700"}
-          shadow-lg outline-none focus:border-emerald-500 transition-all duration-300
-          text-lg font-semibold
-        `}
-        style={{minWidth: 0}}
-        autoFocus
-      />
-      <button
-        className={`
-          px-2 py-2 rounded-full bg-emerald-500 hover:bg-emerald-700
-          text-white text-xl flex items-center justify-center shadow transition
-        `}
-        tabIndex={-1}
-        type="button"
-        disabled
-        style={{cursor: "default"}}
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
-          <line x1="17" y1="17" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-      </button>
-    </div>
+              {/* مربع بحث احترافي */}
+              <div className="w-full flex items-center gap-2 mb-5">
+                <input
+                  type="search"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder={lang === "ar" ? "ابحث عن خدمة أو كلمة..." : "Search for any service..."}
+                  className={`
+                    flex-1 px-5 py-3 rounded-full border-2
+                    ${darkMode ? "border-gray-700 bg-gray-900 text-white placeholder:text-gray-400" : "border-emerald-400 bg-white text-gray-700"}
+                    shadow-lg outline-none focus:border-emerald-500 transition-all duration-300
+                    text-lg font-semibold
+                  `}
+                  style={{minWidth: 0}}
+                  autoFocus
+                />
+                <button
+                  className={`
+                    px-2 py-2 rounded-full bg-emerald-500 hover:bg-emerald-700
+                    text-white text-xl flex items-center justify-center shadow transition
+                  `}
+                  tabIndex={-1}
+                  type="button"
+                  disabled
+                  style={{cursor: "default"}}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+                    <line x1="17" y1="17" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-      {sectionToServices[selectedSection]
-        .filter(srv => {
-          const matchesSearch = advancedServiceFilter(srv);
-          const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
-          return matchesSearch && matchesSubcat;
-        })
-        .map((srv, i) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+                {currentServices
+                  .filter(srv => {
+                    const matchesSearch = advancedServiceFilter(srv);
+                    const matchesSubcat = !selectedSubcategory || srv.subcategory === selectedSubcategory;
+                    return matchesSearch && matchesSubcat;
+                  })
+                  .map((srv, i) => {
+                    const sid = srv?.serviceId || srv?.id || srv?.name;
+                    const tr = translationsMap[sid];
 
-      <ServiceProfileCard
-        key={srv.name + i}
-        category={selectedSection.replace("Services", "")}
-        name={srv.name}
-        name_en={srv.name_en}
-        description={srv.description}
-        description_en={srv.description_en}
-        price={srv.price}
-        printingFee={srv.printingFee}
-        tax={srv.tax}
-        clientPrice={srv.clientPrice}
-        duration={srv.duration}
-        requiredDocuments={srv.requiredDocuments || srv.documents || []}
-        requireUpload={srv.requireUpload}
-        coins={srv.coins || 0}
-        lang={lang}
-        userId={client.userId}
-        userWallet={client.walletBalance || 0}
-        userCoins={client.coins || 0}
-        userEmail={client.email}
-        longDescription={srv.longDescription}
-        longDescription_en={srv.longDescription_en}
-        setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
-        onPaid={handleServicePaid}
-        coinsPercent={0.1}
-        addNotification={addNotification}
-        serviceId={srv.serviceId}
-        repeatable={srv.repeatable}
-        allowPaperCount={srv.allowPaperCount}
-        pricePerPage={srv.pricePerPage}
-        customerId={client.customerId}
-      />
-    ))}
-</div>
+                    const displayName =
+                      lang === "ar"
+                        ? (srv.name || "")
+                        : tr?.name || srv.name_en || srv.name || "";
+
+                    const displayDesc =
+                      lang === "ar"
+                        ? (srv.description || "")
+                        : tr?.description || srv.description_en || srv.description || "";
+
+                    const displayLong =
+                      lang === "ar"
+                        ? (srv.longDescription || "")
+                        : tr?.longDescription || srv.longDescription_en || srv.longDescription || "";
+
+                    return (
+                      <ServiceProfileCard
+                        key={(srv.name || "") + i}
+                        category={selectedSection.replace("Services", "")}
+                        name={displayName}
+                        name_en={displayName}
+                        description={displayDesc}
+                        description_en={displayDesc}
+                        price={srv.price}
+                        printingFee={srv.printingFee}
+                        tax={srv.tax}
+                        clientPrice={srv.clientPrice}
+                        duration={srv.duration}
+                        requiredDocuments={srv.requiredDocuments || srv.documents || []}
+                        requireUpload={srv.requireUpload}
+                        coins={srv.coins || 0}
+                        lang={lang}
+                        userId={client.userId}
+                        userWallet={client.walletBalance || 0}
+                        userCoins={client.coins || 0}
+                        userEmail={client.email}
+                        longDescription={displayLong}
+                        longDescription_en={displayLong}
+                        setCoinsBalance={val => setClient(c => ({ ...c, coins: val }))}
+                        onPaid={handleServicePaid}
+                        coinsPercent={0.1}
+                        addNotification={addNotification}
+                        serviceId={srv.serviceId}
+                        repeatable={srv.repeatable}
+                        allowPaperCount={srv.allowPaperCount}
+                        pricePerPage={srv.pricePerPage}
+                        customerId={client.customerId}
+                      />
+                    );
+                  })}
+              </div>
             </>
           )}
         </main>
