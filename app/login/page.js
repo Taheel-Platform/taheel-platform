@@ -1,6 +1,6 @@
 "use client";
-import { Suspense } from "react";
-import { useState, useEffect } from "react";
+
+import { Suspense, useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaLock, FaUser, FaEye, FaEyeSlash, FaWhatsapp } from "react-icons/fa";
@@ -89,7 +89,7 @@ async function resolveEmailAndDocId(loginIdRaw) {
     }
   } catch {}
 
-  // 2) البحث بالحقل
+  // 2) البحث بالحقول الشائعة
   const usersCol = collection(firestore, "users");
   const tryField = async (field) => {
     const qs = await getDocs(query(usersCol, where(field, "==", loginId), limit(1)));
@@ -123,12 +123,15 @@ function LoginPageInner() {
   const [errorMsg, setErrorMsg] = useState("");
   const [recaptchaOk, setRecaptchaOk] = useState(false);
 
+  // لحالات التفعيل
   const [unverifiedUser, setUnverifiedUser] = useState(null);
   const [sendingVerify, setSendingVerify] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState("");
 
-  const prev = searchParams.get("prev");
+  // حفظ صفحة العودة
+  const prevParam = searchParams.get("prev");
 
+  // تحميل مكتبة reCAPTCHA v3 مرة واحدة فقط
   useEffect(() => {
     if (typeof window !== "undefined" && !window.grecaptcha && RECAPTCHA_SITE_KEY) {
       const script = document.createElement("script");
@@ -196,7 +199,7 @@ function LoginPageInner() {
     // session persistence
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-    } catch (err) {
+    } catch {
       setLoading(false);
       setErrorMsg(lang === "ar" ? "خطأ في تعيين حالة الجلسة" : "Failed to set session persistence");
       return;
@@ -223,6 +226,7 @@ function LoginPageInner() {
       const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
       const user = userCredential.user;
 
+      // التحقق من تفعيل البريد فقط
       if (!user.emailVerified) {
         setLoading(false);
         setErrorMsg(t.emailVerify);
@@ -233,6 +237,8 @@ function LoginPageInner() {
       // جلب بيانات المستخدم + docId
       let data = null;
       let docId = "";
+
+      // uid
       let qs = await getDocs(query(collection(firestore, "users"), where("uid", "==", user.uid), limit(1)));
       if (!qs.empty) {
         const d = qs.docs[0];
@@ -240,6 +246,7 @@ function LoginPageInner() {
         docId = d.id;
       }
 
+      // docId من حلّ المعرّف
       if (!data && resolvedDocId) {
         const snap = await getDoc(doc(firestore, "users", resolvedDocId));
         if (snap.exists()) {
@@ -248,6 +255,7 @@ function LoginPageInner() {
         }
       }
 
+      // email
       if (!data) {
         qs = await getDocs(query(collection(firestore, "users"), where("email", "==", user.email), limit(1)));
         if (!qs.empty) {
@@ -283,10 +291,9 @@ function LoginPageInner() {
       }
 
       // احترام prev إن وجد
-      const prev = searchParams.get("prev");
-      if (prev) {
+      if (prevParam) {
         try {
-          const url = new URL(prev, window.location.origin);
+          const url = new URL(prevParam, window.location.origin);
           url.searchParams.set("lang", lang);
           targetUrl = url.pathname + "?" + url.searchParams.toString();
         } catch {}
@@ -294,7 +301,7 @@ function LoginPageInner() {
 
       router.replace(targetUrl);
       setLoading(false);
-    } catch (e) {
+    } catch {
       setErrorMsg(t.wrongLogin);
       setLoading(false);
     }
