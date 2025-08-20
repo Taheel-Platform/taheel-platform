@@ -858,7 +858,7 @@ function ClientProfilePageInner({ userId }) {
       {/* زر المحادثة العائم وزر الواتساب */}
       <div className="fixed z-50 bottom-6 right-6 flex flex-col items-end gap-3">
         <button
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg و-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full shadow-lg w-14 h-14 flex items-center justify-center text-3xl cursor-pointer transition"
           title={lang === "ar" ? "محادثة موظف خدمة العملاء" : "Chat with Support"}
           onClick={() => setOpenChat(true)}
         >
