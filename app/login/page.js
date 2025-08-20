@@ -10,7 +10,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, limit } from "firebase/firestore";
 import { auth, firestore } from "@/lib/firebase.client";
 import { GlobalLoader } from "@/components/GlobalLoader";
 
@@ -22,7 +22,7 @@ const LANGUAGES = {
     login: "تسجيل الدخول",
     welcome: "مرحباً بك !",
     platform: "منصة",
-    clientOrEmail: "رقم العميل أو البريد الإلكتروني",
+    clientOrEmail: "رقم العميل/الشركة أو البريد الإلكتروني",
     password: "كلمة المرور",
     remember: "تذكرني",
     forgot: "نسيت كلمة المرور؟",
@@ -30,8 +30,8 @@ const LANGUAGES = {
     newUser: "مستخدم جديد؟ أنشئ حساب",
     recaptchaCheck: "يرجى التحقق من reCAPTCHA",
     recaptchaFail: "فشل التحقق من reCAPTCHA، حاول مرة أخرى.",
-    wrongClient: "رقم العميل غير صحيح أو لا يوجد حساب بهذا الرقم.",
-    emailVerify: "يجب تفعيل بريدك الإلكتروني أولاً. تحقق من بريدك واضغط على رابط التفعيل.",
+    wrongClient: "المعرف غير صحيح أو لا يوجد حساب بهذا الرقم.",
+    emailVerify: "يجب تفعيل بريدك الإلكتروني أولاً.",
     notFound: "لم يتم العثور على بيانات المستخدم!",
     wrongLogin: "بيانات الدخول غير صحيحة أو هناك مشكلة في الاتصال!",
     verified: "✔ تم التحقق",
@@ -47,7 +47,7 @@ const LANGUAGES = {
     login: "Login",
     welcome: "Welcome!",
     platform: "TAHEEL Platform",
-    clientOrEmail: "Client Number or Email",
+    clientOrEmail: "Client/Company ID or Email",
     password: "Password",
     remember: "Remember me",
     forgot: "Forgot password?",
@@ -55,7 +55,7 @@ const LANGUAGES = {
     newUser: "New user? Create account",
     recaptchaCheck: "Please verify reCAPTCHA",
     recaptchaFail: "reCAPTCHA verification failed, try again.",
-    wrongClient: "Client number is incorrect or does not exist.",
+    wrongClient: "Identifier is incorrect or does not exist.",
     emailVerify: "Please verify your email address first.",
     notFound: "User data not found!",
     wrongLogin: "Incorrect login credentials or connection problem!",
@@ -70,13 +70,52 @@ const LANGUAGES = {
   },
 };
 
+function isEmail(val) {
+  return typeof val === "string" && val.includes("@");
+}
+
+// يحاول حلّ loginId إلى { email, docId } من Firestore
+async function resolveEmailAndDocId(loginIdRaw) {
+  const loginId = String(loginIdRaw || "").trim();
+  if (!loginId) return null;
+
+  // 1) users/{loginId} مباشرة
+  try {
+    const direct = await getDoc(doc(firestore, "users", loginId));
+    if (direct.exists()) {
+      const d = direct.data();
+      const email = (d.email || "").toLowerCase().trim();
+      if (email) return { email, docId: direct.id };
+    }
+  } catch {}
+
+  // 2) البحث بالحقل
+  const usersCol = collection(firestore, "users");
+  const tryField = async (field) => {
+    const qs = await getDocs(query(usersCol, where(field, "==", loginId), limit(1)));
+    if (!qs.empty) {
+      const snap = qs.docs[0];
+      const data = snap.data();
+      const email = (data.email || "").toLowerCase().trim();
+      if (email) return { email, docId: snap.id };
+    }
+    return null;
+  };
+
+  return (
+    (await tryField("customerId")) ||
+    (await tryField("userId")) ||
+    (await tryField("companyId"))
+  );
+}
+
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [lang, setLang] = useState(searchParams.get("lang") === "en" ? "en" : "ar");
   const t = LANGUAGES[lang];
 
-  const [loginId, setLoginId] = useState(""); // إيميل أو رقم عميل
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -84,15 +123,12 @@ function LoginPageInner() {
   const [errorMsg, setErrorMsg] = useState("");
   const [recaptchaOk, setRecaptchaOk] = useState(false);
 
-  // لحالات التفعيل
   const [unverifiedUser, setUnverifiedUser] = useState(null);
   const [sendingVerify, setSendingVerify] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState("");
 
-  // لحفظ صفحة العودة
   const prev = searchParams.get("prev");
 
-  // تحميل مكتبة reCAPTCHA v3 مرة واحدة فقط
   useEffect(() => {
     if (typeof window !== "undefined" && !window.grecaptcha && RECAPTCHA_SITE_KEY) {
       const script = document.createElement("script");
@@ -102,11 +138,6 @@ function LoginPageInner() {
     }
   }, []);
 
-  function isEmail(val) {
-    return val.includes("@");
-  }
-
-  // تحقق reCAPTCHA v3 backend
   async function verifyRecaptcha(token) {
     try {
       const res = await fetch("/api/recaptcha", {
@@ -121,7 +152,6 @@ function LoginPageInner() {
     }
   }
 
-  // تسجيل الدخول والتوجيه حسب الدور/نوع الحساب
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -154,7 +184,6 @@ function LoginPageInner() {
       return;
     }
 
-    // تحقق من Google reCAPTCHA في الـ backend
     const recaptchaValid = await verifyRecaptcha(recaptchaToken);
     if (!recaptchaValid) {
       setLoading(false);
@@ -164,7 +193,7 @@ function LoginPageInner() {
     }
     setRecaptchaOk(true);
 
-    // تعيين الـ persistence حسب "تذكرني"
+    // session persistence
     try {
       await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
     } catch (err) {
@@ -173,43 +202,27 @@ function LoginPageInner() {
       return;
     }
 
-    // تحديد الإيميل الذي سيتم استخدامه
+    // حلّ معرف الدخول إلى إيميل + docId
     let emailToUse = loginId.trim();
-    let resolvedCustomerId = "";
+    let resolvedDocId = "";
     if (!isEmail(emailToUse)) {
-      // البحث عن الإيميل المطابق للرقم في Firestore (customerId فريد)
-      try {
-        const q = query(collection(firestore, "users"), where("customerId", "==", emailToUse));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0].data();
-          emailToUse = (userDoc.email || "").trim().toLowerCase();
-          resolvedCustomerId = String(userDoc.customerId || "");
-          if (!emailToUse) {
-            setLoading(false);
-            setErrorMsg(t.wrongClient);
-            return;
-          }
-        } else {
-          setLoading(false);
-          setErrorMsg(t.wrongClient);
-          return;
-        }
-      } catch {
+      const res = await resolveEmailAndDocId(emailToUse);
+      if (!res) {
         setLoading(false);
         setErrorMsg(t.wrongClient);
         return;
       }
+      emailToUse = res.email;
+      resolvedDocId = res.docId;
     } else {
       emailToUse = emailToUse.toLowerCase().trim();
     }
 
-    // الدخول عبر Firebase Auth فقط
+    // Firebase Auth
     try {
       const userCredential = await signInWithEmailAndPassword(auth, emailToUse, password.trim());
       const user = userCredential.user;
 
-      // التحقق من تفعيل البريد فقط
       if (!user.emailVerified) {
         setLoading(false);
         setErrorMsg(t.emailVerify);
@@ -217,64 +230,66 @@ function LoginPageInner() {
         return;
       }
 
-      // جلب بيانات المستخدم من Firestore: uid أولاً ثم email
+      // جلب بيانات المستخدم + docId
       let data = null;
-      let qs = await getDocs(query(collection(firestore, "users"), where("uid", "==", user.uid)));
+      let docId = "";
+      let qs = await getDocs(query(collection(firestore, "users"), where("uid", "==", user.uid), limit(1)));
       if (!qs.empty) {
-        data = qs.docs[0].data();
-      } else {
-        qs = await getDocs(query(collection(firestore, "users"), where("email", "==", user.email)));
-        if (!qs.empty) data = qs.docs[0].data();
+        const d = qs.docs[0];
+        data = d.data();
+        docId = d.id;
       }
+
+      if (!data && resolvedDocId) {
+        const snap = await getDoc(doc(firestore, "users", resolvedDocId));
+        if (snap.exists()) {
+          data = snap.data();
+          docId = snap.id;
+        }
+      }
+
+      if (!data) {
+        qs = await getDocs(query(collection(firestore, "users"), where("email", "==", user.email), limit(1)));
+        if (!qs.empty) {
+          const d = qs.docs[0];
+          data = d.data();
+          docId = d.id;
+        }
+      }
+
       if (!data) {
         setLoading(false);
         setErrorMsg(t.notFound);
         return;
       }
 
-      // معرّفات أساسية
-      const customerId = String(data.customerId || resolvedCustomerId || "");
       const accountType = String(data.accountType || data.type || "").toLowerCase();
-      // companyId مرن + بديل customerId لو مش موجود
-      const companyId = String(
-        data.companyId ||
-          (data.company && (data.company.id || data.company.companyId)) ||
-          data.id ||
-          customerId ||
-          ""
-      );
+      const customerId = String(data.customerId || docId || "");
 
-      // حفظ بيانات المستخدم في localStorage (اختياري)
-      if (customerId) window.localStorage.setItem("userId", customerId);
-      window.localStorage.setItem("userName", data.name || data.firstName || "موظف");
-      window.localStorage.setItem("userRole", data.role || "client");
-      window.localStorage.setItem("accountType", accountType);
-      if (companyId) window.localStorage.setItem("companyId", companyId);
+      // حفظ بسيط في localStorage
+      try {
+        if (docId) window.localStorage.setItem("userId", docId);
+        window.localStorage.setItem("userName", data.name || data.firstName || "مستخدم");
+        window.localStorage.setItem("userRole", data.role || "client");
+        window.localStorage.setItem("accountType", accountType);
+      } catch {}
 
-      // التوجيه حسب الدور/نوع الحساب
-      let targetUrl = `/dashboard/client?userId=${customerId}&lang=${lang}`;
+      // توجيه موحد: الجميع إلى /dashboard/client (ما عدا admin/employee)
+      let targetUrl = `/dashboard/client?userId=${encodeURIComponent(docId || customerId)}&lang=${lang}`;
       if (data.role === "admin") {
-        targetUrl = `/dashboard/admin?userId=${user.uid}&lang=${lang}`;
+        targetUrl = `/dashboard/admin?userId=${encodeURIComponent(user.uid)}&lang=${lang}`;
       } else if (data.role === "employee") {
-        targetUrl = `/dashboard/employee?userId=${user.uid}&lang=${lang}`;
-      } else if (accountType === "company") {
-        if (!companyId) {
-          setLoading(false);
-          setErrorMsg(lang === "ar" ? "لا يوجد معرف شركة لهذا الحساب." : "Company ID is missing for this account.");
-          return;
-        }
-        targetUrl = `/dashboard/company?companyId=${companyId}&lang=${lang}`;
+        targetUrl = `/dashboard/employee?userId=${encodeURIComponent(user.uid)}&lang=${lang}`;
       }
 
       // احترام prev إن وجد
+      const prev = searchParams.get("prev");
       if (prev) {
         try {
           const url = new URL(prev, window.location.origin);
           url.searchParams.set("lang", lang);
           targetUrl = url.pathname + "?" + url.searchParams.toString();
-        } catch {
-          // تجاهل لو prev غير صالح
-        }
+        } catch {}
       }
 
       router.replace(targetUrl);
@@ -292,7 +307,6 @@ function LoginPageInner() {
     router.replace(`?${params.toString()}`);
   };
 
-  // إعادة إرسال رابط التفعيل
   const handleResendActivation = async () => {
     if (!unverifiedUser) return;
     setSendingVerify(true);
