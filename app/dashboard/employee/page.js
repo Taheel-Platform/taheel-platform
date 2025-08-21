@@ -150,8 +150,8 @@ function EmployeeDashboardPageInner({ employeeData }) {
 
   useOnlineStatus(employeeData);
 
-  const employeeName = employeeData?.name || (lang === "ar" ? "الموظف" : "Employee");
-  const greeting = `${lang === "ar" ? "مرحباً" : "Welcome"}, ${employeeName} - ${getGreeting(lang)}`;
+const empNum = employeeData?.employeeNumber ? `(${employeeData.employeeNumber})` : "";
+const greeting = `${lang === "ar" ? "مرحباً" : "Welcome"}, ${employeeName} ${empNum} - ${getGreeting(lang)}`;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   useEffect(() => {
