@@ -459,75 +459,74 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             </tr>
           </thead>
           <tbody>
-  {filteredOrders.map((o) => {
-    // ربط الطلب بالعميل من users عبر clientId
-    const client = clients[o.clientId]; // o.clientId مثل RES-200-9180
-    const service = services[o.serviceId];
-    const assignedEmp = Object.values(employees).find(e => e.uid === o.assignedTo);
-    const created = o.createdAt ? new Date(o.createdAt) : null;
-    const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
-    return (
-      <tr key={o.requestId} className="hover:bg-blue-50 transition border-b">
-        {/* رقم الطلب */}
-        <td className="font-mono font-bold text-blue-800">
-          <span
-            className="underline cursor-pointer"
-            onClick={() => handleShowOrderDetails(o)}
-          >
-            {o.requestId}
-          </span>
-        </td>
-        {/* الخدمة */}
-        <td className="text-blue-900 font-extrabold">
-          {o.serviceName || service?.name || o.serviceId}
-        </td>
-        {/* رقم العميل */}
-        <td>
-          {client ? (
-            <span
-              className="text-blue-700 font-bold underline hover:text-blue-900"
-              style={{cursor:"pointer"}}
-              title={`عرض بيانات العميل ${client.userId}`}
-              onClick={e => {
-                e.stopPropagation();
-                handleShowClientCard(client);
-              }}
-            >
-              {client.userId}
-            </span>
-          ) : (
-            <span className="text-gray-500">{o.clientId}</span>
-          )}
-        </td>
-        {/* الحالة */}
-        <td>
-          <span className={
-            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
-            (statusColor[o.status] || "bg-gray-100 text-gray-900 border-gray-400")
-          }>
-            <span>{statusIcons[o.status] || "❓"}</span>
-            {statusLabel[o.status] || o.status}
-          </span>
-        </td>
-        {/* الموظف */}
-        <td className="text-blue-600 font-bold">
-          {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
-        </td>
-        {/* منذ */}
-        <td className="text-xs text-gray-700">
-          {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
-        </td>
-      </tr>
-    )
-  })}
-  {filteredOrders.length === 0 && (
-    <tr>
-      <td colSpan={7} className="py-6 text-gray-400">
-        لا يوجد طلبات بهذه البيانات.
-      </td>
-    </tr>
-  )}
-</tbody>
+            {filteredOrders.map((o) => {
+              const client = clients[o.clientId];
+              const service = services[o.serviceId];
+              const assignedEmp = Object.values(employees).find(e => e.uid === o.assignedTo);
+              const created = o.createdAt ? new Date(o.createdAt) : null;
+              const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
+              return (
+                <tr key={o.requestId} className="hover:bg-blue-50 transition border-b">
+                  {/* رقم الطلب */}
+                  <td className="font-mono font-bold text-blue-800">
+                    <span
+                      className="underline cursor-pointer"
+                      onClick={() => setSelected(o)}
+                    >
+                      {o.requestId}
+                    </span>
+                  </td>
+                  {/* الخدمة */}
+                  <td className="text-blue-900 font-extrabold">
+                    {o.serviceName || service?.name || o.serviceId}
+                  </td>
+                  {/* رقم العميل */}
+                  <td>
+                    {client ? (
+                      <span
+                        className="text-blue-700 font-bold underline hover:text-blue-900"
+                        style={{cursor:"pointer"}}
+                        title={`عرض بيانات العميل ${client.userId}`}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleShowClientCard(client);
+                        }}
+                      >
+                        {client.userId}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">{o.clientId}</span>
+                    )}
+                  </td>
+                  {/* الحالة */}
+                  <td>
+                    <span className={
+                      "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
+                      (statusColor[o.status] || "bg-gray-100 text-gray-900 border-gray-400")
+                    }>
+                      <span>{statusIcons[o.status] || "❓"}</span>
+                      {statusLabel[o.status] || o.status}
+                    </span>
+                  </td>
+                  {/* الموظف */}
+                  <td className="text-blue-600 font-bold">
+                    {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
+                  </td>
+                  {/* منذ */}
+                  <td className="text-xs text-gray-700">
+                    {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
+                  </td>
+                </tr>
+              );
+            })}
+            {filteredOrders.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-6 text-gray-400">
+                  لا يوجد طلبات بهذه البيانات.
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
       {/* Order Details Modal */}
