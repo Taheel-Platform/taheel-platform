@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { auth, firestore } from "@/lib/firebase.client";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDocs, getDoc, collection, query, where, orderBy, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDocs, collection, query, where, orderBy, onSnapshot, updateDoc, serverTimestamp } from "firebase/firestore";
 import ChatWidget from "@/components/admin/ChatWidget";
 import WeatherTimeWidget from "@/components/WeatherTimeWidget";
 import {
@@ -14,7 +14,7 @@ import {
 } from "react-icons/fa";
 import ProfileSection from "@/components/employee/ProfileSection";
 import { AttendanceSection } from "@/components/employee/AttendanceSection";
-import { MyOrdersSection } from "@/components/employee/ordersection/MyOrdersSection";
+import MyOrdersSection from "@/components/employee/ordersection/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
 
