@@ -8,7 +8,7 @@ const glassStyle = {
   boxShadow: "0 8px 32px 0 rgba(33,150,243,0.10)",
 };
 
-export default function ClientCard({ client, clientDocs, loadingDocs, onClose }) {
+export default function ClientCard({ client, clientDocs = [], loadingDocs = false, onClose }) {
   if (!client) return null;
   const attachments =
     client.documents && typeof client.documents === "object"
