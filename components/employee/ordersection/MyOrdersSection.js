@@ -462,7 +462,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             {filteredOrders.map((o) => {
               const client = clients[o.clientId];
               const service = services[o.serviceId];
-              // ابحث عن الموظف بالـ uid وليس document id
               const assignedEmp = Object.values(employees).find(e => e.uid === o.assignedTo);
               const created = o.createdAt ? new Date(o.createdAt) : null;
               const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
@@ -491,13 +490,21 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                   </td>
                   {/* رقم العميل */}
                   <td>
-                    <span
-                      className="text-blue-700 font-bold underline hover:text-blue-900"
-                      style={{cursor:"pointer"}}
-                      onClick={e => { e.stopPropagation(); handleShowClientCard(client); }}
-                    >
-                      {client?.userId || o.clientId}
-                    </span>
+                    {client ? (
+                      <span
+                        className="text-blue-700 font-bold underline hover:text-blue-900"
+                        style={{cursor:"pointer"}}
+                        title={`عرض بيانات العميل ${client.userId}`}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleShowClientCard(client);
+                        }}
+                      >
+                        {client.userId}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">{o.clientId}</span>
+                    )}
                   </td>
                   {/* الحالة */}
                   <td>
