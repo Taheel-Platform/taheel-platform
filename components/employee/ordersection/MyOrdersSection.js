@@ -17,7 +17,6 @@ import {
 } from "react-icons/fa";
 
 import ClientCard from "./ClientCard";
-// يمكنك لاحقاً عمل EmployeeCard بنفس منطق ClientCard
 import OrderDetailsCard from "./OrderDetailsCard";
 
 const glassStyle = {
@@ -102,7 +101,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [showClientCard, setShowClientCard] = useState(false);
-  const [showEmployeeCard, setShowEmployeeCard] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [notifContent, setNotifContent] = useState("");
   const [pendingStatus, setPendingStatus] = useState(null);
@@ -136,7 +134,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
       });
       setClients(usersObj);
       setEmployees(usersObj);
-      setEmployeeArr(empArr); // مصفوفة للبحث السريع في جدول الموظفين
+      setEmployeeArr(empArr);
     });
     const unsubServices = onSnapshot(collection(db, "servicesByClientType"), async (snap) => {
       const flat = {};
@@ -177,10 +175,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
-  // فلترة الطلبات الجديدة حسب البروفايدر
   const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
 
-  // الطلبات الجديدة التي لم تعين بعد وتخص تخصص الموظف (أو طلباته هو فقط)
   const newOrders = orders
     .filter(o =>
       (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
@@ -189,7 +185,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     )
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // الطلبات المعينة لهذا الموظف فقط
   const filteredOrders = orders
     .filter((o) =>
       o.assignedTo === employeeData.id &&
@@ -219,7 +214,27 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     })
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // قبول طلب جديد
+  // ---- فتح كارت بيانات العميل ---
+  const handleShowClientCard = async (client) => {
+    setShowClientCard(client);
+    setLoadingDocs(true);
+    try {
+      const docsSnap = await getDocs(collection(db, "users", client.userId, "documents"));
+      const docsArr = [];
+      docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
+      setClientDocs(docsArr);
+    } catch (e) {
+      setClientDocs([]);
+    }
+    setLoadingDocs(false);
+  };
+
+  // ---- فتح كارت تفاصيل الطلب ----
+  const handleShowOrderDetails = (order) => {
+    setSelected(order);
+  };
+
+  // ---- قبول طلب جديد ----
   async function acceptOrder(order) {
     if (order.assignedTo && order.assignedTo !== "") return;
     await updateDoc(doc(db, "requests", order.requestId), {
@@ -231,7 +246,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     setSelected(null);
   }
 
-  // إرسال إشعار تلقائي بتغيير الحالة
+  // ---- إشعار تلقائي ----
   async function sendAutoNotification(order, newStatus) {
     const client = clients[order.clientId];
     if (!client) return;
@@ -249,7 +264,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     await addDoc(collection(db, "notifications"), notifData);
   }
 
-  // تأكيد تغيير الحالة
+  // ---- تغيير حالة الطلب ----
   async function confirmChangeStatus(pendingStatusArg) {
     const ps = pendingStatusArg || pendingStatus;
     if (!ps) return;
@@ -277,7 +292,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     setPendingStatus(null);
   }
 
-  // إرسال إشعار مخصص
+  // ---- إشعار مخصص ----
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
     const client = clients[order.clientId];
@@ -298,27 +313,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     alert("تم إرسال الإشعار بنجاح!");
   }
 
-  // عرض بيانات العميل والمرفقات
-  const handleShowClientCard = async (client) => {
-    setShowClientCard(client);
-    setLoadingDocs(true);
-    try {
-      const docsSnap = await getDocs(collection(db, "users", client.userId, "documents"));
-      const docsArr = [];
-      docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
-      setClientDocs(docsArr);
-    } catch (e) {
-      setClientDocs([]);
-    }
-    setLoadingDocs(false);
-  };
-
-  // عرض بيانات الموظف (اختياري، يمكنك عمل EmployeeCard منفصل)
-  const handleShowEmployeeCard = (employee) => {
-    setShowEmployeeCard(employee);
-  };
-
-  // تحويل الطلب لموظف آخر بنفس التخصص
+  // ---- تحويل الطلب ----
   async function handleTransferOrder(order, empId) {
     await updateDoc(doc(db, "requests", order.requestId), {
       assignedTo: empId,
@@ -328,7 +323,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     alert("تم تحويل الطلب بنجاح!");
   }
 
-  // الشريط الجانبي للطلبات الجديدة
+  // ---- الشريط الجانبي للطلبات الجديدة ----
   function renderNewSidebar() {
     return (
       <div className={`fixed top-0 right-0 h-full z-50`} style={{...glassStyle, width:330, maxWidth:"100%", transition:"transform 0.3s", transform: newSidebarOpen ? "translateX(0)" : "translateX(100%)"}}>
@@ -340,7 +335,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
           {newOrders.length === 0 && (
             <div className="text-center text-gray-400 mt-6">لا يوجد طلبات جديدة</div>
           )}
-          {newOrders.filter(o => !o.assignedTo || o.assignedTo === "" || o.assignedTo === null).map((order) => {
+          {newOrders.map((order) => {
             const client = clients[order.clientId];
             const service = services[order.serviceId];
             const created = order.createdAt ? new Date(order.createdAt) : null;
@@ -350,7 +345,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                 key={order.requestId}
                 className="bg-blue-50 mb-3 rounded-lg p-3 shadow hover:bg-blue-100"
                 style={{cursor:"pointer"}}
-                onClick={() => { setSelected(order); setNewSidebarOpen(false); }}
+                onClick={() => { handleShowOrderDetails(order); setNewSidebarOpen(false); }}
               >
                 <div className="font-bold text-blue-900">
                   {order.serviceName || service?.name || order.serviceId}
@@ -386,6 +381,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     );
   }
 
+  // ---- الجدول الرئيسي ----
   return (
     <div style={{fontFamily:"Cairo,Tajawal,Segoe UI,Arial", background:"linear-gradient(135deg,#e3f0ff 0%,#c9e6ff 100%) min-h-screen"}} className="relative p-4 md:p-8">
       <div style={{...glassStyle, background:"rgba(210,234,255,0.8)", color: "#114477", padding: "12px", borderRadius: "18px", marginBottom: "18px", fontWeight: 700}}>
@@ -466,17 +462,34 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             {filteredOrders.map((o) => {
               const client = clients[o.clientId];
               const service = services[o.serviceId];
-              const assignedEmp = employees[o.assignedTo];
+              // ابحث عن الموظف بالـ uid وليس document id
+              const assignedEmp = Object.values(employees).find(e => e.uid === o.assignedTo);
               const created = o.createdAt ? new Date(o.createdAt) : null;
               const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
               return (
                 <tr key={o.requestId}
                   className="hover:bg-blue-50 transition border-b"
-                  style={{cursor:"pointer"}}
-                  onClick={() => setSelected(o)}
                 >
-                  <td className="font-mono font-bold text-blue-800">{o.requestId}</td>
-                  <td className="text-blue-900 font-extrabold">{o.serviceName || service?.name || o.serviceId}</td>
+                  {/* رقم الطلب */}
+                  <td className="font-mono font-bold text-blue-800">
+                    <span
+                      className="underline cursor-pointer"
+                      onClick={() => handleShowOrderDetails(o)}
+                    >
+                      {o.requestId}
+                    </span>
+                  </td>
+                  {/* الخدمة */}
+                  <td className="text-blue-900 font-extrabold">
+                    <span
+                      className="underline cursor-pointer"
+                      title="تفاصيل الخدمة"
+                      // لو أردت pop-up لكارت خدمة أضف هنا منطق فتح ServiceCard
+                    >
+                      {o.serviceName || service?.name || o.serviceId}
+                    </span>
+                  </td>
+                  {/* رقم العميل */}
                   <td>
                     <span
                       className="text-blue-700 font-bold underline hover:text-blue-900"
@@ -486,6 +499,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                       {client?.userId || o.clientId}
                     </span>
                   </td>
+                  {/* الحالة */}
                   <td>
                     <span className={
                       "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
@@ -495,18 +509,14 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                       {statusLabel[o.status] || o.status}
                     </span>
                   </td>
+                  {/* الموظف */}
                   <td className="text-blue-600 font-bold">
-                    <span
-                      className="underline cursor-pointer"
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleShowEmployeeCard(assignedEmp);
-                      }}
-                    >
-                      {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
-                    </span>
+                    {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
                   </td>
-                  <td className="text-xs text-gray-700">{minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}</td>
+                  {/* منذ */}
+                  <td className="text-xs text-gray-700">
+                    {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
+                  </td>
                 </tr>
               )
             })}
@@ -527,7 +537,9 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             order={selected}
             client={clients[selected.clientId]}
             service={services[selected.serviceId]}
-            assignedEmp={employees[selected.assignedTo]}
+            assignedEmp={
+              Object.values(employees).find(e => e.uid === selected.assignedTo)
+            }
             employees={employeeArr}
             onClose={() => setSelected(null)}
             onChangeStatus={confirmChangeStatus}
@@ -547,17 +559,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             clientDocs={clientDocs}
             loadingDocs={loadingDocs}
             onClose={() => setShowClientCard(false)}
-          />
-        </div>
-      )}
-      {/* Employee Card Modal (اختياري) */}
-      {showEmployeeCard && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <ClientCard // يمكنك لاحقاً عمل EmployeeCard منفصل
-            client={showEmployeeCard}
-            clientDocs={[]} // لو فيه مرفقات للموظف
-            loadingDocs={false}
-            onClose={() => setShowEmployeeCard(false)}
           />
         </div>
       )}
@@ -611,4 +612,4 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   );
 }
 
-export default MyOrdersSection; 
+export default MyOrdersSection;
