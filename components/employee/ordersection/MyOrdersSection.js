@@ -99,16 +99,14 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selected, setSelected] = useState(null);
-  const [showClientCard, setShowClientCard] = useState(false);
+  const [selected, setSelected] = useState(null); // للطلب
+  const [showClientCard, setShowClientCard] = useState(null); // للعميل
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [notifContent, setNotifContent] = useState("");
   const [pendingStatus, setPendingStatus] = useState(null);
   const [newSidebarOpen, setNewSidebarOpen] = useState(false);
   const notifAudioRef = useRef(null);
   const [lastNewOrdersCount, setLastNewOrdersCount] = useState(0);
-  const [clientDocs, setClientDocs] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
 
   // جلب الطلبات
   useEffect(() => {
@@ -215,18 +213,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
   // ---- فتح كارت بيانات العميل ---
-  const handleShowClientCard = async (client) => {
+  const handleShowClientCard = (client) => {
     setShowClientCard(client);
-    setLoadingDocs(true);
-    try {
-      const docsSnap = await getDocs(collection(db, "users", client.userId, "documents"));
-      const docsArr = [];
-      docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
-      setClientDocs(docsArr);
-    } catch (e) {
-      setClientDocs([]);
-    }
-    setLoadingDocs(false);
   };
 
   // ---- فتح كارت تفاصيل الطلب ----
@@ -471,7 +459,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                   <td className="font-mono font-bold text-blue-800">
                     <span
                       className="underline cursor-pointer"
-                      onClick={() => setSelected(o)}
+                      onClick={() => handleShowOrderDetails(o)}
                     >
                       {o.requestId}
                     </span>
@@ -555,9 +543,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <ClientCard
             client={showClientCard}
-            clientDocs={clientDocs}
-            loadingDocs={loadingDocs}
-            onClose={() => setShowClientCard(false)}
+            onClose={() => setShowClientCard(null)}
           />
         </div>
       )}

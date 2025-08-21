@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import { MdClose } from "react-icons/md";
+import { collection, getDocs } from "firebase/firestore";
+import { firestore as db } from "@/lib/firebase.client";
 
 const glassStyle = {
   background: "rgba(255,255,255,0.55)",
@@ -8,8 +11,26 @@ const glassStyle = {
   boxShadow: "0 8px 32px 0 rgba(33,150,243,0.10)",
 };
 
-export default function ClientCard({ client, clientDocs = [], loadingDocs = false, onClose }) {
+export default function ClientCard({ client, onClose }) {
+  const [clientDocs, setClientDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
+  // جلب مرفقات العميل الديناميكية عند تغيير العميل
+  useEffect(() => {
+    if (!client?.userId) return;
+    setLoadingDocs(true);
+    getDocs(collection(db, "users", client.userId, "documents"))
+      .then(docsSnap => {
+        const docsArr = [];
+        docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
+        setClientDocs(docsArr);
+      })
+      .catch(() => setClientDocs([]))
+      .finally(() => setLoadingDocs(false));
+  }, [client?.userId]);
+
   if (!client) return null;
+
   const attachments =
     client.documents && typeof client.documents === "object"
       ? Object.entries(client.documents).filter(
@@ -67,10 +88,9 @@ export default function ClientCard({ client, clientDocs = [], loadingDocs = fals
             {client.district && <div><b>الحي:</b> {client.district}</div>}
             {client.city && <div><b>المدينة:</b> {client.city}</div>}
             {client.emirate && <div><b>الإمارة:</b> {client.emirate}</div>}
-            {/* يمكن إضافة أي حقول أخرى حسب الحاجة */}
           </div>
         </div>
-        {/* مرفقات العميل */}
+        {/* مرفقات العميل الأصلية */}
         <div className="font-extrabold text-emerald-900 text-base mb-2 text-center">مرفقات العميل:</div>
         {attachments.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
