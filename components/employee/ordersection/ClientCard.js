@@ -35,29 +35,39 @@ export default function ClientCard({ client, clientDocs = [], loadingDocs = fals
         <MdClose />
       </button>
       <div className="flex flex-col items-center mb-4">
-        <img src={client.profilePic || "/default-avatar.png"} alt={client.name}
+        <img src={client.profilePic || "/default-avatar.png"} alt={client.nameEn || client.name || client.middleName || ""}
           className="w-16 h-16 rounded-full border-2 border-emerald-200 shadow mb-2 object-cover" />
         <div className="text-lg font-extrabold text-emerald-900"
-          style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>{client.name}</div>
-        <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
+          style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>
+          {client.nameEn || client.name || client.middleName || ""}
+        </div>
+        <div className="text-gray-700 font-mono font-bold text-xs">{client.userId || client.customerId}</div>
       </div>
       <div className="mt-2">
         {/* بيانات العميل الأصلية */}
         <div className="mb-4 bg-blue-50 rounded-xl p-3">
           <div className="font-bold text-blue-900 text-base mb-2 text-center">بيانات العميل الأساسية</div>
           <div className="flex flex-col gap-2 text-xs">
-            <div><b>رقم العميل:</b> {client.userId}</div>
+            <div><b>رقم العميل:</b> {client.userId || client.customerId}</div>
             {client.accountType && <div><b>نوع الحساب:</b> {client.accountType}</div>}
-            {client.residenceNumber && <div><b>رقم الإقامة:</b> {client.residenceNumber}</div>}
-            {client.passportNumber && <div><b>رقم الباسبور:</b> {client.passportNumber}</div>}
-            {client.nationalId && <div><b>رقم الهوية:</b> {client.nationalId}</div>}
+            {client.type && <div><b>تصنيف العميل:</b> {client.type}</div>}
+            {client.nationality && <div><b>الجنسية:</b> {client.nationality}</div>}
+            {client.gender && <div><b>النوع:</b> {client.gender === "male" ? "ذكر" : "أنثى"}</div>}
             {client.birthDate && <div><b>تاريخ الميلاد:</b> {client.birthDate}</div>}
+            {client.eidNumber && <div><b>رقم الهوية الإماراتية:</b> {client.eidNumber}</div>}
+            {client.eidExpiry && <div><b>انتهاء الهوية الإماراتية:</b> {client.eidExpiry}</div>}
+            {client.passportNumber && <div><b>رقم الباسبور:</b> {client.passportNumber}</div>}
+            {client.passportExpiry && <div><b>انتهاء الباسبور:</b> {client.passportExpiry}</div>}
             {client.phone && <div><b>الجوال:</b> {client.phone}</div>}
             {client.email && <div><b>الإيميل:</b> {client.email}</div>}
-            {client.city && <div><b>المدينة:</b> {client.city}</div>}
             {client.apartment && <div><b>الشقة:</b> {client.apartment}</div>}
             {client.building && <div><b>المبنى:</b> {client.building}</div>}
-            {/* أضف أي حقول أخرى من قاعدة البيانات حسب الحاجة */}
+            {client.floor && <div><b>الدور:</b> {client.floor}</div>}
+            {client.street && <div><b>الشارع:</b> {client.street}</div>}
+            {client.district && <div><b>الحي:</b> {client.district}</div>}
+            {client.city && <div><b>المدينة:</b> {client.city}</div>}
+            {client.emirate && <div><b>الإمارة:</b> {client.emirate}</div>}
+            {/* يمكن إضافة أي حقول أخرى حسب الحاجة */}
           </div>
         </div>
         {/* مرفقات العميل */}

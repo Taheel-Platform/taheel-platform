@@ -77,6 +77,15 @@ export default function OrderDetailsCard({
       && emp.userId !== assignedEmp?.userId
   );
 
+  // عرض مرفقات الطلب من order.attachments
+  const orderAttachments = order.attachments && typeof order.attachments === "object"
+    ? Object.entries(order.attachments).filter(
+        ([k, att]) => att && (att.url || att.fileUrl || att.downloadUrl || att.imageUrl)
+      )
+    : [];
+  const getFileLink = doc =>
+    doc.fileUrl || doc.url || doc.downloadUrl || doc.imageUrl || "";
+
   return (
     <div style={{
       background: "rgba(255,255,255,0.90)",
@@ -114,35 +123,45 @@ export default function OrderDetailsCard({
         <div className="flex items-center gap-2 mb-1">
           <img
             src={client?.profilePic || "/default-avatar.png"}
-            alt={client?.name}
+            alt={client?.nameEn || client?.name || client?.middleName || ""}
             className="w-10 h-10 rounded-full border-2 border-blue-100 object-cover"
           />
           <div>
-            <div className="font-bold text-blue-900 text-sm">{client?.name}</div>
+            <div className="font-bold text-blue-900 text-sm">{client?.nameEn || client?.name || client?.middleName || ""}</div>
             <div className="text-xs text-gray-600">
-              {/* عرض رقم العميل بشكل واضح */}
-              <b>رقم العميل:</b> {client?.userId || order?.clientId}
+              <b>رقم العميل:</b> {client?.userId || client?.customerId || order?.clientId}
             </div>
+            {client?.nationality && <div className="text-xs text-gray-600"><b>الجنسية:</b> {client.nationality}</div>}
           </div>
         </div>
         <div className="flex flex-col gap-1 text-xs mt-2">
-          {client?.residenceNumber && <div><b>رقم الإقامة:</b> {client.residenceNumber}</div>}
+          {client?.eidNumber && <div><b>رقم الهوية الإماراتية:</b> {client.eidNumber}</div>}
+          {client?.eidExpiry && <div><b>انتهاء الهوية الإماراتية:</b> {client.eidExpiry}</div>}
           {client?.passportNumber && <div><b>رقم الباسبور:</b> {client.passportNumber}</div>}
-          {client?.nationalId && <div><b>رقم الهوية:</b> {client.nationalId}</div>}
+          {client?.passportExpiry && <div><b>انتهاء الباسبور:</b> {client.passportExpiry}</div>}
+          {client?.birthDate && <div><b>تاريخ الميلاد:</b> {client.birthDate}</div>}
+          {client?.gender && <div><b>النوع:</b> {client.gender === "male" ? "ذكر" : "أنثى"}</div>}
           <div><b>الجوال:</b> {client?.phone}</div>
           <div><b>الإيميل:</b> {client?.email}</div>
+          {client?.apartment && <div><b>الشقة:</b> {client.apartment}</div>}
+          {client?.building && <div><b>المبنى:</b> {client.building}</div>}
+          {client?.floor && <div><b>الدور:</b> {client.floor}</div>}
+          {client?.street && <div><b>الشارع:</b> {client.street}</div>}
+          {client?.district && <div><b>الحي:</b> {client.district}</div>}
+          {client?.city && <div><b>المدينة:</b> {client.city}</div>}
+          {client?.emirate && <div><b>الإمارة:</b> {client.emirate}</div>}
         </div>
       </div>
 
       {/* مرفقات الطلب */}
-      {order.attachments && Object.keys(order.attachments).length > 0 ? (
-        <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
-          <div className="font-bold text-cyan-900 text-base mb-3 text-center">
-            مرفقات الطلب
-          </div>
+      <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
+        <div className="font-bold text-cyan-900 text-base mb-3 text-center">
+          مرفقات الطلب
+        </div>
+        {orderAttachments.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
-            {Object.entries(order.attachments).map(([docName, doc], i) => {
-              const fileLink = doc.url || doc.fileUrl || doc.downloadUrl || doc.imageUrl;
+            {orderAttachments.map(([docName, doc], i) => {
+              const fileLink = getFileLink(doc);
               const ext = (fileLink || "").split('.').pop()?.toLowerCase();
               const isImage = fileLink && /\.(jpg|jpeg|png|gif|webp)$/i.test(fileLink);
               return (
@@ -181,12 +200,12 @@ export default function OrderDetailsCard({
               );
             })}
           </div>
-        </div>
-      ) : (
-        <div className="text-gray-400 text-xs text-center py-6">
-          لا يوجد مرفقات لهذا الطلب.
-        </div>
-      )}
+        ) : (
+          <div className="text-gray-400 text-xs text-center py-6">
+            لا يوجد مرفقات لهذا الطلب.
+          </div>
+        )}
+      </div>
 
       {/* أزرار التواصل */}
       <div className="flex flex-wrap gap-2 items-center mt-2 mb-2">

@@ -17,6 +17,7 @@ import {
 } from "react-icons/fa";
 
 import ClientCard from "./ClientCard";
+// يمكنك لاحقاً عمل EmployeeCard بنفس منطق ClientCard
 import OrderDetailsCard from "./OrderDetailsCard";
 
 const glassStyle = {
@@ -93,13 +94,15 @@ const typeTabs = [
 function MyOrdersSection({ employeeData, lang = "ar" }) {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState({});
-  const [employees, setEmployees] = useState([]);
+  const [employees, setEmployees] = useState({});
+  const [employeeArr, setEmployeeArr] = useState([]);
   const [services, setServices] = useState({});
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [showClientCard, setShowClientCard] = useState(false);
+  const [showEmployeeCard, setShowEmployeeCard] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [notifContent, setNotifContent] = useState("");
   const [pendingStatus, setPendingStatus] = useState(null);
@@ -132,7 +135,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
         if (user.role === "employee" || user.role === "admin") empArr.push(user);
       });
       setClients(usersObj);
-      setEmployees(empArr);
+      setEmployees(usersObj);
+      setEmployeeArr(empArr); // مصفوفة للبحث السريع في جدول الموظفين
     });
     const unsubServices = onSnapshot(collection(db, "servicesByClientType"), async (snap) => {
       const flat = {};
@@ -309,6 +313,11 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     setLoadingDocs(false);
   };
 
+  // عرض بيانات الموظف (اختياري، يمكنك عمل EmployeeCard منفصل)
+  const handleShowEmployeeCard = (employee) => {
+    setShowEmployeeCard(employee);
+  };
+
   // تحويل الطلب لموظف آخر بنفس التخصص
   async function handleTransferOrder(order, empId) {
     await updateDoc(doc(db, "requests", order.requestId), {
@@ -350,7 +359,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                   رقم الطلب: {order.requestId}
                 </div>
                 <div className="text-xs text-gray-800 font-bold">
-                  {/* عرض رقم العميل بشكل واضح */}
                   {client?.userId || order.clientId}
                 </div>
                 <div className="text-xs mt-1 text-gray-600 font-bold">
@@ -458,7 +466,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             {filteredOrders.map((o) => {
               const client = clients[o.clientId];
               const service = services[o.serviceId];
-              const assignedEmp = employees.find((e) => e.userId === o.assignedTo);
+              const assignedEmp = employees[o.assignedTo];
               const created = o.createdAt ? new Date(o.createdAt) : null;
               const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
               return (
@@ -487,7 +495,17 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                       {statusLabel[o.status] || o.status}
                     </span>
                   </td>
-                  <td className="text-blue-600 font-bold">{assignedEmp ? assignedEmp.name : (o.assignedTo || "-")}</td>
+                  <td className="text-blue-600 font-bold">
+                    <span
+                      className="underline cursor-pointer"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleShowEmployeeCard(assignedEmp);
+                      }}
+                    >
+                      {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
+                    </span>
+                  </td>
                   <td className="text-xs text-gray-700">{minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}</td>
                 </tr>
               )
@@ -509,8 +527,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             order={selected}
             client={clients[selected.clientId]}
             service={services[selected.serviceId]}
-            assignedEmp={employees.find((e) => e.userId === selected.assignedTo)}
-            employees={employees}
+            assignedEmp={employees[selected.assignedTo]}
+            employees={employeeArr}
             onClose={() => setSelected(null)}
             onChangeStatus={confirmChangeStatus}
             onSendNotification={(order) => {
@@ -529,6 +547,17 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             clientDocs={clientDocs}
             loadingDocs={loadingDocs}
             onClose={() => setShowClientCard(false)}
+          />
+        </div>
+      )}
+      {/* Employee Card Modal (اختياري) */}
+      {showEmployeeCard && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <ClientCard // يمكنك لاحقاً عمل EmployeeCard منفصل
+            client={showEmployeeCard}
+            clientDocs={[]} // لو فيه مرفقات للموظف
+            loadingDocs={false}
+            onClose={() => setShowEmployeeCard(false)}
           />
         </div>
       )}
