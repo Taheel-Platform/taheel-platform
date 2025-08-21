@@ -451,62 +451,74 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
       </div>
       {/* Table */}
       <div className="overflow-x-auto rounded-xl shadow" style={tableGlass}>
-<tbody>
-  {filteredOrders.map((o) => {
-    const client = clients[o.clientId];
-    const service = services[o.serviceId];
-    const assignedEmp = employees[o.assignedTo];
-    const created = o.createdAt ? new Date(o.createdAt) : null;
-    const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
-    return (
-      <tr key={o.requestId}
-        className="hover:bg-blue-50 transition border-b"
-      >
-        {/* رقم الطلب: عند الضغط يظهر كارت الطلب بتفاصيله */}
-        <td className="font-mono font-bold text-blue-800">
-          <span
-            className="underline cursor-pointer"
-            onClick={() => setSelected(o)}
-          >
-            {o.requestId}
-          </span>
-        </td>
-        {/* الخدمة */}
-        <td className="text-blue-900 font-extrabold">
-          {o.serviceName || service?.name || o.serviceId}
-        </td>
-        {/* رقم العميل: عند الضغط يظهر بيانات العميل الأصلية ومرفقاته */}
-        <td>
-          <span
-            className="text-blue-700 font-bold underline hover:text-blue-900"
-            style={{cursor:"pointer"}}
-            onClick={e => { e.stopPropagation(); handleShowClientCard(client); }}
-          >
-            {client?.userId || o.clientId}
-          </span>
-        </td>
-        {/* الحالة */}
-        <td>
-          <span className={
-            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
-            (statusColor[o.status] || "bg-gray-100 text-gray-900 border-gray-400")
-          }>
-            <span>{statusIcons[o.status] || "❓"}</span>
-            {statusLabel[o.status] || o.status}
-          </span>
-        </td>
-        {/* الموظف: يظهر employeeNumber الحقيقي وليس الـ uid */}
-        <td className="text-blue-600 font-bold">
-          {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
-        </td>
-        {/* منذ */}
-        <td className="text-xs text-gray-700">
-          {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
-        </td>
-      </tr>
-    )
-  })}
-</tbody>
+        <table className="min-w-full text-center" style={{fontSize:"1.08rem", color:"#17427a"}}>
+          <thead>
+            <tr className="text-blue-900 text-sm" style={{background:"rgba(33,150,243,0.08)"}}>
+              <th className="py-2 px-3">رقم الطلب</th>
+              <th className="py-2 px-3">الخدمة</th>
+              <th className="py-2 px-3">رقم العميل</th>
+              <th className="py-2 px-3">الحالة</th>
+              <th className="py-2 px-3">الموظف</th>
+              <th className="py-2 px-3">منذ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredOrders.map((o) => {
+              const client = clients[o.clientId];
+              const service = services[o.serviceId];
+              const assignedEmp = employees[o.assignedTo];
+              const created = o.createdAt ? new Date(o.createdAt) : null;
+              const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
+              return (
+                <tr key={o.requestId}
+                  className="hover:bg-blue-50 transition border-b"
+                  style={{cursor:"pointer"}}
+                  onClick={() => setSelected(o)}
+                >
+                  <td className="font-mono font-bold text-blue-800">{o.requestId}</td>
+                  <td className="text-blue-900 font-extrabold">{o.serviceName || service?.name || o.serviceId}</td>
+                  <td>
+                    <span
+                      className="text-blue-700 font-bold underline hover:text-blue-900"
+                      style={{cursor:"pointer"}}
+                      onClick={e => { e.stopPropagation(); handleShowClientCard(client); }}
+                    >
+                      {client?.userId || o.clientId}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={
+                      "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
+                      (statusColor[o.status] || "bg-gray-100 text-gray-900 border-gray-400")
+                    }>
+                      <span>{statusIcons[o.status] || "❓"}</span>
+                      {statusLabel[o.status] || o.status}
+                    </span>
+                  </td>
+                  <td className="text-blue-600 font-bold">
+                    <span
+                      className="underline cursor-pointer"
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleShowEmployeeCard(assignedEmp);
+                      }}
+                    >
+                      {assignedEmp?.employeeNumber || assignedEmp?.userId || o.assignedTo || "-"}
+                    </span>
+                  </td>
+                  <td className="text-xs text-gray-700">{minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}</td>
+                </tr>
+              )
+            })}
+            {filteredOrders.length === 0 && (
+              <tr>
+                <td colSpan={7} className="py-6 text-gray-400">
+                  لا يوجد طلبات بهذه البيانات.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
       {/* Order Details Modal */}
       {selected && (
@@ -599,4 +611,4 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   );
 }
 
-export default MyOrdersSection;
+export default MyOrdersSection; 
