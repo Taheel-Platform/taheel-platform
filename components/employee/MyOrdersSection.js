@@ -1,12 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import {
-  collection,
-  doc,
-  onSnapshot,
-  updateDoc,
-  addDoc,
-  getDocs,
+  collection, doc, onSnapshot, updateDoc, addDoc, getDocs,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 import {
@@ -16,25 +11,26 @@ import {
   FaUserTie, FaUserAlt, FaBuilding, FaUserCheck, FaUserSlash
 } from "react-icons/fa";
 
-const glassStyle = {
-  background: "rgba(255,255,255,0.55)",
-  backdropFilter: "blur(14px)",
+/* --- Modern Glass Styles --- */
+const GLASS = {
+  background: "rgba(255,255,255,0.7)",
+  backdropFilter: "blur(16px)",
   borderRadius: "20px",
-  border: "1.5px solid rgba(33,150,243,0.18)",
+  border: "1px solid rgba(33,150,243,0.16)",
   boxShadow: "0 8px 32px 0 rgba(33,150,243,0.10)",
 };
-const tableGlass = {
-  background: "rgba(255,255,255,0.32)",
-  backdropFilter: "blur(8px)",
-  borderRadius: "14px",
-  border: "1px solid rgba(33,150,243,0.12)",
+const CARD = {
+  background: "rgba(255,255,255,0.92)",
+  borderRadius: "16px",
+  boxShadow: "0 4px 28px rgba(33,150,243,0.15)",
+  border: "1px solid #e3f4ff"
 };
-const btnStyle = {
+const BTN = {
   background: "linear-gradient(90deg,#2196f3,#21cbf3)",
   color: "#fff",
   borderRadius: "12px",
   boxShadow: "0 2px 8px rgba(33,203,243,0.10)",
-  fontWeight: "bold",
+  fontWeight: 600,
   padding: "10px 22px",
   border: "none",
   cursor: "pointer",
@@ -44,39 +40,27 @@ const btnStyle = {
   alignItems: "center",
   gap: "7px"
 };
-const btnHover = {
+const BTN_HOVER = {
   background: "linear-gradient(90deg,#21cbf3,#2196f3)",
   boxShadow: "0 4px 24px rgba(33,203,243,0.14)",
 };
+const TABLE_HEAD = {
+  background: "rgba(33,150,243,0.11)",
+  color: "#17427a",
+  fontWeight: 700
+};
 
-const statusIcons = {
-  new: "🆕",
-  under_review: "🔎",
-  government_processing: "🏛️",
-  completed: "✅",
-  rejected: "❌",
-  pending_requirements: "📄",
-  archived: "🗄️"
+/* --- Status Data --- */
+const STATUS = {
+  new: { icon: "🆕", label: "جديد", color: "bg-sky-100 text-sky-800 border-sky-300" },
+  under_review: { icon: "🔎", label: "قيد المراجعة", color: "bg-yellow-100 text-yellow-800 border-yellow-400" },
+  government_processing: { icon: "🏛️", label: "قيد المعالجة الحكومية", color: "bg-indigo-100 text-indigo-900 border-indigo-400" },
+  completed: { icon: "✅", label: "مكتمل", color: "bg-green-100 text-green-800 border-green-400" },
+  rejected: { icon: "❌", label: "مرفوض", color: "bg-red-100 text-red-800 border-red-400" },
+  pending_requirements: { icon: "📄", label: "بانتظار مستندات", color: "bg-orange-100 text-orange-800 border-orange-400" },
+  archived: { icon: "🗄️", label: "مؤرشف", color: "bg-gray-100 text-gray-700 border-gray-400" }
 };
-const statusLabel = {
-  new: "جديد",
-  under_review: "قيد المراجعة",
-  government_processing: "قيد المعالجة الحكومية",
-  completed: "مكتمل",
-  rejected: "مرفوض",
-  pending_requirements: "بانتظار مستندات",
-  archived: "مؤرشف"
-};
-const statusColor = {
-  new: "bg-sky-100 text-sky-800 border-sky-300",
-  under_review: "bg-yellow-100 text-yellow-800 border-yellow-400",
-  government_processing: "bg-indigo-100 text-indigo-900 border-indigo-400",
-  completed: "bg-green-100 text-green-800 border-green-400",
-  rejected: "bg-red-100 text-red-800 border-red-400",
-  pending_requirements: "bg-orange-100 text-orange-800 border-orange-400",
-  archived: "bg-gray-100 text-gray-700 border-gray-400"
-};
-const typeTabs = [
+const TYPE_TABS = [
   { key: "all", label: "الكل", icon: <MdPerson /> },
   { key: "resident", label: "المقيمين", icon: <FaUserCheck /> },
   { key: "nonResident", label: "غير المقيمين", icon: <FaUserSlash /> },
@@ -103,19 +87,15 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   const [clientDocs, setClientDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
 
-  // جلب الطلبات
+  // --- Fetch all data ---
   useEffect(() => {
     const unsubOrders = onSnapshot(collection(db, "requests"), snap => {
       const arr = [];
-      snap.forEach(docSnap => {
-        arr.push({ ...docSnap.data(), requestId: docSnap.id });
-      });
+      snap.forEach(docSnap => arr.push({ ...docSnap.data(), requestId: docSnap.id }));
       setOrders(arr);
     });
     return () => unsubOrders();
   }, []);
-
-  // جلب المستخدمين والخدمات
   useEffect(() => {
     const unsubUsers = onSnapshot(collection(db, "users"), snap => {
       const usersObj = {};
@@ -143,8 +123,6 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
       unsubServices();
     };
   }, []);
-
-  // صوت الإشعار للطلبات الجديدة
   useEffect(() => {
     if (notifAudioRef.current && lastNewOrdersCount !== null && newOrders.length > lastNewOrdersCount) {
       notifAudioRef.current.play();
@@ -152,6 +130,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     setLastNewOrdersCount(newOrders.length);
   }, [orders]);
 
+  // --- Helper Functions ---
   function getOrderType(clientId) {
     if (!clientId) return "other";
     if (clientId.startsWith("RES-")) return "resident";
@@ -159,79 +138,20 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     if (clientId.startsWith("COM-")) return "company";
     return "other";
   }
-
-  // عدادات الحالات
-  const statusCounts = {};
-  orders.forEach((o) => {
-    const s = o.status || "new";
-    statusCounts[s] = (statusCounts[s] || 0) + 1;
-  });
-
-  // فلترة الطلبات الجديدة حسب البروفايدر
-  const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
-
-  // الطلبات الجديدة التي لم تعين بعد وتخص تخصص الموظف (أو طلباته هو فقط)
-const newOrders = orders
-  .filter(o =>
-    // الطلب غير معين لأي موظف
-    (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
-    // ويخص بروفايدرات الموظف الحالي
-    &&
-    (
-      Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p))
-    )
-  )
-  .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
-
-  // الطلبات المعينة لهذا الموظف فقط
-const filteredOrders = orders
-  .filter((o) =>
-    o.assignedTo === employeeData.id &&
-    Array.isArray(o.providers) &&
-    o.providers.some(p => employeeProviders.includes(p)) // فقط الطلبات اللي تخص بروفايدرز الموظف الحالي
-  )
-  .filter((o) => {
-    const type = getOrderType(o.clientId);
-    if (tab !== "all" && type !== tab) return false;
-    if (statusFilter !== "all" && (o.status || "new") !== statusFilter) return false;
-    
-      const client = clients[o.clientId] || {};
-      const svc = services[o.serviceId] || {};
-      const searchText =
-        [
-          o.trackingNumber,
-          o.requestId,
-          o.clientId,
-          client.name,
-          client.userId,
-          svc.name,
-          svc.name_en,
-          o.status,
-          client.email,
-          client.phone
-        ].filter(Boolean).join(" ").toLowerCase();
-      return searchText.includes(search.toLowerCase());
-    })
-    .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
-
-  // قبول طلب جديد
   async function acceptOrder(order) {
-    // حماية من تكرار القبول في نفس اللحظة (optimistic locking)
     if (order.assignedTo && order.assignedTo !== "") return;
     await updateDoc(doc(db, "requests", order.requestId), {
       assignedTo: employeeData.id,
       assignedToName: employeeData.name || "موظف",
       lastUpdated: new Date().toISOString()
     });
-    setNewSidebarOpen(false); // لإغلاق الشريط الجانبي بعد قبول الطلب
-    setSelected(null);        // لإغلاق تفاصيل الطلب لو مفتوحة
+    setNewSidebarOpen(false);
+    setSelected(null);
   }
-
-  // إرسال إشعار تلقائي بتغيير الحالة
   async function sendAutoNotification(order, newStatus) {
     const client = clients[order.clientId];
     if (!client) return;
-    const statusMsg = `تم تحديث حالة طلبك (${order.trackingNumber || order.requestId}) إلى: ${statusLabel[newStatus]}`;
+    const statusMsg = `تم تحديث حالة طلبك (${order.trackingNumber || order.requestId}) إلى: ${STATUS[newStatus].label}`;
     const notifData = {
       body: statusMsg,
       notificationId: `notif-${Date.now()}`,
@@ -244,8 +164,6 @@ const filteredOrders = orders
     };
     await addDoc(collection(db, "notifications"), notifData);
   }
-
-  // تأكيد تغيير الحالة
   async function confirmChangeStatus() {
     if (!pendingStatus) return;
     const { order, newStatus, note } = pendingStatus;
@@ -271,8 +189,6 @@ const filteredOrders = orders
     await sendAutoNotification(order, newStatus);
     setPendingStatus(null);
   }
-
-  // إرسال إشعار مخصص
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
     const client = clients[order.clientId];
@@ -292,8 +208,7 @@ const filteredOrders = orders
     setNotifContent("");
     alert("تم إرسال الإشعار بنجاح!");
   }
-
-  // عرض بيانات العميل والمرفقات
+  // --- Client Card ---
   const handleShowClientCard = async (client) => {
     setShowClientCard(client);
     setLoadingDocs(true);
@@ -308,7 +223,53 @@ const filteredOrders = orders
     setLoadingDocs(false);
   };
 
-  // بطاقة العميل
+  // --- Orders Data ---
+  const statusCounts = {};
+  orders.forEach((o) => {
+    const s = o.status || "new";
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  const employeeProviders = Array.isArray(employeeData.providers) ? employeeData.providers : [];
+  // الطلبات الجديدة الخاصة بتخصص الموظف
+  const newOrders = orders
+    .filter(o =>
+      (!o.assignedTo || o.assignedTo === "" || o.assignedTo === null)
+      &&
+      (Array.isArray(o.providers) && o.providers.some(p => employeeProviders.includes(p)))
+    )
+    .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+
+  // الطلبات المعينة لهذا الموظف فقط
+  const filteredOrders = orders
+    .filter((o) =>
+      o.assignedTo === employeeData.id &&
+      Array.isArray(o.providers) &&
+      o.providers.some(p => employeeProviders.includes(p))
+    )
+    .filter((o) => {
+      const type = getOrderType(o.clientId);
+      if (tab !== "all" && type !== tab) return false;
+      if (statusFilter !== "all" && (o.status || "new") !== statusFilter) return false;
+      const client = clients[o.clientId] || {};
+      const svc = services[o.serviceId] || {};
+      const searchText =
+        [
+          o.trackingNumber,
+          o.requestId,
+          o.clientId,
+          client.name,
+          client.userId,
+          svc.name,
+          svc.name_en,
+          o.status,
+          client.email,
+          client.phone
+        ].filter(Boolean).join(" ").toLowerCase();
+      return searchText.includes(search.toLowerCase());
+    })
+    .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
+
+  /* --- Render Components --- */
   function renderClientCard(client) {
     if (!client) return null;
     const attachments =
@@ -332,23 +293,15 @@ const filteredOrders = orders
       "";
 
     return (
-      <div style={{
-        ...glassStyle,
-        padding: "24px 18px",
-        maxWidth: 430,
-        borderRadius: "22px",
-        minWidth: "280px",
-        boxShadow: "0 8px 40px 0 rgba(33,150,243,0.19)"
-      }} className="mb-2 rounded-xl shadow border w-full relative">
-        <button style={{ cursor: "pointer" }} className="absolute top-2 left-2 text-xl text-gray-400 hover:text-emerald-700 font-bold"
+      <div style={{ ...CARD, padding: "24px 18px", maxWidth: 430, minWidth: 280 }} className="mb-2 rounded-xl shadow border w-full relative">
+        <button style={{ cursor: "pointer", position: "absolute", top: 12, left: 12 }} className="text-xl text-gray-400 hover:text-emerald-700 font-bold"
           onClick={() => setShowClientCard(false)}>
           <MdClose />
         </button>
         <div className="flex flex-col items-center mb-4">
           <img src={client.profilePic || "/default-avatar.png"} alt={client.name}
             className="w-16 h-16 rounded-full border-2 border-emerald-200 shadow mb-2 object-cover" />
-          <div className="text-lg font-extrabold text-emerald-900"
-            style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>{client.name}</div>
+          <div className="text-lg font-extrabold text-emerald-900">{client.name}</div>
           <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
         </div>
         <div className="mt-2">
@@ -398,7 +351,6 @@ const filteredOrders = orders
     );
   }
 
-  // تفاصيل الطلب
   function renderOrderDetails(order) {
     if (!order) return null;
     const client = clients[order.clientId];
@@ -419,15 +371,7 @@ const filteredOrders = orders
 
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style={{padding: "10px"}}>
-        <div style={{
-          background: "rgba(255,255,255,0.90)",
-          borderRadius: "18px",
-          width: 370,
-          maxWidth: "98vw",
-          padding: "20px 10px",
-          boxShadow: "0 6px 32px 0 rgba(33,150,243,0.13)",
-          border: "1.5px solid #e3f4ff"
-        }}>
+        <div style={CARD}>
             <div className="flex justify-between items-center mb-2">
               <div className="font-bold text-blue-800 text-lg">{service?.name || order.serviceId}</div>
               <button className="text-2xl text-gray-400 hover:text-gray-700 font-bold" style={{cursor: "pointer"}} onClick={() => setSelected(null)}>
@@ -449,7 +393,6 @@ const filteredOrders = orders
                 <b>ملاحظة الموظف:</b> {notes}
               </div>
             )}
-
             {/* بيانات العميل */}
             <div className="bg-blue-50 rounded-xl p-2 mt-2 mb-2">
               <div className="flex items-center gap-2 mb-1">
@@ -489,7 +432,6 @@ const filteredOrders = orders
                 </div>
               </div>
             </div>
-
             {/* مرفقات الطلب */}
             {order.attachments && Object.keys(order.attachments).length > 0 ? (
             <div className="bg-cyan-50 rounded-xl p-2 mt-2 mb-2">
@@ -543,12 +485,11 @@ const filteredOrders = orders
               لا يوجد مرفقات لهذا الطلب.
             </div>
           )}
-
             {/* أزرار التواصل */}
             <div className="flex flex-wrap gap-2 items-center mt-2 mb-2">
               {whatsappLink && (
                 <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                  style={{...btnStyle, background:"linear-gradient(90deg,#25d366,#128c7e)", fontSize:"0.95rem"}}
+                  style={{...BTN, background:"linear-gradient(90deg,#25d366,#128c7e)", fontSize:"0.95rem"}}
                   className="shadow"
                 >
                   <MdWhatsapp /> واتساب
@@ -556,16 +497,15 @@ const filteredOrders = orders
               )}
               {mailtoLink && (
                 <a href={mailtoLink} target="_blank" rel="noopener noreferrer"
-                  style={{...btnStyle, background:"linear-gradient(90deg,#1976d2,#64b5f6)", fontSize:"0.95rem"}}
+                  style={{...BTN, background:"linear-gradient(90deg,#1976d2,#64b5f6)", fontSize:"0.95rem"}}
                 >
                   <MdEmail /> إرسال إيميل
                 </a>
               )}
-              <button style={{...btnStyle, background:"linear-gradient(90deg,#ffb300,#ffd54f)", color:"#444"}} onClick={() => setShowNotifModal(true)}>
+              <button style={{...BTN, background:"linear-gradient(90deg,#ffb300,#ffd54f)", color:"#444"}} onClick={() => setShowNotifModal(true)}>
                 <MdNotificationsActive /> إشعار مخصص
               </button>
             </div>
-
             <form
               onSubmit={e => {
                 e.preventDefault();
@@ -577,21 +517,20 @@ const filteredOrders = orders
             >
               <label className="font-bold text-gray-800 text-xs">تغيير الحالة:</label>
               <select name="status" defaultValue={order.status} className="border rounded px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500 text-xs">
-                {Object.keys(statusLabel).map((k) => (
+                {Object.keys(STATUS).map((k) => (
                   <option key={k} value={k}>
-                    {statusIcons[k]} {statusLabel[k]}
+                    {STATUS[k].icon} {STATUS[k].label}
                   </option>
                 ))}
               </select>
               <input type="text" name="note" className="border rounded px-2 py-1 text-xs" placeholder="ملاحظة الموظف (اختياري)" />
-              <button type="submit" style={btnStyle}>
+              <button type="submit" style={BTN}>
                 <MdNotificationsActive /> حفظ الحالة وإشعار العميل
               </button>
             </form>
-
             {showNotifModal && (
               <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                <div style={glassStyle} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
+                <div style={GLASS} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
                   <button className="absolute top-2 left-2 text-2xl" style={{cursor:"pointer"}} onClick={() => setShowNotifModal(false)}>×</button>
                   <div className="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2">
                     <MdNotificationsActive /> إرسال إشعار مخصص
@@ -604,7 +543,7 @@ const filteredOrders = orders
                     onChange={e => setNotifContent(e.target.value)}
                   />
                   <button
-                    style={btnStyle}
+                    style={BTN}
                     className="w-full"
                     disabled={!notifContent.trim()}
                     onClick={() => sendCustomNotification(order, notifContent)}
@@ -614,18 +553,17 @@ const filteredOrders = orders
                 </div>
               </div>
             )}
-
             {pendingStatus && (
               <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                <div style={glassStyle} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
+                <div style={GLASS} className="shadow-xl p-6 max-w-xs w-full relative flex flex-col items-center">
                   <button className="absolute top-2 left-2 text-2xl" style={{cursor:"pointer"}} onClick={() => setPendingStatus(null)}>×</button>
                   <div className="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2">
                     <MdNotificationsActive /> تأكيد تغيير الحالة
                   </div>
                   <div className="mb-3">هل أنت متأكد أنك تريد تغيير حالة الطلب؟ سيتم إشعار العميل تلقائيًا.</div>
                   <div className="flex gap-3 w-full">
-                    <button style={btnStyle} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
-                    <button style={{...btnStyle, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
+                    <button style={BTN} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
+                    <button style={{...BTN, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
                   </div>
                 </div>
               </div>
@@ -635,10 +573,16 @@ const filteredOrders = orders
       );
     }
 
-  // الشريط الجانبي للطلبات الجديدة
   function renderNewSidebar() {
     return (
-      <div className={`fixed top-0 right-0 h-full z-50`} style={{...glassStyle, width:330, maxWidth:"100%", transition:"transform 0.3s", transform: newSidebarOpen ? "translateX(0)" : "translateX(100%)"}}>
+      <div className={`fixed top-0 right-0 h-full z-50`}
+        style={{
+          ...GLASS,
+          width: 330,
+          maxWidth: "100%",
+          transition: "transform 0.3s",
+          transform: newSidebarOpen ? "translateX(0)" : "translateX(100%)"
+        }}>
         <div className="flex justify-between items-center p-4 border-b">
           <div className="text-lg font-bold text-blue-900 flex items-center gap-2"><MdNotificationsActive /> الطلبات الجديدة</div>
           <button className="text-2xl text-gray-400 hover:text-gray-700" style={{cursor:"pointer"}} onClick={() => setNewSidebarOpen(false)}>×</button>
@@ -673,9 +617,9 @@ const filteredOrders = orders
                   {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
                 </div>
                 <button
-                  style={btnStyle}
-                  onMouseOver={e=>Object.assign(e.target.style,btnHover)}
-                  onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
+                  style={BTN}
+                  onMouseOver={e=>Object.assign(e.target.style,BTN_HOVER)}
+                  onMouseOut={e=>Object.assign(e.target.style,BTN)}
                   className="mt-2"
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -693,25 +637,42 @@ const filteredOrders = orders
     );
   }
 
+  /* --- Main Layout --- */
   return (
-    <div style={{fontFamily:"Cairo,Tajawal,Segoe UI,Arial", background:"linear-gradient(135deg,#e3f0ff 0%,#c9e6ff 100%) min-h-screen"}} className="relative p-4 md:p-8">
-      <div style={{...glassStyle, background:"rgba(210,234,255,0.8)", color: "#114477", padding: "12px", borderRadius: "18px", marginBottom: "18px", fontWeight: 700}}>
-        <div className="text-lg font-bold mb-2">إدارة الطلبات</div>
+    <div style={{
+      fontFamily: "Cairo,Tajawal,Segoe UI,Arial",
+      background: "linear-gradient(135deg,#e3f0ff 0%,#c9e6ff 100%) min-h-screen"
+    }} className="relative p-4 md:p-8">
+      {/* Header Section */}
+      <div style={{
+        ...GLASS,
+        background: "rgba(210,234,255,0.92)",
+        color: "#114477",
+        padding: "16px 24px",
+        borderRadius: "20px",
+        marginBottom: "20px",
+        fontWeight: 700,
+        boxShadow: "0 5px 18px 0 rgba(33,150,243,0.14)",
+        position: "relative"
+      }}>
+        <div className="flex items-center gap-3">
+          <FaUserTie style={{fontSize: "2rem", color: "#2196f3"}} />
+          <span className="text-2xl font-black">إدارة الطلبات</span>
+        </div>
+        <span className="absolute left-5 top-6 text-xs text-blue-300 font-bold">لوحة الموظف</span>
       </div>
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4">
-        {typeTabs.map((t) => (
+      {/* Type Tabs */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {TYPE_TABS.map((t) => (
           <button
             key={t.key}
             style={{
-              ...btnStyle,
+              ...BTN,
               background: tab === t.key ? "linear-gradient(90deg,#1976d2,#2196f3)" : "rgba(255,255,255,0.27)",
               color: tab === t.key ? "#fff" : "#1976d2",
-              boxShadow: tab === t.key ? btnStyle.boxShadow : "none",
+              boxShadow: tab === t.key ? BTN.boxShadow : "none",
               borderBottom: tab === t.key ? "3px solid #1e88e5" : "1px solid #c3e0fa",
-              fontWeight:"bold",
-              cursor:"pointer",
-              fontSize:"1rem"
+              fontWeight:"bold", cursor:"pointer", fontSize:"1rem"
             }}
             onClick={() => setTab(t.key)}
           >
@@ -719,26 +680,31 @@ const filteredOrders = orders
           </button>
         ))}
       </div>
-      {/* Counters */}
+      {/* Status Counters */}
       <div className="flex gap-2 mb-4 flex-wrap">
         <button
-          style={{...btnStyle, background:statusFilter==="all"?"linear-gradient(90deg,#2196f3,#21cbf3)":"#e3f0ff", color:statusFilter==="all"?"#fff":"#1565c0", cursor:"pointer"}}
+          style={{...BTN, background:statusFilter==="all"?"linear-gradient(90deg,#2196f3,#21cbf3)":"#e3f0ff", color:statusFilter==="all"?"#fff":"#1565c0", cursor:"pointer"}}
           onClick={() => setStatusFilter("all")}
         >
           الكل <span className="font-mono">{orders.length}</span>
         </button>
-        {Object.keys(statusLabel).map((k) =>
+        {Object.keys(STATUS).map((k) =>
           <button key={k}
-            style={{...btnStyle, background:statusFilter===k?"linear-gradient(90deg,#2196f3,#21cbf3)":"#e3f0ff", color:statusFilter===k?"#fff":"#1565c0", cursor:"pointer"}}
+            style={{
+              ...BTN,
+              background:statusFilter===k?"linear-gradient(90deg,#2196f3,#21cbf3)":"#e3f0ff",
+              color:statusFilter===k?"#fff":"#1565c0",
+              cursor:"pointer"
+            }}
             onClick={() => setStatusFilter(k)}
           >
-            <span>{statusIcons[k]}</span>
-            {statusLabel[k]}
+            <span>{STATUS[k].icon}</span>
+            {STATUS[k].label}
             <span className="font-mono">{statusCounts[k] || 0}</span>
           </button>
         )}
       </div>
-      {/* Search and New Orders */}
+      {/* Search & New Orders Button */}
       <div className="flex items-center mb-4 gap-2">
         <input
           className="border rounded px-3 py-2 flex-1"
@@ -748,19 +714,19 @@ const filteredOrders = orders
           style={{fontSize:"1rem", minWidth:190}}
         />
         <button
-          style={btnStyle}
-          onMouseOver={e=>Object.assign(e.target.style,btnHover)}
-          onMouseOut={e=>Object.assign(e.target.style,btnStyle)}
+          style={BTN}
+          onMouseOver={e=>Object.assign(e.target.style,BTN_HOVER)}
+          onMouseOut={e=>Object.assign(e.target.style,BTN)}
           onClick={() => setNewSidebarOpen(true)}
         >
           <MdNotificationsActive /> الطلبات الجديدة <span className="font-mono">{newOrders.length}</span>
         </button>
       </div>
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl shadow" style={tableGlass}>
+      {/* Orders Table */}
+      <div className="overflow-x-auto rounded-xl shadow" style={CARD}>
         <table className="min-w-full text-center" style={{fontSize:"1.08rem", color:"#17427a"}}>
           <thead>
-            <tr className="text-blue-900 text-sm" style={{background:"rgba(33,150,243,0.08)"}}>
+            <tr className="text-blue-900 text-sm" style={TABLE_HEAD}>
               <th className="py-2 px-3">رقم الطلب</th>
               <th className="py-2 px-3">الخدمة</th>
               <th className="py-2 px-3">العميل</th>
@@ -796,10 +762,10 @@ const filteredOrders = orders
                   <td>
                     <span className={
                       "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border cursor-default " +
-                      (statusColor[o.status] || "bg-gray-100 text-gray-900 border-gray-400")
+                      (STATUS[o.status]?.color || "bg-gray-100 text-gray-900 border-gray-400")
                     }>
-                      <span>{statusIcons[o.status] || "❓"}</span>
-                      {statusLabel[o.status] || o.status}
+                      <span>{STATUS[o.status]?.icon || "❓"}</span>
+                      {STATUS[o.status]?.label || o.status}
                     </span>
                   </td>
                   <td className="text-blue-600 font-bold">{assignedEmp ? assignedEmp.name : (o.assignedTo || "-")}</td>
@@ -817,6 +783,7 @@ const filteredOrders = orders
           </tbody>
         </table>
       </div>
+      {/* Modals */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           {renderOrderDetails(selected)}
@@ -832,19 +799,19 @@ const filteredOrders = orders
       {renderNewSidebar()}
       {pendingStatus && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div style={glassStyle} className="shadow-xl p-6 max-w-sm w-full relative flex flex-col items-center">
+          <div style={GLASS} className="shadow-xl p-6 max-w-sm w-full relative flex flex-col items-center">
             <button className="absolute top-2 left-2 text-2xl" style={{cursor:"pointer"}} onClick={() => setPendingStatus(null)}>×</button>
             <div className="text-lg font-bold text-blue-800 mb-3 flex items-center gap-2">
-              <span className={"inline-flex items-center gap-1 px-2 py-1 rounded border font-bold text-xs " + (statusColor[pendingStatus.newStatus] || "bg-gray-100 text-gray-900 border-gray-400")}>
-                <span>{statusIcons[pendingStatus.newStatus] || "❓"}</span>
-                {statusLabel[pendingStatus.newStatus] || pendingStatus.newStatus}
+              <span className={"inline-flex items-center gap-1 px-2 py-1 rounded border font-bold text-xs " + (STATUS[pendingStatus.newStatus]?.color || "bg-gray-100 text-gray-900 border-gray-400")}>
+                <span>{STATUS[pendingStatus.newStatus]?.icon || "❓"}</span>
+                {STATUS[pendingStatus.newStatus]?.label || pendingStatus.newStatus}
               </span>
               تغيير حالة الطلب
             </div>
             <div className="mb-3">هل أنت متأكد أنك تريد تعيين هذه الحالة للطلب؟ سيتم إرسال إشعار تلقائي للعميل.</div>
             <div className="flex gap-3 w-full">
-              <button style={btnStyle} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
-              <button style={{...btnStyle, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
+              <button style={BTN} className="w-full" onClick={confirmChangeStatus}>تأكيد</button>
+              <button style={{...BTN, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
             </div>
           </div>
         </div>
@@ -852,14 +819,8 @@ const filteredOrders = orders
       <audio ref={notifAudioRef} src="/sounds/new-order.mp3" preload="auto" />
       <style>
         {`
-          .glass-card::-webkit-scrollbar, .table-glass::-webkit-scrollbar {
-            width: 6px;
-            background: #e6f1fd;
-          }
-          .glass-card::-webkit-scrollbar-thumb, .table-glass::-webkit-scrollbar-thumb {
-            background: #b9dbfa;
-            border-radius: 6px;
-          }
+          ::-webkit-scrollbar { width: 6px; background: #e6f1fd; }
+          ::-webkit-scrollbar-thumb { background: #b9dbfa; border-radius: 6px; }
           input, select, textarea {
             font-family: inherit;
             font-size:1rem;
