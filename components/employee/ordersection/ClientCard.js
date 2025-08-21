@@ -42,6 +42,25 @@ export default function ClientCard({ client, clientDocs = [], loadingDocs = fals
         <div className="text-gray-700 font-mono font-bold text-xs">{client.userId}</div>
       </div>
       <div className="mt-2">
+        {/* بيانات العميل الأصلية */}
+        <div className="mb-4 bg-blue-50 rounded-xl p-3">
+          <div className="font-bold text-blue-900 text-base mb-2 text-center">بيانات العميل الأساسية</div>
+          <div className="flex flex-col gap-2 text-xs">
+            <div><b>رقم العميل:</b> {client.userId}</div>
+            {client.accountType && <div><b>نوع الحساب:</b> {client.accountType}</div>}
+            {client.residenceNumber && <div><b>رقم الإقامة:</b> {client.residenceNumber}</div>}
+            {client.passportNumber && <div><b>رقم الباسبور:</b> {client.passportNumber}</div>}
+            {client.nationalId && <div><b>رقم الهوية:</b> {client.nationalId}</div>}
+            {client.birthDate && <div><b>تاريخ الميلاد:</b> {client.birthDate}</div>}
+            {client.phone && <div><b>الجوال:</b> {client.phone}</div>}
+            {client.email && <div><b>الإيميل:</b> {client.email}</div>}
+            {client.city && <div><b>المدينة:</b> {client.city}</div>}
+            {client.apartment && <div><b>الشقة:</b> {client.apartment}</div>}
+            {client.building && <div><b>المبنى:</b> {client.building}</div>}
+            {/* أضف أي حقول أخرى من قاعدة البيانات حسب الحاجة */}
+          </div>
+        </div>
+        {/* مرفقات العميل */}
         <div className="font-extrabold text-emerald-900 text-base mb-2 text-center">مرفقات العميل:</div>
         {attachments.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

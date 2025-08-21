@@ -26,13 +26,13 @@ const statusIcons = {
   rejected: "❌",
   pending_requirements: "📄",
   archived: "🗄️",
-  awaiting_payment: "💵" // الحالة الجديدة
+  awaiting_payment: "💵"
 };
 const statusLabel = {
   new: "جديد",
   under_review: "قيد المراجعة",
   government_processing: "قيد المعالجة الحكومية",
-  awaiting_payment: "بانتظار دفع الرسوم الحكومية", // الحالة الجديدة
+  awaiting_payment: "بانتظار دفع الرسوم الحكومية",
   completed: "مكتمل",
   rejected: "مرفوض",
   pending_requirements: "بانتظار مستندات",
@@ -109,7 +109,7 @@ export default function OrderDetailsCard({
         </div>
       )}
 
-      {/* بيانات العميل */}
+      {/* بيانات العميل الأساسية + رقم العميل */}
       <div className="bg-blue-50 rounded-xl p-2 mt-2 mb-2">
         <div className="flex items-center gap-2 mb-1">
           <img
@@ -119,10 +119,16 @@ export default function OrderDetailsCard({
           />
           <div>
             <div className="font-bold text-blue-900 text-sm">{client?.name}</div>
-            <div className="text-xs text-gray-600">{client?.employeeNumber || client?.userId}</div>
+            <div className="text-xs text-gray-600">
+              {/* عرض رقم العميل بشكل واضح */}
+              <b>رقم العميل:</b> {client?.userId || order?.clientId}
+            </div>
           </div>
         </div>
-        <div className="flex flex-col gap-1 text-xs">
+        <div className="flex flex-col gap-1 text-xs mt-2">
+          {client?.residenceNumber && <div><b>رقم الإقامة:</b> {client.residenceNumber}</div>}
+          {client?.passportNumber && <div><b>رقم الباسبور:</b> {client.passportNumber}</div>}
+          {client?.nationalId && <div><b>رقم الهوية:</b> {client.nationalId}</div>}
           <div><b>الجوال:</b> {client?.phone}</div>
           <div><b>الإيميل:</b> {client?.email}</div>
         </div>

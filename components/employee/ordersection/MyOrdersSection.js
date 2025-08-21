@@ -350,7 +350,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                   رقم الطلب: {order.requestId}
                 </div>
                 <div className="text-xs text-gray-800 font-bold">
-                  {client?.name || order.clientId}
+                  {/* عرض رقم العميل بشكل واضح */}
+                  {client?.userId || order.clientId}
                 </div>
                 <div className="text-xs mt-1 text-gray-600 font-bold">
                   <span className="font-bold">منذ: </span>
@@ -447,7 +448,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             <tr className="text-blue-900 text-sm" style={{background:"rgba(33,150,243,0.08)"}}>
               <th className="py-2 px-3">رقم الطلب</th>
               <th className="py-2 px-3">الخدمة</th>
-              <th className="py-2 px-3">العميل</th>
+              <th className="py-2 px-3">رقم العميل</th>
               <th className="py-2 px-3">الحالة</th>
               <th className="py-2 px-3">الموظف</th>
               <th className="py-2 px-3">منذ</th>
@@ -474,7 +475,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                       style={{cursor:"pointer"}}
                       onClick={e => { e.stopPropagation(); handleShowClientCard(client); }}
                     >
-                      {client?.name || o.clientId}
+                      {client?.userId || o.clientId}
                     </span>
                   </td>
                   <td>
