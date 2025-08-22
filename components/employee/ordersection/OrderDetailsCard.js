@@ -1,5 +1,56 @@
-// ... import statements as before ...
-export default function OrderDetailsCard({ order, client, service, assignedEmp, employees, onClose, onChangeStatus, onSendNotification, onTransferOrder }) {
+import { MdClose, MdNotificationsActive } from "react-icons/md";
+import React, { useState } from "react";
+
+const btnStyle = {
+  background: "linear-gradient(90deg,#2196f3,#21cbf3)",
+  color: "#fff",
+  borderRadius: "12px",
+  boxShadow: "0 2px 8px rgba(33,203,243,0.10)",
+  fontWeight: "bold",
+  padding: "10px 22px",
+  border: "none",
+  cursor: "pointer",
+  transition: "background 0.2s, box-shadow 0.2s",
+  fontSize: "1rem",
+  display: "flex",
+  alignItems: "center",
+  gap: "7px"
+};
+const statusIcons = {
+  new: "🆕",
+  under_review: "🔎",
+  government_processing: "🏛️",
+  completed: "✅",
+  rejected: "❌",
+  pending_requirements: "📄",
+  archived: "🗄️",
+  awaiting_payment: "💵"
+};
+const statusLabel = {
+  new: "جديد",
+  under_review: "قيد المراجعة",
+  government_processing: "قيد المعالجة الحكومية",
+  awaiting_payment: "بانتظار دفع الرسوم الحكومية",
+  completed: "مكتمل",
+  rejected: "مرفوض",
+  pending_requirements: "بانتظار مستندات",
+  archived: "مؤرشف"
+};
+const statusColor = {
+  new: "bg-sky-100 text-sky-800 border-sky-300",
+  under_review: "bg-yellow-100 text-yellow-800 border-yellow-400",
+  government_processing: "bg-indigo-100 text-indigo-900 border-indigo-400",
+  awaiting_payment: "bg-teal-100 text-teal-900 border-teal-400",
+  completed: "bg-green-100 text-green-800 border-green-400",
+  rejected: "bg-red-100 text-red-800 border-red-400",
+  pending_requirements: "bg-orange-100 text-orange-800 border-orange-400",
+  archived: "bg-gray-100 text-gray-700 border-gray-400"
+};
+
+export default function OrderDetailsCard({
+  order, client, service, assignedEmp, employees,
+  onClose, onChangeStatus, onSendNotification, onTransferOrder
+}) {
   const [notifContent, setNotifContent] = useState("");
   const [pendingStatus, setPendingStatus] = useState(null);
   const [transferTo, setTransferTo] = useState("");
@@ -15,9 +66,6 @@ export default function OrderDetailsCard({ order, client, service, assignedEmp, 
     );
     notes = last && last.note ? last.note : null;
   }
-  // لا تعرض رقم الهاتف أو الإيميل للموظف إطلاقاً
-  // const whatsappLink = null;
-  // const mailtoLink = null;
 
   const sameSpecialtyEmployees = employees.filter(
     emp => Array.isArray(order.providers) && emp.providers?.some(p => order.providers?.includes(p))
