@@ -202,7 +202,7 @@ export default function ServicePayModal({
               fieldKey: `service:${serviceId || serviceName}:name:en`,
             });
 
-      const response = await fetch("/api/create-payment-session", {
+      const response = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
