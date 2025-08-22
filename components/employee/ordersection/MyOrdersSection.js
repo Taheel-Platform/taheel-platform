@@ -6,7 +6,6 @@ import {
   onSnapshot,
   updateDoc,
   addDoc,
-  getDocs,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 import {
@@ -126,8 +125,8 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
       const usersObj = {};
       const empArr = [];
       snap.forEach(docSnap => {
-        const user = { ...docSnap.data(), userId: docSnap.id };
-        usersObj[user.userId] = user;
+        const user = { ...docSnap.data(), userId: docSnap.id, customerId: docSnap.id };
+        usersObj[user.customerId] = user;
         if (user.role === "employee" || user.role === "admin") empArr.push(user);
       });
       setClients(usersObj);
@@ -158,11 +157,11 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
     setLastNewOrdersCount(newOrders.length);
   }, [orders]);
 
-  function getOrderType(clientId) {
-    if (!clientId) return "other";
-    if (clientId.startsWith("RES-")) return "resident";
-    if (clientId.startsWith("NON-")) return "nonResident";
-    if (clientId.startsWith("COM-")) return "company";
+  function getOrderType(customerId) {
+    if (!customerId) return "other";
+    if (customerId.startsWith("RES-")) return "resident";
+    if (customerId.startsWith("NON-")) return "nonResident";
+    if (customerId.startsWith("COM-")) return "company";
     return "other";
   }
 
@@ -190,18 +189,18 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
       o.providers.some(p => employeeProviders.includes(p))
     )
     .filter((o) => {
-      const type = getOrderType(o.clientId);
+      const type = getOrderType(o.customerId);
       if (tab !== "all" && type !== tab) return false;
       if (statusFilter !== "all" && (o.status || "new") !== statusFilter) return false;
-      const client = clients[o.clientId] || {};
+      const client = clients[o.customerId] || {};
       const svc = services[o.serviceId] || {};
       const searchText =
         [
           o.trackingNumber,
           o.requestId,
-          o.clientId,
+          o.customerId,
           client.name,
-          client.userId,
+          client.customerId,
           svc.name,
           svc.name_en,
           o.status,
@@ -236,14 +235,14 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
 
   // ---- إشعار تلقائي ----
   async function sendAutoNotification(order, newStatus) {
-    const client = clients[order.clientId];
+    const client = clients[order.customerId];
     if (!client) return;
     const statusMsg = `تم تحديث حالة طلبك (${order.trackingNumber || order.requestId}) إلى: ${statusLabel[newStatus]}`;
     const notifData = {
       body: statusMsg,
       notificationId: `notif-${Date.now()}`,
       relatedRequest: order.requestId,
-      targetId: client.userId,
+      targetId: client.customerId,
       timestamp: new Date().toISOString(),
       title: "تحديث حالة طلبك",
       type: "status",
@@ -283,13 +282,13 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
   // ---- إشعار مخصص ----
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
-    const client = clients[order.clientId];
+    const client = clients[order.customerId];
     if (!client) return;
     const notifData = {
       body: content,
       notificationId: `notif-${Date.now()}`,
       relatedRequest: order.requestId,
-      targetId: client.userId,
+      targetId: client.customerId,
       timestamp: new Date().toISOString(),
       title: "إشعار من الدعم",
       type: "custom",
@@ -324,7 +323,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
             <div className="text-center text-gray-400 mt-6">لا يوجد طلبات جديدة</div>
           )}
           {newOrders.map((order) => {
-            const client = clients[order.clientId];
+            const client = clients[order.customerId];
             const service = services[order.serviceId];
             const created = order.createdAt ? new Date(order.createdAt) : null;
             const minutesAgo = created ? Math.floor((new Date() - created) / 60000) : null;
@@ -342,7 +341,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                   رقم الطلب: {order.requestId}
                 </div>
                 <div className="text-xs text-gray-800 font-bold">
-                  {client?.userId || order.clientId}
+                  {client?.customerId || order.customerId}
                 </div>
                 <div className="text-xs mt-1 text-gray-600 font-bold">
                   <span className="font-bold">منذ: </span>
@@ -448,7 +447,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
           </thead>
           <tbody>
             {filteredOrders.map((o) => {
-              const client = clients[o.clientId];
+              const client = clients[o.customerId];
               const service = services[o.serviceId];
               const assignedEmp = Object.values(employees).find(e => e.uid === o.assignedTo);
               const created = o.createdAt ? new Date(o.createdAt) : null;
@@ -474,16 +473,16 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
                       <span
                         className="text-blue-700 font-bold underline hover:text-blue-900"
                         style={{cursor:"pointer"}}
-                        title={`عرض بيانات العميل ${client.userId}`}
+                        title={`عرض بيانات العميل ${client.customerId}`}
                         onClick={e => {
                           e.stopPropagation();
                           handleShowClientCard(client);
                         }}
                       >
-                        {client.userId}
+                        {client.customerId}
                       </span>
                     ) : (
-                      <span className="text-gray-500">{o.clientId}</span>
+                      <span className="text-gray-500">{o.customerId}</span>
                     )}
                   </td>
                   {/* الحالة */}
@@ -522,7 +521,7 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <OrderDetailsCard
             order={selected}
-            client={clients[selected.clientId]}
+            client={clients[selected.customerId]}
             service={services[selected.serviceId]}
             assignedEmp={
               Object.values(employees).find(e => e.uid === selected.assignedTo)

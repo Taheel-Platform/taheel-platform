@@ -129,7 +129,7 @@ export default function OrderDetailsCard({
           <div>
             <div className="font-bold text-blue-900 text-sm">{client?.nameEn || client?.name || client?.middleName || ""}</div>
             <div className="text-xs text-gray-600">
-              <b>رقم العميل:</b> {client?.userId || client?.customerId || order?.clientId}
+              <b>رقم العميل:</b> {client?.customerId}
             </div>
             {client?.nationality && <div className="text-xs text-gray-600"><b>الجنسية:</b> {client.nationality}</div>}
           </div>
@@ -249,7 +249,6 @@ export default function OrderDetailsCard({
           <button
             style={{...btnStyle, background:"linear-gradient(90deg,#00bfae,#21cbf3)"}}
             onClick={() => {
-              // هنا منطق ارسال طلب دفع للمدير المسؤول
               alert("تم إرسال طلب دفع الرسوم الحكومية للمدير المسؤول");
             }}
           >

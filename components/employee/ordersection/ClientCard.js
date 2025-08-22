@@ -17,9 +17,10 @@ export default function ClientCard({ client, onClose }) {
 
   // جلب مرفقات العميل الديناميكية عند تغيير العميل
   useEffect(() => {
-    if (!client?.userId) return;
+    // الربط بالـ customerId وليس userId
+    if (!client?.customerId) return;
     setLoadingDocs(true);
-    getDocs(collection(db, "users", client.userId, "documents"))
+    getDocs(collection(db, "users", client.customerId, "documents"))
       .then(docsSnap => {
         const docsArr = [];
         docsSnap.forEach(doc => docsArr.push({ ...doc.data(), id: doc.id }));
@@ -27,7 +28,7 @@ export default function ClientCard({ client, onClose }) {
       })
       .catch(() => setClientDocs([]))
       .finally(() => setLoadingDocs(false));
-  }, [client?.userId]);
+  }, [client?.customerId]);
 
   if (!client) return null;
 
@@ -62,14 +63,14 @@ export default function ClientCard({ client, onClose }) {
           style={{ textShadow: "0 1px 0 #fff,0 1px 2px #666" }}>
           {client.nameEn || client.name || client.middleName || ""}
         </div>
-        <div className="text-gray-700 font-mono font-bold text-xs">{client.userId || client.customerId}</div>
+        <div className="text-gray-700 font-mono font-bold text-xs">{client.customerId}</div>
       </div>
       <div className="mt-2">
         {/* بيانات العميل الأصلية */}
         <div className="mb-4 bg-blue-50 rounded-xl p-3">
           <div className="font-bold text-blue-900 text-base mb-2 text-center">بيانات العميل الأساسية</div>
           <div className="flex flex-col gap-2 text-xs">
-            <div><b>رقم العميل:</b> {client.userId || client.customerId}</div>
+            <div><b>رقم العميل:</b> {client.customerId}</div>
             {client.accountType && <div><b>نوع الحساب:</b> {client.accountType}</div>}
             {client.type && <div><b>تصنيف العميل:</b> {client.type}</div>}
             {client.nationality && <div><b>الجنسية:</b> {client.nationality}</div>}
