@@ -47,7 +47,7 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
 
-  // بيانات الدفع من localStorage
+  // كل البيانات قادمة من المودال (الحسابات هناك)
   const { service, price, customerId, orderNumber, clientSecret } = paymentData;
   const printingFee = service?.printingFee || 0;
   const vat = service?.vat || 0;

@@ -10,7 +10,6 @@ import {
 import { translateText } from "@/utils/translate";
 import { useRouter } from "next/navigation";
 
-
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
   const part1 = Math.floor(100 + Math.random() * 900); // 3 أرقام
@@ -30,8 +29,8 @@ export default function ServicePayModal({
   cashbackCoins,
   userWallet,
   lang = "ar",
-  customerId,
-  userId,
+  customerId,   // معرف المستند للعميل (رقم العميل: مثال "RES-200-9180" أو "COM-2025-001")
+  userId,       // الـ UID الخاص بفيريبيز (لو احتجته)
   userEmail,
   uploadedDocs,
   onPaid,
@@ -52,39 +51,185 @@ export default function ServicePayModal({
   const finalPrice = totalPrice - coinDiscountValue;
   const willGetCashback = !useCoins;
 
-  // دفع المحفظة: كما هو في كودك الحالي
-  async function handlePayment() { /* ... */ }
+  // دفع المحفظة (بدون أي تعديل على منطقك)
+  async function handlePayment() {
+    setIsPaying(true);
+    setPayMsg("");
+    setMsgSuccess(false);
 
-  // دفع بوابة الدفع (Stripe Elements)
+    // تحقق من القيم الممررة
+    if (!customerId || !userEmail || !serviceName) {
+      setPayMsg(lang === "ar"
+        ? "بيانات العميل أو البريد أو الخدمة ناقصة."
+        : "Customer ID, email or service name missing."
+      );
+      setIsPaying(false);
+      return;
+    }
+
+    try {
+      if (userWallet < finalPrice) {
+        setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
+        setIsPaying(false);
+        return;
+      }
+
+      const userRef = doc(firestore, "users", customerId);
+
+      // خصم الرصيد من المحفظة
+      await updateDoc(userRef, {
+        walletBalance: userWallet - finalPrice
+      });
+
+      // خصم الكوينات إذا استخدمهم العميل للخصم
+      if (useCoins && coinDiscount > 0) {
+        await updateDoc(userRef, {
+          coins: increment(-coinDiscount)
+        });
+      }
+
+      // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
+      if (willGetCashback && cashbackCoins > 0) {
+        await updateDoc(userRef, {
+          coins: increment(cashbackCoins)
+        });
+      }
+
+      const orderNumber = generateOrderNumber();
+
+      // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
+      let serviceData = {};
+      try {
+        const serviceDocRef = doc(firestore, "servicesByClientType", clientType);
+        const serviceDocSnap = await getDoc(serviceDocRef);
+        if (serviceDocSnap.exists()) {
+          const allServices = serviceDocSnap.data();
+          // لو عندك serviceId استخدمه، لو مش موجود ابحث بالاسم
+          serviceData = serviceId && allServices[serviceId]
+            ? allServices[serviceId]
+            : Object.values(allServices).find(s => s.name === serviceName) || {};
+        }
+      } catch (e) {
+        console.log("خطأ في جلب بيانات الخدمة:", e);
+      }
+
+      // اسم الخدمة الأصلي بالعربي (للتخزين)
+      const originalServiceName = serviceData?.name || serviceName || "";
+
+      // اسم الخدمة للعرض والإشعار/الإيميل حسب اللغة
+      const uiServiceName =
+        lang === "ar"
+          ? originalServiceName
+          : await translateText({
+              text: originalServiceName,
+              target: "en",
+              source: "ar",
+              fieldKey: `service:${serviceId || originalServiceName}:name:en`,
+            });
+
+      // استخراج البروفايدرز كما هو من الخدمة الأصلية
+      const providers =
+        Array.isArray(serviceData?.providers)
+          ? serviceData.providers
+          : serviceData?.providers
+            ? [serviceData.providers]
+            : [];
+
+      // سجل الريكويست وفيه جميع البروفايدرز كما هو
+      await setDoc(doc(firestore, "requests", orderNumber), {
+        requestId: orderNumber,
+        customerId: customerId,
+        serviceName: originalServiceName, // ← تخزين بالعربي لضمان التوافق
+        serviceId: serviceData.serviceId || serviceId || "",
+        providers, // ← كما في الخدمة
+        paidAmount: finalPrice,
+        coinsUsed: useCoins ? coinDiscountValue : 0,
+        coinsGiven: willGetCashback ? cashbackCoins : 0,
+        createdAt: new Date().toISOString(),
+        status: "paid",
+        attachments: uploadedDocs || {}
+      });
+
+      // إشعار العميل (بلغة الواجهة)
+      await addDoc(collection(firestore, "notifications"), {
+        targetId: customerId,
+        title: lang === "ar" ? "تم الدفع" : "Payment Successful",
+        body: lang === "ar"
+          ? `دفعت لخدمة ${uiServiceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
+          : `You paid for ${uiServiceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+        timestamp: new Date().toISOString(),
+        isRead: false
+      });
+
+      // إرسال إيميل تأكيد (بلغة الواجهة)
+      await fetch("/api/sendOrderEmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: userEmail,
+          orderNumber,
+          serviceName: uiServiceName,
+          price: finalPrice.toFixed(2)
+        }),
+      });
+
+      setMsgSuccess(true);
+      setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
+      if (typeof onPaid === "function") {
+        onPaid();
+      }
+      setTimeout(() => onClose(), 1200);
+
+    } catch (e) {
+      console.log("Payment error:", e);
+      setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
+    } finally {
+      setIsPaying(false);
+    }
+  }
+
+  // دفع بوابة Stripe Elements (نفس حسابات المحفظة)
   async function handleGatewayPayWithElements() {
     setIsPaying(true);
     setPayMsg("");
     setMsgSuccess(false);
 
     try {
-      const uiServiceName = lang === "ar" ? serviceName : await translateText({ /* ... */ });
+      // اسم الخدمة حسب اللغة
+      const uiServiceName =
+        lang === "ar"
+          ? serviceName
+          : await translateText({
+              text: serviceName || "",
+              target: "en",
+              source: "ar",
+              fieldKey: `service:${serviceId || serviceName}:name:en`,
+            });
 
       // اطلب clientSecret ورقم الطلب من API
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: finalPrice,
+          amount: finalPrice, // نفس الحساب النهائي
           serviceName: uiServiceName,
           customerId,
           userEmail,
+          printingFee,
+          vat: 0 // لو عندك قيمة ضريبة أضفها هنا أو مررها
         }),
       });
 
       const result = await response.json();
       if (result.clientSecret) {
-        // حفظ بيانات الدفع في localStorage
+        // حفظ بيانات الدفع في localStorage بنفس الحسابات
         localStorage.setItem("paymentData", JSON.stringify({
           clientSecret: result.clientSecret,
           service: {
             name: uiServiceName,
             id: serviceId,
             printingFee,
+            vat: 0, // أضف الضريبة لو عندك
             userEmail
           },
           price: finalPrice,
