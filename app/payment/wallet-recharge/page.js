@@ -6,6 +6,9 @@ import Image from "next/image";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
 
+
+
+
 // Stripe publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
