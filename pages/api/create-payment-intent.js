@@ -10,6 +10,7 @@ if (!global._firestore) {
 const firestore = global._firestore;
 
 // Stripe secret key من متغيرات البيئة
+console.log("Stripe Secret Key: ", process.env.STRIPE_SECRET_KEY);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // دالة توليد رقم طلب فريد
