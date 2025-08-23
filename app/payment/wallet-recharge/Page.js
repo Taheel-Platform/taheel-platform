@@ -9,6 +9,7 @@ import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
+
 const LANG = {
   en: {
     title: "Recharge Wallet",
