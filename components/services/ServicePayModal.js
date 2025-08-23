@@ -186,13 +186,15 @@ export default function ServicePayModal({
   }
 
   // دفع بوابة
-async function handleGatewayRedirect() {
+async function handleGatewayPayWithElements() {
   setIsPaying(true);
   setPayMsg("");
   setMsgSuccess(false);
+
   try {
     const uiServiceName = lang === "ar" ? serviceName : await translateText({ /* ... */ });
 
+    // اطلب clientSecret فقط وليس url
     const response = await fetch("/api/create-payment-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -203,9 +205,17 @@ async function handleGatewayRedirect() {
         userEmail,
       }),
     });
+
     const result = await response.json();
-    if (result.url) {
-      window.location.href = result.url; // ← تحويل المستخدم لصفحة Stripe Checkout
+    if (result.clientSecret) {
+      // هنا تفتح صفحة/مودال فيها Stripe Elements وتنفذ الدفع
+      // مثال: فتح مودال/صفحة جديدة فيها CardPaymentPage وتمرر لها clientSecret
+      // أو: حفظ clientSecret في state وتعرض Stripe Elements في نفس المودال
+
+      // مثال تخزين clientSecret في state:
+      setStripeClientSecret(result.clientSecret);
+      // ثم عرض Stripe Elements داخل المودال باستخدام CardElement أو PaymentElement
+      // وعند النجاح تعرض رسالة النجاح أو تغلق المودال
     } else {
       setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
     }

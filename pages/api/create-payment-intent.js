@@ -44,28 +44,19 @@ export default async function handler(req, res) {
   try {
     const requestId = generateOrderNumber();
 
-    // Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'aed',
-          product_data: { name: serviceName },
-          unit_amount: Math.round(amount * 100),
-        },
-        quantity: 1,
-      }],
-      mode: 'payment',
-      customer_email: userEmail,
+    // Stripe PaymentIntent (لـ Stripe Elements)
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100),
+      currency: 'aed',
+      receipt_email: userEmail,
       metadata: { requestId, customerId, serviceId: serviceId || "", serviceName },
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-cancelled`,
+      description: `دفع خدمة ${serviceName}`,
     });
 
     // سجل الطلب في فايرستور
     await firestore.collection("requests").doc(requestId).set({
       requestId,
-      stripeSessionId: session.id,
+      paymentIntentId: paymentIntent.id,
       customerId,
       serviceId: serviceId || "",
       serviceName,
@@ -79,9 +70,10 @@ export default async function handler(req, res) {
       providers,
     });
 
-    res.status(200).json({ url: session.url, orderNumber: requestId });
+    // أرجع clientSecret ورقم الطلب للواجهة
+    res.status(200).json({ clientSecret: paymentIntent.client_secret, orderNumber: requestId });
   } catch (e) {
     console.error("Stripe/Firestore error:", e);
-    res.status(500).json({ error: e.message, stack: e.stack, full: e });
+    res.status(500).json({ error: e.message, stack: e.stack });
   }
 }
