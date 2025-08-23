@@ -5,27 +5,20 @@ import { getFirestore } from 'firebase-admin/firestore';
 // تهيئة Firebase Admin مرة واحدة فقط
 let firestore;
 if (!getApps().length) {
-  // بيانات الخدمة من متغير البيئة
   const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
-  // معالجة private_key للسطر الجديد
   serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  initializeApp({
-    credential: cert(serviceAccount),
-    // يمكنك إضافة databaseURL أو storageBucket لو أردت
-  });
+  initializeApp({ credential: cert(serviceAccount) });
   firestore = getFirestore();
 } else {
   firestore = getFirestore();
 }
 
 // Stripe secret key من متغيرات البيئة
-console.log("Stripe Secret Key: ", process.env.STRIPE_SECRET_KEY);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// دالة توليد رقم طلب فريد
 function generateOrderNumber() {
-  const part1 = Math.floor(100 + Math.random() * 900); // 3 أرقام
-  const part2 = Math.floor(1000 + Math.random() * 9000); // 4 أرقام
+  const part1 = Math.floor(100 + Math.random() * 900);
+  const part2 = Math.floor(1000 + Math.random() * 9000);
   return `REQ-${part1}-${part2}`;
 }
 
@@ -49,22 +42,30 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. أنشئ رقم طلب فريد
     const requestId = generateOrderNumber();
 
-    // 2. أنشئ PaymentIntent في Stripe
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency: 'aed',
+    // Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'aed',
+          product_data: { name: serviceName },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      customer_email: userEmail,
       metadata: { requestId, customerId, serviceId: serviceId || "", serviceName },
-      receipt_email: userEmail,
-      description: `دفع خدمة ${serviceName}`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/payment-cancelled`,
     });
 
-    // 3. تجهيز بيانات الطلب مع معالجة undefined
-    const requestDoc = {
+    // سجل الطلب في فايرستور
+    await firestore.collection("requests").doc(requestId).set({
       requestId,
-      paymentIntentId: paymentIntent.id,
+      stripeSessionId: session.id,
       customerId,
       serviceId: serviceId || "",
       serviceName,
@@ -76,19 +77,9 @@ export default async function handler(req, res) {
       userEmail,
       attachments,
       providers,
-    };
-
-    Object.keys(requestDoc).forEach(key => {
-      if (requestDoc[key] === undefined) {
-        requestDoc[key] = "";
-      }
     });
 
-    // 4. حفظ الطلب في فايرستور كـ "pending"
-    await firestore.collection("requests").doc(requestId).set(requestDoc);
-
-    // 5. أرجع clientSecret ورقم الطلب للواجهة
-    res.status(200).json({ clientSecret: paymentIntent.client_secret, orderNumber: requestId });
+    res.status(200).json({ url: session.url, orderNumber: requestId });
   } catch (e) {
     console.error("Stripe/Firestore error:", e);
     res.status(500).json({ error: e.message, stack: e.stack, full: e });

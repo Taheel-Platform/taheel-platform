@@ -186,44 +186,35 @@ export default function ServicePayModal({
   }
 
   // دفع بوابة
-  async function handleGatewayRedirect() {
-    setIsPaying(true);
-    setPayMsg("");
-    setMsgSuccess(false);
-    try {
-      // ترجم اسم الخدمة للواجهة قبل الإرسال للبوابة
-      const uiServiceName =
-        lang === "ar"
-          ? serviceName
-          : await translateText({
-              text: serviceName || "",
-              target: "en",
-              source: "ar",
-              fieldKey: `service:${serviceId || serviceName}:name:en`,
-            });
+async function handleGatewayRedirect() {
+  setIsPaying(true);
+  setPayMsg("");
+  setMsgSuccess(false);
+  try {
+    const uiServiceName = lang === "ar" ? serviceName : await translateText({ /* ... */ });
 
-      const response = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: finalPrice,
-          serviceName: uiServiceName, // للعرض في البوابة
-          customerId,
-          userEmail,
-        }),
-      });
-      const result = await response.json();
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
-      }
-    } catch (e) {
-      setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
-    } finally {
-      setIsPaying(false);
+    const response = await fetch("/api/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: finalPrice,
+        serviceName: uiServiceName,
+        customerId,
+        userEmail,
+      }),
+    });
+    const result = await response.json();
+    if (result.url) {
+      window.location.href = result.url; // ← تحويل المستخدم لصفحة Stripe Checkout
+    } else {
+      setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
     }
+  } catch (e) {
+    setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
+  } finally {
+    setIsPaying(false);
   }
+}
 
   function onPayClick() {
     if (payMethod === "wallet") {
