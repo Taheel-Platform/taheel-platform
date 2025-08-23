@@ -3,11 +3,9 @@ import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import Image from "next/image";
+import { useRouter } from "next/navigation"; // إضافة
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
-
-
-
 
 // Stripe publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -19,11 +17,13 @@ const LANG = {
     cardLabel: "Card Information",
     payBtn: "Recharge",
     success: "Wallet recharge successful!",
+    thanks: "Thank you for your trust! Your wallet has been recharged.",
     error: "Payment failed.",
     amount: "Amount",
     coins: "Bonus Coins",
     total: "Total Recharge",
-    processing: "Processing..."
+    processing: "Processing...",
+    redirectMsg: "Redirecting to your account..."
   },
   ar: {
     title: "شحن المحفظة",
@@ -31,15 +31,16 @@ const LANG = {
     cardLabel: "بيانات البطاقة",
     payBtn: "شحن الآن",
     success: "تم شحن المحفظة بنجاح!",
+    thanks: "شكرًا على ثقتكم! تم شحن محفظتكم بنجاح.",
     error: "فشل الدفع.",
     amount: "المبلغ",
     coins: "كوينات مجانية",
     total: "إجمالي الشحن",
-    processing: "جارٍ الدفع..."
+    processing: "جارٍ الدفع...",
+    redirectMsg: "يتم تحويلك إلى حسابك..."
   }
 };
 
-// نموذج الدفع بالكارت
 function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -202,8 +203,10 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
 // صفحة الدفع نفسها
 export default function WalletRechargePage() {
   const [success, setSuccess] = useState(false);
+  const [showThanks, setShowThanks] = useState(false);
   const [paymentId, setPaymentId] = useState("");
   const [paymentData, setPaymentData] = useState(null);
+  const router = useRouter(); // إضافة
 
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem("walletRechargeData"));
@@ -221,8 +224,18 @@ export default function WalletRechargePage() {
 
   // بعد نجاح الدفع
   if (success) {
+    // عرض رسالة شكر وكلمة دعائية وحركة سبينر
+    useEffect(() => {
+      setShowThanks(true);
+      const timer = setTimeout(() => {
+        router.push("/dashboard/client"); // غير المسار حسب احتياجك
+      }, 3000);
+      return () => clearTimeout(timer);
+    }, []);
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white animate-fade-in">
+        <Image src="/logo-transparent-large.png" width={90} height={90} alt="Logo" className="mb-6 rounded-full shadow-lg ring-2 ring-emerald-500 bg-white" />
         <div className="text-emerald-400 text-2xl font-black mb-4">{LANG[paymentData.lang].success}</div>
         <div className="text-lg mb-3">
           {LANG[paymentData.lang].amount}: {Number(paymentData.amount).toFixed(2)} د.إ
@@ -233,7 +246,24 @@ export default function WalletRechargePage() {
         <div className="text-lg mb-3">
           رقم العملية: {paymentId}
         </div>
-        <div className="text-gray-300 mt-6">{LANG[paymentData.lang].subtitle}</div>
+        <div className="mt-8 text-xl font-bold text-emerald-300 animate-bounce">{LANG[paymentData.lang].thanks}</div>
+        <div className="flex flex-col items-center justify-center mt-6 gap-2">
+          <div className="loader" style={{
+            border: "6px solid #22304a",
+            borderTop: "6px solid #34d399",
+            borderRadius: "50%",
+            width: "45px",
+            height: "45px",
+            animation: "spin 1s linear infinite"
+          }}></div>
+          <div className="mt-2 text-gray-300">{LANG[paymentData.lang].redirectMsg}</div>
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg);}
+            100% { transform: rotate(360deg);}
+          }
+        `}</style>
       </div>
     );
   }
