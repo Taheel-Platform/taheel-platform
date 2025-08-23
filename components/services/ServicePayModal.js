@@ -241,7 +241,7 @@ localStorage.setItem("paymentData", JSON.stringify({
   orderNumber: result.orderNumber
 }));
         // تحويل المستخدم لصفحة الدفع بالكارت
-        router.push("/payment");
+        router.push("/payment/service");
       } else {
         setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
       }
