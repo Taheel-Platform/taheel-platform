@@ -49,20 +49,47 @@ export default function WalletWidget({
       ? `رصيدك في المحفظة: ${wallet} درهم\nرصيد الكوينات: ${userCoins} كوين`
       : `Your wallet balance: ${wallet} AED\nCoins: ${userCoins}`;
 
-  function handleRechargeClick(amount, coinsBonus) {
-    // مرر المعلومات اللازمة عبر localStorage أو query params
-    localStorage.setItem(
-      "walletRechargeData",
-      JSON.stringify({
-        amount,
-        coinsBonus,
-        userId,
-        userEmail,
-        lang
-      })
-    );
-    router.push("/payment/wallet-recharge");
-    setShowModal(false);
+  // الكود الجديد لإنشاء PaymentIntent وحفظ البيانات كاملة
+  async function handleRechargeClick(amount, coinsBonus) {
+    try {
+      const res = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          serviceId: "wallet-recharge",
+          serviceName: lang === "ar" ? "شحن المحفظة" : "Wallet Recharge",
+          customerId: userId,
+          userEmail,
+          coinsUsed: 0,
+          coinsGiven: coinsBonus,
+        }),
+      });
+
+      const result = await res.json();
+      if (!result.clientSecret) {
+        alert("خطأ أثناء إنشاء عملية الدفع! " + (result.error || ""));
+        return;
+      }
+
+      localStorage.setItem(
+        "walletRechargeData",
+        JSON.stringify({
+          amount,
+          coinsBonus,
+          userId,
+          userEmail,
+          lang,
+          customerId: userId,
+          clientSecret: result.clientSecret,
+          orderNumber: result.orderNumber,
+        })
+      );
+      router.push("/payment/wallet-recharge");
+      setShowModal(false);
+    } catch (error) {
+      alert("حدث خطأ غير متوقع أثناء المعالجة.");
+    }
   }
 
   return (
