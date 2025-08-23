@@ -1,419 +1,254 @@
-import { useState } from "react";
-import {
-  FaWallet, FaCreditCard, FaCoins, FaCheckCircle, FaExclamationCircle, FaTimes, FaSpinner
-} from "react-icons/fa";
+"use client";
+import { useState, useEffect } from "react";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import Image from "next/image";
 import { firestore } from "@/lib/firebase.client";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
-} from "firebase/firestore";
-import { translateText } from "@/utils/translate";
-import { useRouter } from "next/navigation";
+import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
 
-// دالة توليد رقم تتبع بالشكل المطلوب
-function generateOrderNumber() {
-  const part1 = Math.floor(100 + Math.random() * 900); // 3 أرقام
-  const part2 = Math.floor(1000 + Math.random() * 9000); // 4 أرقام
-  return `REQ-${part1}-${part2}`;
-}
+// Stripe publishable key (from env)
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-export default function ServicePayModal({
-  open,
-  onClose,
-  serviceName,
-  serviceId,
-  provider,
-  totalPrice,
-  printingFee,
-  coinsBalance,
-  cashbackCoins,
-  userWallet,
-  lang = "ar",
-  customerId,   // معرف المستند للعميل (رقم العميل: مثال "RES-200-9180" أو "COM-2025-001")
-  userId,       // الـ UID الخاص بفيريبيز (لو احتجته)
-  userEmail,
-  uploadedDocs,
-  onPaid,
-  clientType = "resident"
-}) {
-  const [useCoins, setUseCoins] = useState(false);
-  const [payMethod, setPayMethod] = useState("wallet");
-  const [isPaying, setIsPaying] = useState(false);
+const LANG = {
+  en: {
+    title: "Recharge Wallet",
+    subtitle: "Your payment is secure and encrypted.",
+    cardLabel: "Card Information",
+    payBtn: "Recharge",
+    success: "Wallet recharge successful!",
+    error: "Payment failed.",
+    amount: "Amount",
+    coins: "Bonus Coins",
+    total: "Total Recharge",
+    processing: "Processing..."
+  },
+  ar: {
+    title: "شحن المحفظة",
+    subtitle: "مدفوعاتك محمية ومشفرة بالكامل.",
+    cardLabel: "بيانات البطاقة",
+    payBtn: "شحن الآن",
+    success: "تم شحن المحفظة بنجاح!",
+    error: "فشل الدفع.",
+    amount: "المبلغ",
+    coins: "كوينات مجانية",
+    total: "إجمالي الشحن",
+    processing: "جارٍ الدفع..."
+  }
+};
+
+function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
 
-  const router = useRouter(); // للتحويل للصفحة الجديدة
+  const { amount, coinsBonus, clientSecret, customerId, userEmail } = paymentData;
+  const dir = lang === "ar" ? "rtl" : "ltr";
 
-  // حسابات الكوينات
-  const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
-  const coinDiscount = useCoins ? Math.min(coinsBalance, maxCoinDiscount) : 0;
-  const coinDiscountValue = coinDiscount / 100;
-  const finalPrice = totalPrice - coinDiscountValue;
-  const willGetCashback = !useCoins;
-
-  // دفع المحفظة (بدون أي تعديل على منطقك)
-  async function handlePayment() {
-    setIsPaying(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     setPayMsg("");
     setMsgSuccess(false);
 
-    // تحقق من القيم الممررة
-    if (!customerId || !userEmail || !serviceName) {
-      setPayMsg(lang === "ar"
-        ? "بيانات العميل أو البريد أو الخدمة ناقصة."
-        : "Customer ID, email or service name missing."
-      );
-      setIsPaying(false);
+    // Stripe Payment
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: elements.getElement(CardElement),
+      },
+    });
+
+    if (stripeError) {
+      setPayMsg(stripeError.message);
+      setLoading(false);
       return;
     }
 
-    try {
-      if (userWallet < finalPrice) {
-        setPayMsg(lang === "ar" ? "رصيد المحفظة غير كافي." : "Insufficient wallet balance.");
-        setIsPaying(false);
-        return;
-      }
+    // After success: update wallet, add coins, notification, send email
+    if (paymentIntent && paymentIntent.status === "succeeded") {
+      setMsgSuccess(true);
+      setPayMsg(LANG[lang].success);
 
+      // Update wallet & coins
       const userRef = doc(firestore, "users", customerId);
-
-      // خصم الرصيد من المحفظة
-      await updateDoc(userRef, {
-        walletBalance: userWallet - finalPrice
-      });
-
-      // خصم الكوينات إذا استخدمهم العميل للخصم
-      if (useCoins && coinDiscount > 0) {
-        await updateDoc(userRef, {
-          coins: increment(-coinDiscount)
-        });
+      const snap = await getDoc(userRef);
+      let currentWallet = 0, currentCoins = 0;
+      if (snap.exists()) {
+        const data = snap.data();
+        currentWallet = Number(data.walletBalance ?? 0);
+        currentCoins = Number(data.coins ?? 0);
       }
+      await updateDoc(userRef, { walletBalance: currentWallet + amount });
+      await updateDoc(userRef, { coins: currentCoins + coinsBonus });
 
-      // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
-      if (willGetCashback && cashbackCoins > 0) {
-        await updateDoc(userRef, {
-          coins: increment(cashbackCoins)
-        });
-      }
-
-      const orderNumber = generateOrderNumber();
-
-      // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
-      let serviceData = {};
-      try {
-        const serviceDocRef = doc(firestore, "servicesByClientType", clientType);
-        const serviceDocSnap = await getDoc(serviceDocRef);
-        if (serviceDocSnap.exists()) {
-          const allServices = serviceDocSnap.data();
-          // لو عندك serviceId استخدمه، لو مش موجود ابحث بالاسم
-          serviceData = serviceId && allServices[serviceId]
-            ? allServices[serviceId]
-            : Object.values(allServices).find(s => s.name === serviceName) || {};
-        }
-      } catch (e) {
-        console.log("خطأ في جلب بيانات الخدمة:", e);
-      }
-
-      // اسم الخدمة الأصلي بالعربي (للتخزين)
-      const originalServiceName = serviceData?.name || serviceName || "";
-
-      // اسم الخدمة للعرض والإشعار/الإيميل حسب اللغة
-      const uiServiceName =
-        lang === "ar"
-          ? originalServiceName
-          : await translateText({
-              text: originalServiceName,
-              target: "en",
-              source: "ar",
-              fieldKey: `service:${serviceId || originalServiceName}:name:en`,
-            });
-
-      // استخراج البروفايدرز كما هو من الخدمة الأصلية
-      const providers =
-        Array.isArray(serviceData?.providers)
-          ? serviceData.providers
-          : serviceData?.providers
-            ? [serviceData.providers]
-            : [];
-
-      // سجل الريكويست وفيه جميع البروفايدرز كما هو
-      await setDoc(doc(firestore, "requests", orderNumber), {
-        requestId: orderNumber,
-        customerId: customerId,
-        serviceName: originalServiceName, // ← تخزين بالعربي لضمان التوافق
-        serviceId: serviceData.serviceId || serviceId || "",
-        providers, // ← كما في الخدمة
-        paidAmount: finalPrice,
-        coinsUsed: useCoins ? coinDiscountValue : 0,
-        coinsGiven: willGetCashback ? cashbackCoins : 0,
-        createdAt: new Date().toISOString(),
-        status: "paid",
-        attachments: uploadedDocs || {}
-      });
-
-      // إشعار العميل (بلغة الواجهة)
+      // Notification to user
       await addDoc(collection(firestore, "notifications"), {
         targetId: customerId,
-        title: lang === "ar" ? "تم الدفع" : "Payment Successful",
+        title: lang === "ar" ? "تم شحن المحفظة" : "Wallet Recharged",
         body: lang === "ar"
-          ? `دفعت لخدمة ${uiServiceName} بقيمة ${finalPrice.toFixed(2)} د.إ${useCoins ? ` واستخدمت خصم الكوينات (${coinDiscountValue.toFixed(2)} د.إ)` : ""}.\nرقم التتبع: ${orderNumber}`
-          : `You paid for ${uiServiceName} (${finalPrice.toFixed(2)} AED${useCoins ? `, using coins discount (${coinDiscountValue.toFixed(2)} AED)` : ""}).\nTracking No.: ${orderNumber}`,
+          ? `تم شحن محفظتك بـ${amount} درهم، وتم إضافة ${coinsBonus} كوين!`
+          : `Wallet recharged with ${amount} AED, plus ${coinsBonus} bonus coins!`,
         timestamp: new Date().toISOString(),
         isRead: false
       });
 
-      // إرسال إيميل تأكيد (بلغة الواجهة)
-      await fetch("/api/sendOrderEmail", {
+      // Send confirmation email
+      await fetch("/api/sendWalletEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: userEmail,
-          orderNumber,
-          serviceName: uiServiceName,
-          price: finalPrice.toFixed(2)
+          amount,
+          coinsBonus,
+          walletTotal: currentWallet + amount,
+          coinsTotal: currentCoins + coinsBonus,
+          lang
         }),
       });
 
-      setMsgSuccess(true);
-      setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-      if (typeof onPaid === "function") {
-        onPaid();
-      }
-      setTimeout(() => onClose(), 1200);
-
-    } catch (e) {
-      console.log("Payment error:", e);
-      setPayMsg(lang === "ar" ? "حدث خطأ أثناء الدفع." : "Payment error.");
-    } finally {
-      setIsPaying(false);
+      setTimeout(() => {
+        onSuccess(paymentIntent.id);
+      }, 1200);
+    } else {
+      setPayMsg(LANG[lang].error);
     }
-  }
-
-  // دفع بوابة Stripe Elements (نفس حسابات المحفظة)
-  async function handleGatewayPayWithElements() {
-    setIsPaying(true);
-    setPayMsg("");
-    setMsgSuccess(false);
-
-    try {
-      // اسم الخدمة حسب اللغة
-      const uiServiceName =
-        lang === "ar"
-          ? serviceName
-          : await translateText({
-              text: serviceName || "",
-              target: "en",
-              source: "ar",
-              fieldKey: `service:${serviceId || serviceName}:name:en`,
-            });
-
-      // اطلب clientSecret ورقم الطلب من API
-      const response = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: finalPrice, // نفس الحساب النهائي
-          serviceName: uiServiceName,
-          customerId,
-          userEmail,
-          printingFee,
-          vat: 0 // لو عندك قيمة ضريبة أضفها هنا أو مررها
-        }),
-      });
-
-      const result = await response.json();
-      if (result.clientSecret) {
-        // حفظ بيانات الدفع في localStorage بنفس الحسابات
-        localStorage.setItem("paymentData", JSON.stringify({
-          clientSecret: result.clientSecret,
-          service: {
-            name: uiServiceName,
-            id: serviceId,
-            printingFee,
-            vat: 0, // أضف الضريبة لو عندك
-            userEmail
-          },
-          price: finalPrice,
-          customerId,
-          lang,
-          orderNumber: result.orderNumber
-        }));
-        // تحويل المستخدم لصفحة الدفع بالكارت
-        router.push("/payment");
-      } else {
-        setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
-      }
-    } catch (e) {
-      setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
-    } finally {
-      setIsPaying(false);
-    }
-  }
-
-  function onPayClick() {
-    if (payMethod === "wallet") {
-      handlePayment();
-    } else if (payMethod === "gateway") {
-      handleGatewayPayWithElements();
-    }
-  }
-
-  if (!open) return null;
-  const payBtnCursor = isPaying ? "wait" : "pointer";
+    setLoading(false);
+  };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-[100] flex justify-center items-center bg-gradient-to-br from-black/60 via-emerald-900/60 to-black/60 backdrop-blur-[2px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div
-          className="bg-gradient-to-br from-white via-emerald-50 to-emerald-100 rounded-3xl shadow-2xl border border-emerald-200 px-6 pt-7 pb-4 max-w-sm w-full relative flex flex-col items-center"
-          initial={{ scale: 0.97, opacity: 0, y: 30 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.97, opacity: 0, y: 30 }}
-          transition={{ duration: 0.32, ease: "easeOut" }}
-        >
-          <img
-            src="/logo3.png"
-            alt="Logo"
-            className="mb-2 w-14 h-14 object-contain rounded-full shadow border border-emerald-100"
-            draggable={false}
-            loading="eager"
+    <form
+      dir={dir}
+      lang={lang}
+      onSubmit={handleSubmit}
+      className="max-w-md mx-auto bg-white rounded-3xl shadow-2xl border border-emerald-200 p-7 flex flex-col items-center"
+      style={{
+        background: "linear-gradient(180deg,#0b131e 0%,#22304a 30%,#122024 60%,#1d4d40 100%)"
+      }}
+    >
+      <Image src="/logo-transparent-large.png" width={70} height={70} alt="Logo" className="mx-auto mb-2 rounded-full bg-white shadow-lg ring-2 ring-emerald-500" />
+      <div className="text-emerald-300 font-black text-xl mb-1 text-center">{LANG[lang].title}</div>
+      <div className="text-gray-200 text-sm mb-4 text-center">{LANG[lang].subtitle}</div>
+      <div className="bg-[#22304a]/70 rounded-xl p-4 mb-3 w-full text-center shadow">
+        <table className="w-full text-sm text-right mb-2 border-separate border-spacing-y-1">
+          <tbody>
+            <tr>
+              <td className="text-gray-300">{LANG[lang].amount}:</td>
+              <td className="text-emerald-200 font-bold">{Number(amount).toFixed(2)} د.إ</td>
+            </tr>
+            <tr>
+              <td className="text-gray-300">{LANG[lang].coins}:</td>
+              <td className="text-yellow-400 font-bold">{Number(coinsBonus)} كوين</td>
+            </tr>
+            <tr>
+              <td className="font-bold text-emerald-400">{LANG[lang].total}:</td>
+              <td className="font-bold text-emerald-300">{Number(amount).toFixed(2)} د.إ</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="w-full mb-3">
+        <label className="text-emerald-200 font-bold text-sm mb-1 block">{LANG[lang].cardLabel}</label>
+        <div className="bg-white rounded-lg shadow p-2 border border-emerald-200">
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: "18px",
+                  color: "#22304a",
+                  fontFamily: "inherit",
+                  direction: dir,
+                  letterSpacing: "0.8px",
+                  "::placeholder": {
+                    color: "#94a3b8",
+                  },
+                },
+                invalid: {
+                  color: "#dc2626",
+                  iconColor: "#dc2626"
+                }
+              }
+            }}
           />
-          <button
-            className="absolute top-3 right-4 bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xl shadow hover:bg-emerald-700 transition cursor-pointer"
-            onClick={onClose}
-            aria-label={lang === "ar" ? "إغلاق" : "Close"}
-            style={{ cursor: "pointer" }}
-          >
-            <FaTimes />
-          </button>
-          <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
-          <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
-          <table className="w-full text-xs text-gray-700 font-bold mb-2">
-            <tbody>
-              <tr>
-                <td>{lang === "ar" ? "إجمالي السعر" : "Total"}</td>
-                <td className="text-right">{totalPrice?.toFixed(2)} د.إ</td>
-              </tr>
-              <tr>
-                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing"}</td>
-                <td className="text-right">{printingFee} د.إ</td>
-              </tr>
-              <tr>
-                <td className="flex items-center gap-1">
-                  <FaCoins className="text-yellow-500 mr-1" size={10} />
-                  {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
-                </td>
-                <td className="text-right text-yellow-700">
-                  {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
-                <td className="font-extrabold text-emerald-800 text-right">{finalPrice.toFixed(2)} د.إ</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="w-full flex flex-row items-center justify-between mb-1">
-            <label className="flex items-center gap-1 font-bold text-xs text-emerald-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useCoins}
-                onChange={e => setUseCoins(e.target.checked)}
-                disabled={coinsBalance < 1}
-                className="accent-yellow-500 scale-90"
-                style={{ marginTop: 0 }}
-              />
-              <FaCoins className="text-yellow-500" size={12} />
-              {lang === "ar" ? "استخدم الكوينات (خصم حتى 10%)" : "Use coins (up to 10%)"}
-            </label>
-            <span className="font-black text-yellow-700 text-xs">
-              {lang === "ar" ? "رصيدك:" : "Your coins:"} {coinsBalance}
-            </span>
-          </div>
-          <div className="w-full flex flex-row items-center justify-between mb-1">
-            <label className={`flex items-center gap-1 font-bold text-emerald-800 text-xs cursor-pointer ${userWallet < finalPrice ? "opacity-60" : ""}`}>
-              <input
-                type="radio"
-                checked={payMethod === "wallet"}
-                onChange={() => setPayMethod("wallet")}
-                disabled={userWallet < finalPrice}
-                className="accent-emerald-600 scale-90"
-                style={{ marginTop: 0 }}
-              />
-              <FaWallet className="text-emerald-600" size={12} />
-              {lang === "ar" ? "المحفظة" : "Wallet"}
-              <span className="text-gray-600 font-bold ml-2">{userWallet} د.إ</span>
-            </label>
-            <label className="flex items-center gap-1 font-bold text-emerald-800 text-xs cursor-pointer">
-              <input
-                type="radio"
-                checked={payMethod === "gateway"}
-                onChange={() => setPayMethod("gateway")}
-                className="accent-emerald-600 scale-90"
-                style={{ marginTop: 0 }}
-              />
-              <FaCreditCard className="text-emerald-600" size={12} />
-              {lang === "ar" ? "بوابة الدفع" : "Gateway"}
-            </label>
-          </div>
-          <div className="w-full mb-1 text-center">
-            {willGetCashback ? (
-              <div className="flex flex-row items-center justify-center gap-1 text-yellow-700 font-bold text-xs">
-                <FaCoins className="text-yellow-500" size={12} />
-                {lang === "ar"
-                  ? `ستحصل على ${cashbackCoins} كوين مكافأة`
-                  : `You'll get ${cashbackCoins} coins cashback`}
-              </div>
-            ) : (
-              <div className="text-gray-500 text-xs font-bold">
-                {lang === "ar"
-                  ? "لا مكافأة عند استخدام الكوينات"
-                  : "No cashback if you use coins"}
-              </div>
-            )}
-          </div>
-          <button
-            onClick={onPayClick}
-            disabled={isPaying}
-            className={`w-full py-2 rounded-full font-black text-base shadow-lg transition
-              bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 text-white
-              hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-              hover:scale-105 duration-150
-              focus:outline-none focus:ring-2 focus:ring-emerald-400
-              ${isPaying ? "opacity-40" : ""}
-            `}
-            style={{ cursor: payBtnCursor }}
-          >
-            {isPaying ? (
-              <span className="flex items-center justify-center gap-2 text-xs">
-                <FaSpinner className="animate-spin" />
-                {lang === "ar" ? "جاري الدفع..." : "Processing..."}
-              </span>
-            ) : (
-              <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
-            )}
-          </button>
-          {payMsg && (
-            <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
-              {msgSuccess ? <FaCheckCircle className="text-emerald-500" size={16} /> : <FaExclamationCircle className="text-red-400" size={14} />}
-              <span>{payMsg}</span>
-            </div>
-          )}
-          <div className="w-full text-center mt-5 mb-1 flex flex-col items-center gap-1">
-            <div className="text-xs text-emerald-700 font-semibold flex items-center justify-center">
-              <FaCheckCircle className="inline mr-2 text-emerald-500" />
-              {lang === "ar"
-                ? "جميع بياناتك مشفرة وآمنة ويتم حفظها بسرية تامة."
-                : "All your data is encrypted and securely stored."}
-            </div>
-          </div>
-          <div className="absolute -bottom-6 right-0 left-0 w-full h-7 bg-gradient-to-t from-emerald-200/70 via-white/20 to-transparent blur-2xl opacity-80 pointer-events-none"></div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+        </div>
+      </div>
+      <button
+        type="submit"
+        disabled={!stripe || loading}
+        className={`w-full py-3 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-700 text-white font-black text-lg mt-3 shadow-lg transition hover:scale-105 hover:brightness-110 ${loading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        {loading ? LANG[lang].processing : `${LANG[lang].payBtn} (${Number(amount).toFixed(2)} د.إ)`}
+      </button>
+      {payMsg && (
+        <div className={`mt-3 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-400" : "text-red-600"}`}>
+          {msgSuccess ? <span>✅</span> : <span>⚠️</span>}
+          <span>{payMsg}</span>
+        </div>
+      )}
+      <div className="w-full text-center mt-6 text-xs text-gray-400 font-semibold flex items-center justify-center gap-2">
+        <span>🔒</span>
+        {lang === "ar"
+          ? "جميع بيانات الدفع مشفرة ومحمية عبر Stripe"
+          : "All payment data is encrypted and protected via Stripe"}
+      </div>
+    </form>
+  );
+}
+
+export default function WalletRechargePage() {
+  const [success, setSuccess] = useState(false);
+  const [paymentId, setPaymentId] = useState("");
+  const [paymentData, setPaymentData] = useState(null);
+
+  useEffect(() => {
+    const data = JSON.parse(localStorage.getItem("walletRechargeData"));
+    setPaymentData(data);
+  }, []);
+
+  // تأكد من وجود clientSecret (بعد إنشاء intent من السيرفر)
+  if (!paymentData || !paymentData.clientSecret) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
+        <div className="text-xl font-bold">لم يتم العثور على بيانات الشحن. يرجى العودة للمحفظة أو إعادة المحاولة.</div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
+        <div className="text-emerald-400 text-2xl font-black mb-4">{LANG[paymentData.lang].success}</div>
+        <div className="text-lg mb-3">
+          {LANG[paymentData.lang].amount}: {Number(paymentData.amount).toFixed(2)} د.إ
+        </div>
+        <div className="text-lg mb-3">
+          {LANG[paymentData.lang].coins}: {Number(paymentData.coinsBonus)} كوين
+        </div>
+        <div className="text-lg mb-3">
+          رقم العملية: {paymentId}
+        </div>
+        <div className="text-gray-300 mt-6">{LANG[paymentData.lang].subtitle}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      dir={paymentData.lang === "ar" ? "rtl" : "ltr"}
+      lang={paymentData.lang}
+      className="min-h-screen flex flex-col items-center justify-center font-sans"
+      style={{ background: "linear-gradient(180deg, #0b131e 0%, #22304a 30%, #122024 60%, #1d4d40 100%)" }}
+    >
+      <Elements stripe={stripePromise} options={{ clientSecret: paymentData.clientSecret }}>
+        <WalletCardForm
+          paymentData={paymentData}
+          lang={paymentData.lang}
+          onSuccess={(id) => {
+            setSuccess(true);
+            setPaymentId(id);
+          }}
+        />
+      </Elements>
+    </div>
   );
 }

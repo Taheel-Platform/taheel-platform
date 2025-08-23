@@ -72,20 +72,22 @@ async function handleRechargeClick(amount, coinsBonus) {
       return;
     }
 
-    localStorage.setItem(
-      "walletRechargeData",
-      JSON.stringify({
-        amount,
-        coinsBonus,
-        userId,
-        userEmail,
-        lang,
-        customerId: userId,
-        clientSecret: result.clientSecret,
-      })
-    );
-    router.push("/payment/wallet-recharge");
-    setShowModal(false);
+// بعد نجاح إنشاء PaymentIntent
+localStorage.setItem(
+  "walletRechargeData",
+  JSON.stringify({
+    amount,
+    coinsBonus,
+    userId,
+    userEmail,
+    lang,
+    customerId: userId,
+    clientSecret: result.clientSecret,
+    // لا حاجة لأي Order Number
+  })
+);
+router.push("/payment/wallet-recharge");
+setShowModal(false);
   } catch (error) {
     alert("حدث خطأ غير متوقع أثناء المعالجة.");
   }
