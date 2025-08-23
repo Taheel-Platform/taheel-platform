@@ -8,7 +8,7 @@ import {
   doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
 import { translateText } from "@/utils/translate"; // ← إضافة الترجمة
-import { useRouter } from "next/router";
+
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -42,7 +42,7 @@ export default function ServicePayModal({
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
   const router = useRouter();
-  
+
   // حسابات الكوينات
   const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
   const coinDiscount = useCoins ? Math.min(coinsBalance, maxCoinDiscount) : 0;
