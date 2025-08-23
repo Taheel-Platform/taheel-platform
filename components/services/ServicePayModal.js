@@ -8,6 +8,7 @@ import {
   doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
 import { translateText } from "@/utils/translate"; // ← إضافة الترجمة
+import { useRouter } from "next/router";
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -186,6 +187,8 @@ export default function ServicePayModal({
   }
 
   // دفع بوابة
+const router = useRouter();
+
 async function handleGatewayPayWithElements() {
   setIsPaying(true);
   setPayMsg("");
@@ -208,14 +211,23 @@ async function handleGatewayPayWithElements() {
 
     const result = await response.json();
     if (result.clientSecret) {
-      // هنا تفتح صفحة/مودال فيها Stripe Elements وتنفذ الدفع
-      // مثال: فتح مودال/صفحة جديدة فيها CardPaymentPage وتمرر لها clientSecret
-      // أو: حفظ clientSecret في state وتعرض Stripe Elements في نفس المودال
+      // حفظ كل بيانات الدفع في localStorage أو context
+      localStorage.setItem("paymentData", JSON.stringify({
+        clientSecret: result.clientSecret,
+        service: {
+          name: uiServiceName,
+          id: serviceId,
+          printingFee,
+          vat: 0, // إذا عندك قيمة ضريبة أضفها
+          userEmail
+        },
+        price: finalPrice,
+        customerId,
+        lang
+      }));
 
-      // مثال تخزين clientSecret في state:
-      setStripeClientSecret(result.clientSecret);
-      // ثم عرض Stripe Elements داخل المودال باستخدام CardElement أو PaymentElement
-      // وعند النجاح تعرض رسالة النجاح أو تغلق المودال
+      // تحويل المستخدم لصفحة الدفع
+      router.push("/payment"); // أو أي مسار صفحتك
     } else {
       setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
     }
@@ -223,14 +235,6 @@ async function handleGatewayPayWithElements() {
     setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
   } finally {
     setIsPaying(false);
-  }
-}
-
-function onPayClick() {
-  if (payMethod === "wallet") {
-    handlePayment();
-  } else if (payMethod === "gateway") {
-    handleGatewayPayWithElements();  // ← استدعاء الدالة الصحيحة
   }
 }
 
