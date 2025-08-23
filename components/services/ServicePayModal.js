@@ -292,31 +292,39 @@ export default function ServicePayModal({
           </button>
           <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
           <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
-          <table className="w-full text-xs text-gray-700 font-bold mb-2">
-            <tbody>
-              <tr>
-                <td>{lang === "ar" ? "إجمالي السعر" : "Total"}</td>
-                <td className="text-right">{totalPrice?.toFixed(2)} د.إ</td>
-              </tr>
-              <tr>
-                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing"}</td>
-                <td className="text-right">{printingFee} د.إ</td>
-              </tr>
-              <tr>
-                <td className="flex items-center gap-1">
-                  <FaCoins className="text-yellow-500 mr-1" size={10} />
-                  {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
-                </td>
-                <td className="text-right text-yellow-700">
-                  {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
-                </td>
-              </tr>
-              <tr>
-                <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
-                <td className="font-extrabold text-emerald-800 text-right">{finalPrice.toFixed(2)} د.إ</td>
-              </tr>
-            </tbody>
-          </table>
+<table className="w-full text-xs text-gray-700 font-bold mb-2 border-separate border-spacing-y-1">
+  <tbody>
+    <tr>
+      <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+      <td className="text-right">{(totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))).toFixed(2)} د.إ</td>
+    </tr>
+    <tr>
+      <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
+      <td className="text-right">{printingFee.toFixed(2)} د.إ</td>
+    </tr>
+    <tr>
+      <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5%"}</td>
+      <td className="text-right">{(typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)).toFixed(2)} د.إ</td>
+    </tr>
+    <tr>
+      <td className="flex items-center gap-1">
+        <FaCoins className="text-yellow-500 mr-1" size={10} />
+        {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
+      </td>
+      <td className="text-right text-yellow-700">
+        {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
+      </td>
+    </tr>
+    <tr>
+      <td>{lang === "ar" ? "الإجمالي قبل الخصم" : "Total Before Discount"}</td>
+      <td className="text-right">{totalPrice.toFixed(2)} د.إ</td>
+    </tr>
+    <tr>
+      <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
+      <td className="font-extrabold text-emerald-800 text-right">{finalPrice.toFixed(2)} د.إ</td>
+    </tr>
+  </tbody>
+</table>
           <div className="w-full flex flex-row items-center justify-between mb-1">
             <label className="flex items-center gap-1 font-bold text-xs text-emerald-700 cursor-pointer">
               <input
