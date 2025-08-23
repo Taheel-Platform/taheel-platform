@@ -695,7 +695,7 @@ function ClientProfilePageInner({ userId }) {
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full shadow transition cursor-pointer"
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-700 text-white text-xs sm:text-sm font-ounded-full shadow transition cursor-pointer"
               title={lang === "ar" ? "تسجيل الخروج" : "Logout"}
             >
               <FaSignOutAlt /> {lang === "ar" ? "تسجيل الخروج" : "Logout"}
