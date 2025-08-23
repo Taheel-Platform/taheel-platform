@@ -47,17 +47,17 @@ export default async function handler(req, res) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'aed',
-      metadata: { requestId, customerId, serviceId, serviceName },
+      metadata: { requestId, customerId, serviceId: serviceId || "", serviceName },
       receipt_email: userEmail,
       description: `دفع خدمة ${serviceName}`,
     });
 
-    // 3. حفظ الطلب في فايرستور كـ "pending"
-    await firestore.collection("requests").doc(requestId).set({
+    // 3. تجهيز بيانات الطلب مع معالجة undefined
+    const requestDoc = {
       requestId,
       paymentIntentId: paymentIntent.id,
       customerId,
-      serviceId,
+      serviceId: serviceId || "", // لو undefined يتحول لنص فارغ
       serviceName,
       paidAmount: amount,
       coinsUsed,
@@ -67,12 +67,22 @@ export default async function handler(req, res) {
       userEmail,
       attachments,
       providers,
+    };
+
+    // يمكنك حذف أي مفتاح قيمته undefined لو فيه متغيرات أخرى
+    Object.keys(requestDoc).forEach(key => {
+      if (requestDoc[key] === undefined) {
+        requestDoc[key] = "";
+      }
     });
 
-    // 4. أرجع clientSecret ورقم الطلب للواجهة
+    // 4. حفظ الطلب في فايرستور كـ "pending"
+    await firestore.collection("requests").doc(requestId).set(requestDoc);
+
+    // 5. أرجع clientSecret ورقم الطلب للواجهة
     res.status(200).json({ clientSecret: paymentIntent.client_secret, orderNumber: requestId });
   } catch (e) {
     console.error("Stripe error:", e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message, stack: e.stack });
   }
 }
