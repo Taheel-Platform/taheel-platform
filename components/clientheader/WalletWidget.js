@@ -61,7 +61,7 @@ export default function WalletWidget({
         lang
       })
     );
-    router.push("/wallet-recharge");
+    router.push("/payment/wallet-recharge");
     setShowModal(false);
   }
 
