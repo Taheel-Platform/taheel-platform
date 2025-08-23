@@ -19,6 +19,8 @@ const LANG = {
     amount: "Amount",
     vat: "VAT",
     print: "Printing Fee",
+    coinDiscount: "Coins Discount",
+    totalBeforeDiscount: "Total Before Discount",
     total: "Total",
     back: "Back to Home",
     processing: "Processing..."
@@ -34,6 +36,8 @@ const LANG = {
     amount: "المبلغ",
     vat: "ضريبة القيمة المضافة",
     print: "رسوم الطباعة",
+    coinDiscount: "خصم الكوينات",
+    totalBeforeDiscount: "الإجمالي قبل الخصم",
     total: "الإجمالي",
     back: "العودة للرئيسية",
     processing: "جارٍ الدفع..."
@@ -47,11 +51,8 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
 
-  // كل البيانات قادمة من المودال (الحسابات هناك)
-  const { service, price, customerId, orderNumber, clientSecret } = paymentData;
-  const printingFee = service?.printingFee || 0;
-  const vat = service?.vat || 0;
-  const total = price + printingFee + vat;
+  // البيانات المرسلة من المودال
+  const { service, totalPrice, finalPrice, orderNumber, clientSecret } = paymentData;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const handleSubmit = async (e) => {
@@ -85,9 +86,11 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
           to: service.userEmail,
           orderNumber,
           serviceName: service.name,
-          price,
-          printingFee,
-          vat,
+          price: service.price,
+          printingFee: service.printingFee,
+          vat: service.vat,
+          coinDiscount: service.coinDiscount,
+          finalPrice,
           paymentId: paymentIntent.id,
           paymentMethod: "gateway",
           lang
@@ -125,23 +128,35 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
             </tr>
             <tr>
               <td className="text-gray-300">{LANG[lang].amount}:</td>
-              <td>{price.toFixed(2)} د.إ</td>
+              <td>{Number(service.price).toFixed(2)} د.إ</td>
             </tr>
-            {printingFee > 0 && (
+            {service.printingFee > 0 && (
               <tr>
                 <td className="text-gray-300">{LANG[lang].print}:</td>
-                <td>{printingFee.toFixed(2)} د.إ</td>
+                <td>{Number(service.printingFee).toFixed(2)} د.إ</td>
               </tr>
             )}
-            {vat > 0 && (
+            {service.vat > 0 && (
               <tr>
                 <td className="text-gray-300">{LANG[lang].vat}:</td>
-                <td>{vat.toFixed(2)} د.إ</td>
+                <td>{Number(service.vat).toFixed(2)} د.إ</td>
               </tr>
             )}
             <tr>
+              <td className="text-gray-300">{LANG[lang].coinDiscount}:</td>
+              <td>
+                {service.coinDiscount && Number(service.coinDiscount) > 0
+                  ? `-${Number(service.coinDiscount).toFixed(2)} د.إ`
+                  : "0 د.إ"}
+              </td>
+            </tr>
+            <tr>
+              <td className="text-gray-300">{LANG[lang].totalBeforeDiscount}:</td>
+              <td>{Number(totalPrice).toFixed(2)} د.إ</td>
+            </tr>
+            <tr>
               <td className="font-bold text-emerald-400">{LANG[lang].total}:</td>
-              <td className="font-bold text-emerald-300">{total.toFixed(2)} د.إ</td>
+              <td className="font-bold text-emerald-300">{Number(finalPrice).toFixed(2)} د.إ</td>
             </tr>
           </tbody>
         </table>
@@ -176,7 +191,7 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
         disabled={!stripe || loading}
         className={`w-full py-3 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-700 text-white font-black text-lg mt-3 shadow-lg transition hover:scale-105 hover:brightness-110 ${loading ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
       >
-        {loading ? LANG[lang].processing : `${LANG[lang].payBtn} (${total.toFixed(2)} د.إ)`}
+        {loading ? LANG[lang].processing : `${LANG[lang].payBtn} (${Number(finalPrice).toFixed(2)} د.إ)`}
       </button>
       {payMsg && (
         <div className={`mt-3 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-400" : "text-red-600"}`}>
@@ -201,7 +216,6 @@ export default function CardPaymentPage() {
   const [paymentData, setPaymentData] = useState(null);
 
   useEffect(() => {
-    // اقرأ بيانات الدفع من localStorage
     const data = JSON.parse(localStorage.getItem("paymentData"));
     setPaymentData(data);
   }, []);
@@ -218,7 +232,7 @@ export default function CardPaymentPage() {
     return (
       <PaymentSuccessPage
         paymentId={paymentId}
-        amount={paymentData.price + (paymentData.service?.printingFee || 0) + (paymentData.service?.vat || 0)}
+        amount={paymentData.finalPrice}
         serviceName={paymentData.service?.name}
         orderNumber={orderNumber}
         printingFee={paymentData.service?.printingFee || 0}

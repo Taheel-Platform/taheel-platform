@@ -223,20 +223,23 @@ export default function ServicePayModal({
       const result = await response.json();
       if (result.clientSecret) {
         // حفظ بيانات الدفع في localStorage بنفس الحسابات
-        localStorage.setItem("paymentData", JSON.stringify({
-          clientSecret: result.clientSecret,
-          service: {
-            name: uiServiceName,
-            id: serviceId,
-            printingFee,
-            vat: 0, // أضف الضريبة لو عندك
-            userEmail
-          },
-          price: finalPrice,
-          customerId,
-          lang,
-          orderNumber: result.orderNumber
-        }));
+localStorage.setItem("paymentData", JSON.stringify({
+  clientSecret: result.clientSecret,
+  service: {
+    name: uiServiceName,
+    id: serviceId,
+    price: (totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))),
+    printingFee,
+    vat: (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)),
+    coinDiscount: useCoins ? coinDiscountValue : 0,
+    userEmail
+  },
+  totalPrice, // الإجمالي قبل الخصم
+  finalPrice, // السعر النهائي بعد الخصم
+  customerId,
+  lang,
+  orderNumber: result.orderNumber
+}));
         // تحويل المستخدم لصفحة الدفع بالكارت
         router.push("/payment");
       } else {
