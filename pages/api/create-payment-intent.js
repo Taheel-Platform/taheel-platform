@@ -1,13 +1,22 @@
 import Stripe from 'stripe';
-import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Firebase Admin (تهيئة مرة واحدة عند أول تشغيل)
-if (!global._firestore) {
-  initializeApp({ credential: applicationDefault() });
-  global._firestore = getFirestore();
+// تهيئة Firebase Admin مرة واحدة فقط
+let firestore;
+if (!getApps().length) {
+  // بيانات الخدمة من متغير البيئة
+  const serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+  // معالجة private_key للسطر الجديد
+  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  initializeApp({
+    credential: cert(serviceAccount),
+    // يمكنك إضافة databaseURL أو storageBucket لو أردت
+  });
+  firestore = getFirestore();
+} else {
+  firestore = getFirestore();
 }
-const firestore = global._firestore;
 
 // Stripe secret key من متغيرات البيئة
 console.log("Stripe Secret Key: ", process.env.STRIPE_SECRET_KEY);
@@ -57,7 +66,7 @@ export default async function handler(req, res) {
       requestId,
       paymentIntentId: paymentIntent.id,
       customerId,
-      serviceId: serviceId || "", // لو undefined يتحول لنص فارغ
+      serviceId: serviceId || "",
       serviceName,
       paidAmount: amount,
       coinsUsed,
@@ -69,7 +78,6 @@ export default async function handler(req, res) {
       providers,
     };
 
-    // يمكنك حذف أي مفتاح قيمته undefined لو فيه متغيرات أخرى
     Object.keys(requestDoc).forEach(key => {
       if (requestDoc[key] === undefined) {
         requestDoc[key] = "";
@@ -82,7 +90,7 @@ export default async function handler(req, res) {
     // 5. أرجع clientSecret ورقم الطلب للواجهة
     res.status(200).json({ clientSecret: paymentIntent.client_secret, orderNumber: requestId });
   } catch (e) {
-    console.error("Stripe error:", e);
-    res.status(500).json({ error: e.message, stack: e.stack });
+    console.error("Stripe/Firestore error:", e);
+    res.status(500).json({ error: e.message, stack: e.stack, full: e });
   }
 }
