@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { FaWallet } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { firestore } from "@/lib/firebase.client";
-import { doc, updateDoc, getDoc, onSnapshot, collection, addDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 
-// خيارات الشحن والكوينات المجانية
 const rechargeOptions = [
   { amount: 100, coins: 50, color: "from-emerald-200 to-emerald-50" },
   { amount: 500, coins: 250, color: "from-emerald-300 to-yellow-50" },
@@ -20,15 +20,14 @@ export default function WalletWidget({
   lang = "ar",
   onBalanceChange,
   onCoinsChange,
-  onPayGateway, // دالة تفتح بوابة الدفع وتستقبل (amount, coinsBonus)
+  customerId,
 }) {
   const [showModal, setShowModal] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
-  const [msg, setMsg] = useState("");
   const [wallet, setWallet] = useState(balance);
   const [userCoins, setUserCoins] = useState(coins);
 
-  // تحديث الرصيد والكوينات لحظياً من فايرستور
+  const router = useRouter();
+
   useEffect(() => {
     if (!userId) return;
     const userRef = doc(firestore, "users", userId);
@@ -44,69 +43,30 @@ export default function WalletWidget({
     return () => unsubscribe();
   }, [userId, onBalanceChange, onCoinsChange]);
 
-  // استدعِها بعد نجاح الدفع فقط
-  async function handleRecharge(amount, coinsBonus) {
-    if (!userId) {
-      setMsg(lang === "ar" ? "برجاء تسجيل الدخول" : "Please log in");
-      return;
-    }
-    setIsPaying(true);
-    setMsg("");
-    try {
-      const userRef = doc(firestore, "users", userId);
-
-      const snap = await getDoc(userRef);
-      let currentWallet = wallet, currentCoins = userCoins;
-      if (snap.exists()) {
-        const data = snap.data();
-        currentWallet = Number(data.walletBalance ?? 0);
-        currentCoins = Number(data.coins ?? 0);
-      }
-
-      await updateDoc(userRef, { walletBalance: currentWallet + amount });
-      await updateDoc(userRef, { coins: currentCoins + coinsBonus });
-
-      // إشعار بعد نجاح الشحن
-      await addDoc(collection(firestore, "notifications"), {
-        targetId: userId,
-        title: lang === "ar" ? "تم شحن المحفظة" : "Wallet Recharged",
-        body: lang === "ar"
-          ? `تم شحن محفظتك بـ${amount} درهم، وتم إضافة ${coinsBonus} كوين مكافأة!`
-          : `Your wallet was recharged with ${amount} AED and you received ${coinsBonus} bonus coins!`,
-        timestamp: new Date().toISOString(),
-        isRead: false
-      });
-
-      setMsg(
-        <span className="text-green-700 font-bold">
-          {lang === "ar"
-            ? `تم شحن المحفظة بـ${amount} درهم + ${coinsBonus} كوين مجانًا!`
-            : `Wallet recharged with ${amount} AED + ${coinsBonus} coins!`}
-        </span>
-      );
-      setIsPaying(false);
-      setTimeout(() => {
-        setShowModal(false);
-        setMsg("");
-      }, 1800);
-    } catch (err) {
-      setMsg(
-        <span className="text-red-600 font-bold">
-          {lang === "ar" ? "حدث خطأ أثناء الشحن" : "Recharge error"}
-        </span>
-      );
-      setIsPaying(false);
-    }
-  }
-
   const valueText =
     lang === "ar"
       ? `رصيدك في المحفظة: ${wallet} درهم\nرصيد الكوينات: ${userCoins} كوين`
       : `Your wallet balance: ${wallet} AED\nCoins: ${userCoins}`;
 
+  function handleRechargeClick(amount, coinsBonus) {
+    // مرر المعلومات اللازمة عبر localStorage أو query params
+    localStorage.setItem(
+      "walletRechargeData",
+      JSON.stringify({
+        amount,
+        coinsBonus,
+        userId,
+        userEmail,
+        lang
+      })
+    );
+    router.push("/wallet-recharge");
+    setShowModal(false);
+  }
+
   return (
     <>
-      {/* زر المحفظة بشكل موحد مع الكوينات */}
+      {/* زر المحفظة */}
       <motion.button
         type="button"
         className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
@@ -136,7 +96,7 @@ export default function WalletWidget({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             tabIndex={-1}
-            onClick={() => !isPaying && setShowModal(false)}
+            onClick={() => setShowModal(false)}
             style={{ backdropFilter: "blur(3px)" }}
           >
             <motion.div
@@ -157,15 +117,9 @@ export default function WalletWidget({
                 onClick={() => setShowModal(false)}
                 className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2 z-20 cursor-pointer"
                 title={lang === "ar" ? "إغلاق" : "Close"}
-                disabled={isPaying}
               >×</button>
-
-              {/* الرصيد */}
               <motion.div
                 className="flex flex-col items-center gap-1 cursor-pointer select-none"
-                onClick={() => {
-                  if (onPayGateway) onPayGateway();
-                }}
                 whileTap={{ scale: 0.97 }}
                 title={lang === "ar" ? "اضغط لإعادة الشحن ببوابة الدفع" : "Click to recharge with payment gateway"}
               >
@@ -191,23 +145,13 @@ export default function WalletWidget({
                 {rechargeOptions.map(opt => (
                   <motion.button
                     key={opt.amount}
-                    disabled={isPaying}
-                    onClick={() => {
-                      if (typeof onPayGateway === "function") {
-                        onPayGateway(opt.amount, opt.coins, async (success) => {
-                          if (success) {
-                            await handleRecharge(opt.amount, opt.coins);
-                          }
-                        });
-                      }
-                    }}
+                    onClick={() => handleRechargeClick(opt.amount, opt.coins)}
                     className={`
                       flex justify-between items-center px-4 py-2 rounded-xl font-bold text-[15px] border
                       bg-gradient-to-r ${opt.color}
                       border-emerald-100 shadow
                       hover:scale-[1.03] active:scale-95 transition
                       cursor-pointer
-                      ${isPaying ? "opacity-40 pointer-events-none" : ""}
                     `}
                     style={{ direction: "rtl", boxShadow: "0 4px 14px #05966910" }}
                     whileHover={{ scale: 1.04 }}
@@ -231,7 +175,6 @@ export default function WalletWidget({
                   ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد\nواستلام كوينات مجانية حسب قيمة الشحن"
                   : "You can recharge your wallet or pay directly from the balance\nand get free coins with each recharge."}
               </div>
-              <div className="text-center min-h-[24px]">{msg}</div>
             </motion.div>
           </motion.div>
         )}
