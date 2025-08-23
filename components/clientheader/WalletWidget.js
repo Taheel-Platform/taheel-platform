@@ -21,6 +21,7 @@ export default function WalletWidget({
   onBalanceChange,
   onCoinsChange,
   customerId,
+  userEmail,
 }) {
   const [showModal, setShowModal] = useState(false);
   const [wallet, setWallet] = useState(balance);

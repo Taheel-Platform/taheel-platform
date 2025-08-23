@@ -608,7 +608,16 @@ function ClientProfilePageInner({ userId }) {
             </div>
             {/* Wallet */}
             <div ref={walletRef} className="relative group cursor-pointer" onClick={() => setShowWalletMenu((v) => !v)}>
-              <WalletWidget balance={client.walletBalance || 0} onCharge={handleWalletCharge} lang={lang} />
+              <WalletWidget
+                balance={client.walletBalance || 0}
+                coins={client.coins || 0}
+                userId={client.customerId}
+                customerId={client.customerId}
+                userEmail={client.email}
+                lang={lang}
+                onBalanceChange={handleWalletCharge}
+                onCoinsChange={null}
+              />
               <span className={`absolute z-10 left-1/2 -translate-x-1/2 top-7 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none ${darkMode ? "bg-gray-800 text-white" : "bg-black/70 text-white"}`}>
                 {lang === "ar" ? "المحفظة" : "Wallet"}
               </span>
