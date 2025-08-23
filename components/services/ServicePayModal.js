@@ -9,7 +9,6 @@ import {
 } from "firebase/firestore";
 import { translateText } from "@/utils/translate"; // ← إضافة الترجمة
 
-
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
   const part1 = Math.floor(100 + Math.random() * 900); // 3 أرقام
@@ -41,7 +40,6 @@ export default function ServicePayModal({
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
-  const router = useRouter();
 
   // حسابات الكوينات
   const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
@@ -188,7 +186,6 @@ export default function ServicePayModal({
   }
 
   // دفع بوابة
-
 async function handleGatewayPayWithElements() {
   setIsPaying(true);
   setPayMsg("");
@@ -211,23 +208,14 @@ async function handleGatewayPayWithElements() {
 
     const result = await response.json();
     if (result.clientSecret) {
-      // حفظ كل بيانات الدفع في localStorage أو context
-      localStorage.setItem("paymentData", JSON.stringify({
-        clientSecret: result.clientSecret,
-        service: {
-          name: uiServiceName,
-          id: serviceId,
-          printingFee,
-          vat: 0, // إذا عندك قيمة ضريبة أضفها
-          userEmail
-        },
-        price: finalPrice,
-        customerId,
-        lang
-      }));
+      // هنا تفتح صفحة/مودال فيها Stripe Elements وتنفذ الدفع
+      // مثال: فتح مودال/صفحة جديدة فيها CardPaymentPage وتمرر لها clientSecret
+      // أو: حفظ clientSecret في state وتعرض Stripe Elements في نفس المودال
 
-      // تحويل المستخدم لصفحة الدفع
-      router.push("/payment"); // أو أي مسار صفحتك
+      // مثال تخزين clientSecret في state:
+      setStripeClientSecret(result.clientSecret);
+      // ثم عرض Stripe Elements داخل المودال باستخدام CardElement أو PaymentElement
+      // وعند النجاح تعرض رسالة النجاح أو تغلق المودال
     } else {
       setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
     }
@@ -235,6 +223,14 @@ async function handleGatewayPayWithElements() {
     setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
   } finally {
     setIsPaying(false);
+  }
+}
+
+function onPayClick() {
+  if (payMethod === "wallet") {
+    handlePayment();
+  } else if (payMethod === "gateway") {
+    handleGatewayPayWithElements();  // ← استدعاء الدالة الصحيحة
   }
 }
 
