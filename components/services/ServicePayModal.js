@@ -7,79 +7,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
-import { translateText } from "@/utils/translate";
-import { Elements, useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+import { translateText } from "@/utils/translate"; // ← إضافة الترجمة
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
   const part1 = Math.floor(100 + Math.random() * 900); // 3 أرقام
   const part2 = Math.floor(1000 + Math.random() * 9000); // 4 أرقام
   return `REQ-${part1}-${part2}`;
-}
-
-// نموذج دفع Stripe داخل المودال
-function StripeCardPaymentForm({ clientSecret, amount, lang, onSuccess, serviceName }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [payMsg, setPayMsg] = useState("");
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setPayMsg("");
-
-    const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: { card: elements.getElement(CardElement) }
-    });
-
-    if (error) {
-      setPayMsg(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (paymentIntent.status === "succeeded") {
-      setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-      if (typeof onSuccess === "function") onSuccess(paymentIntent.id);
-    }
-    setLoading(false);
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-3">
-      <div className="font-bold text-lg text-emerald-700">{lang === "ar" ? "دفع عبر بطاقة" : "Pay via Card"}</div>
-      <div className="text-xs text-gray-700 mb-2">{serviceName} - {amount.toFixed(2)} د.إ</div>
-      <div className="w-full">
-        <CardElement options={{
-          style: {
-            base: {
-              fontSize: "16px",
-              color: "#22304a",
-              fontFamily: "inherit",
-              "::placeholder": { color: "#94a3b8" },
-            },
-            invalid: { color: "#dc2626" }
-          }
-        }} />
-      </div>
-      <button
-        type="submit"
-        disabled={loading || !stripe || !elements}
-        className="w-full py-2 rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 text-white font-black text-lg mt-3"
-      >
-        {loading ? (lang === "ar" ? "جارى الدفع..." : "Processing...") : (lang === "ar" ? "دفع الآن" : "Pay Now")}
-      </button>
-      {payMsg && (
-        <div className={`mt-2 text-center font-bold text-xs ${payMsg.includes("نجاح") ? "text-emerald-700" : "text-red-600"}`}>
-          {payMsg}
-        </div>
-      )}
-    </form>
-  );
 }
 
 export default function ServicePayModal({
@@ -94,19 +28,18 @@ export default function ServicePayModal({
   cashbackCoins,
   userWallet,
   lang = "ar",
-  customerId,
-  userId,
+  customerId,   // معرف المستند للعميل (رقم العميل: مثال "RES-200-9180" أو "COM-2025-001")
+  userId,       // الـ UID الخاص بفيريبيز (لو احتجته)
   userEmail,
   uploadedDocs,
   onPaid,
-  clientType = "resident"
+  clientType = "resident" // نوع العميل, مرره من الأعلى حسب الحالة
 }) {
   const [useCoins, setUseCoins] = useState(false);
   const [payMethod, setPayMethod] = useState("wallet");
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
-  const [stripeClientSecret, setStripeClientSecret] = useState("");
 
   // حسابات الكوينات
   const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
@@ -140,22 +73,35 @@ export default function ServicePayModal({
 
       const userRef = doc(firestore, "users", customerId);
 
-      await updateDoc(userRef, { walletBalance: userWallet - finalPrice });
+      // خصم الرصيد من المحفظة
+      await updateDoc(userRef, {
+        walletBalance: userWallet - finalPrice
+      });
+
+      // خصم الكوينات إذا استخدمهم العميل للخصم
       if (useCoins && coinDiscount > 0) {
-        await updateDoc(userRef, { coins: increment(-coinDiscount) });
+        await updateDoc(userRef, {
+          coins: increment(-coinDiscount)
+        });
       }
+
+      // إضافة الكوينات كمكافأة لو العميل لم يستخدمهم
       if (willGetCashback && cashbackCoins > 0) {
-        await updateDoc(userRef, { coins: increment(cashbackCoins) });
+        await updateDoc(userRef, {
+          coins: increment(cashbackCoins)
+        });
       }
 
       const orderNumber = generateOrderNumber();
 
+      // جلب بيانات الخدمة من فايرستور (servicesByClientType/{clientType})
       let serviceData = {};
       try {
         const serviceDocRef = doc(firestore, "servicesByClientType", clientType);
         const serviceDocSnap = await getDoc(serviceDocRef);
         if (serviceDocSnap.exists()) {
           const allServices = serviceDocSnap.data();
+          // لو عندك serviceId استخدمه، لو مش موجود ابحث بالاسم
           serviceData = serviceId && allServices[serviceId]
             ? allServices[serviceId]
             : Object.values(allServices).find(s => s.name === serviceName) || {};
@@ -164,7 +110,10 @@ export default function ServicePayModal({
         console.log("خطأ في جلب بيانات الخدمة:", e);
       }
 
+      // اسم الخدمة الأصلي بالعربي (للتخزين)
       const originalServiceName = serviceData?.name || serviceName || "";
+
+      // اسم الخدمة للعرض والإشعار/الإيميل حسب اللغة
       const uiServiceName =
         lang === "ar"
           ? originalServiceName
@@ -175,6 +124,7 @@ export default function ServicePayModal({
               fieldKey: `service:${serviceId || originalServiceName}:name:en`,
             });
 
+      // استخراج البروفايدرز كما هو من الخدمة الأصلية
       const providers =
         Array.isArray(serviceData?.providers)
           ? serviceData.providers
@@ -182,12 +132,13 @@ export default function ServicePayModal({
             ? [serviceData.providers]
             : [];
 
+      // سجل الريكويست وفيه جميع البروفايدرز كما هو
       await setDoc(doc(firestore, "requests", orderNumber), {
         requestId: orderNumber,
         customerId: customerId,
-        serviceName: originalServiceName,
+        serviceName: originalServiceName, // ← تخزين بالعربي لضمان التوافق
         serviceId: serviceData.serviceId || serviceId || "",
-        providers,
+        providers, // ← كما في الخدمة
         paidAmount: finalPrice,
         coinsUsed: useCoins ? coinDiscountValue : 0,
         coinsGiven: willGetCashback ? cashbackCoins : 0,
@@ -196,6 +147,7 @@ export default function ServicePayModal({
         attachments: uploadedDocs || {}
       });
 
+      // إشعار العميل (بلغة الواجهة)
       await addDoc(collection(firestore, "notifications"), {
         targetId: customerId,
         title: lang === "ar" ? "تم الدفع" : "Payment Successful",
@@ -206,6 +158,7 @@ export default function ServicePayModal({
         isRead: false
       });
 
+      // إرسال إيميل تأكيد (بلغة الواجهة)
       await fetch("/api/sendOrderEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -219,7 +172,9 @@ export default function ServicePayModal({
 
       setMsgSuccess(true);
       setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-      if (typeof onPaid === "function") onPaid();
+      if (typeof onPaid === "function") {
+        onPaid();
+      }
       setTimeout(() => onClose(), 1200);
 
     } catch (e) {
@@ -230,44 +185,54 @@ export default function ServicePayModal({
     }
   }
 
-  // دفع عبر Stripe Elements
-  async function handleGatewayPayWithElements() {
-    setIsPaying(true);
-    setPayMsg("");
-    setMsgSuccess(false);
+  // دفع بوابة
+async function handleGatewayPayWithElements() {
+  setIsPaying(true);
+  setPayMsg("");
+  setMsgSuccess(false);
 
-    try {
-      const uiServiceName = lang === "ar" ? serviceName : await translateText({ /* ... */ });
-      const response = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: finalPrice,
-          serviceName: uiServiceName,
-          customerId,
-          userEmail,
-        }),
-      });
-      const result = await response.json();
-      if (result.clientSecret) {
-        setStripeClientSecret(result.clientSecret);
-      } else {
-        setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
-      }
-    } catch (e) {
-      setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
-    } finally {
-      setIsPaying(false);
-    }
-  }
+  try {
+    const uiServiceName = lang === "ar" ? serviceName : await translateText({ /* ... */ });
 
-  function onPayClick() {
-    if (payMethod === "wallet") {
-      handlePayment();
-    } else if (payMethod === "gateway") {
-      handleGatewayPayWithElements();
+    // اطلب clientSecret فقط وليس url
+    const response = await fetch("/api/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: finalPrice,
+        serviceName: uiServiceName,
+        customerId,
+        userEmail,
+      }),
+    });
+
+    const result = await response.json();
+    if (result.clientSecret) {
+      // هنا تفتح صفحة/مودال فيها Stripe Elements وتنفذ الدفع
+      // مثال: فتح مودال/صفحة جديدة فيها CardPaymentPage وتمرر لها clientSecret
+      // أو: حفظ clientSecret في state وتعرض Stripe Elements في نفس المودال
+
+      // مثال تخزين clientSecret في state:
+      setStripeClientSecret(result.clientSecret);
+      // ثم عرض Stripe Elements داخل المودال باستخدام CardElement أو PaymentElement
+      // وعند النجاح تعرض رسالة النجاح أو تغلق المودال
+    } else {
+      setPayMsg(lang === "ar" ? "تعذر فتح بوابة الدفع." : "Failed to open payment gateway.");
     }
+  } catch (e) {
+    setPayMsg(lang === "ar" ? "تعذر الاتصال بالخادم." : "Failed to connect to server.");
+  } finally {
+    setIsPaying(false);
   }
+}
+
+function onPayClick() {
+  if (payMethod === "wallet") {
+    handlePayment();
+  } else if (payMethod === "gateway") {
+    handleGatewayPayWithElements();  // ← استدعاء الدالة الصحيحة
+  }
+}
 
   if (!open) return null;
   const payBtnCursor = isPaying ? "wait" : "pointer";
@@ -303,6 +268,7 @@ export default function ServicePayModal({
             <FaTimes />
           </button>
           <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
+          {/* للعرض فقط: نترجم الاسم حسب اللغة قبل العرض عبر دالة البوابة/الدفع */}
           <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
           <table className="w-full text-xs text-gray-700 font-bold mb-2">
             <tbody>
@@ -388,50 +354,27 @@ export default function ServicePayModal({
               </div>
             )}
           </div>
-          {/* Stripe Elements يظهر هنا إذا كان clientSecret موجود */}
-          {stripeClientSecret ? (
-            <div className="w-full mt-4">
-              <Elements stripe={stripePromise} options={{ clientSecret: stripeClientSecret }}>
-                <StripeCardPaymentForm
-                  clientSecret={stripeClientSecret}
-                  amount={finalPrice}
-                  lang={lang}
-                  serviceName={serviceName}
-                  onSuccess={(paymentId) => {
-                    setMsgSuccess(true);
-                    setPayMsg(lang === "ar" ? "تم الدفع بنجاح!" : "Payment successful!");
-                    if (typeof onPaid === "function") onPaid(paymentId);
-                    setTimeout(() => {
-                      setStripeClientSecret("");
-                      onClose();
-                    }, 1200);
-                  }}
-                />
-              </Elements>
-            </div>
-          ) : (
-            <button
-              onClick={onPayClick}
-              disabled={isPaying}
-              className={`w-full py-2 rounded-full font-black text-base shadow-lg transition
-                bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 text-white
-                hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
-                hover:scale-105 duration-150
-                focus:outline-none focus:ring-2 focus:ring-emerald-400
-                ${isPaying ? "opacity-40" : ""}
-              `}
-              style={{ cursor: payBtnCursor }}
-            >
-              {isPaying ? (
-                <span className="flex items-center justify-center gap-2 text-xs">
-                  <FaSpinner className="animate-spin" />
-                  {lang === "ar" ? "جاري الدفع..." : "Processing..."}
-                </span>
-              ) : (
-                <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
-              )}
-            </button>
-          )}
+          <button
+            onClick={onPayClick}
+            disabled={isPaying}
+            className={`w-full py-2 rounded-full font-black text-base shadow-lg transition
+              bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400 text-white
+              hover:from-emerald-600 hover:to-emerald-500 hover:shadow-emerald-200/90
+              hover:scale-105 duration-150
+              focus:outline-none focus:ring-2 focus:ring-emerald-400
+              ${isPaying ? "opacity-40" : ""}
+            `}
+            style={{ cursor: payBtnCursor }}
+          >
+            {isPaying ? (
+              <span className="flex items-center justify-center gap-2 text-xs">
+                <FaSpinner className="animate-spin" />
+                {lang === "ar" ? "جاري الدفع..." : "Processing..."}
+              </span>
+            ) : (
+              <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
+            )}
+          </button>
           {payMsg && (
             <div className={`mt-2 text-center font-bold text-xs flex flex-row items-center justify-center gap-1 ${msgSuccess ? "text-emerald-700" : "text-red-600"}`}>
               {msgSuccess ? <FaCheckCircle className="text-emerald-500" size={16} /> : <FaExclamationCircle className="text-red-400" size={14} />}
