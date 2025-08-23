@@ -8,7 +8,8 @@ import {
   doc, setDoc, updateDoc, increment, collection, addDoc, getDoc
 } from "firebase/firestore";
 import { translateText } from "@/utils/translate";
-import { useRouter } from "next/router"; // مهم للتحويل
+import { useRouter } from "next/navigation";
+
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {

@@ -1,4 +1,5 @@
-import { useState } from "react";
+"use client";
+import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import Image from "next/image";
@@ -39,16 +40,17 @@ const LANG = {
   }
 };
 
-function CardForm({ service, price, customerId, lang = "ar", onSuccess }) {
+function CardForm({ paymentData, lang = "ar", onSuccess }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
 
-  // تفاصيل الفاتورة
-  const printingFee = service.printingFee || 0;
-  const vat = service.vat || 0;
+  // بيانات الدفع من localStorage
+  const { service, price, customerId, orderNumber, clientSecret } = paymentData;
+  const printingFee = service?.printingFee || 0;
+  const vat = service?.vat || 0;
   const total = price + printingFee + vat;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
@@ -56,26 +58,7 @@ function CardForm({ service, price, customerId, lang = "ar", onSuccess }) {
     e.preventDefault();
     setLoading(true);
     setPayMsg("");
-
-    // إنشاء PaymentIntent
-    const res = await fetch("/api/create-payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: total,
-        serviceId: service.id,
-        serviceName: service.name,
-        customerId,
-        userEmail: service.userEmail
-      })
-    });
-    const { clientSecret, error, orderNumber } = await res.json();
-
-    if (!clientSecret) {
-      setPayMsg(error || LANG[lang].error);
-      setLoading(false);
-      return;
-    }
+    setMsgSuccess(false);
 
     // تنفيذ الدفع عبر Stripe Elements
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
@@ -91,7 +74,7 @@ function CardForm({ service, price, customerId, lang = "ar", onSuccess }) {
     }
 
     // بعد النجاح: أرسل الإيميل (اختياري)
-    if (paymentIntent.status === "succeeded") {
+    if (paymentIntent && paymentIntent.status === "succeeded") {
       setMsgSuccess(true);
       setPayMsg(LANG[lang].success);
 
@@ -114,8 +97,9 @@ function CardForm({ service, price, customerId, lang = "ar", onSuccess }) {
       setTimeout(() => {
         onSuccess(paymentIntent.id, orderNumber);
       }, 1200);
+    } else {
+      setPayMsg(LANG[lang].error);
     }
-
     setLoading(false);
   };
 
@@ -210,38 +194,51 @@ function CardForm({ service, price, customerId, lang = "ar", onSuccess }) {
   );
 }
 
-export default function CardPaymentPage({ service, price, customerId, lang = "ar" }) {
+export default function CardPaymentPage() {
   const [success, setSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
+  const [paymentData, setPaymentData] = useState(null);
+
+  useEffect(() => {
+    // اقرأ بيانات الدفع من localStorage
+    const data = JSON.parse(localStorage.getItem("paymentData"));
+    setPaymentData(data);
+  }, []);
+
+  if (!paymentData || !paymentData.clientSecret) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
+        <div className="text-xl font-bold">لم يتم العثور على بيانات الدفع. يرجى العودة للمحفظة أو إعادة المحاولة.</div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
       <PaymentSuccessPage
         paymentId={paymentId}
-        amount={price + (service.printingFee || 0) + (service.vat || 0)}
-        serviceName={service.name}
+        amount={paymentData.price + (paymentData.service?.printingFee || 0) + (paymentData.service?.vat || 0)}
+        serviceName={paymentData.service?.name}
         orderNumber={orderNumber}
-        printingFee={service.printingFee || 0}
-        vat={service.vat || 0}
-        lang={lang}
+        printingFee={paymentData.service?.printingFee || 0}
+        vat={paymentData.service?.vat || 0}
+        lang={paymentData.lang}
       />
     );
   }
 
   return (
     <div
-      dir={lang === "ar" ? "rtl" : "ltr"}
-      lang={lang}
+      dir={paymentData.lang === "ar" ? "rtl" : "ltr"}
+      lang={paymentData.lang}
       className="min-h-screen flex flex-col items-center justify-center font-sans"
       style={{ background: "linear-gradient(180deg, #0b131e 0%, #22304a 30%, #122024 60%, #1d4d40 100%)" }}
     >
-      <Elements stripe={stripePromise}>
+      <Elements stripe={stripePromise} options={{ clientSecret: paymentData.clientSecret }}>
         <CardForm
-          service={service}
-          price={price}
-          customerId={customerId}
-          lang={lang}
+          paymentData={paymentData}
+          lang={paymentData.lang}
           onSuccess={(id, orderNum) => {
             setSuccess(true);
             setPaymentId(id);
