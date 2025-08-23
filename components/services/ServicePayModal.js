@@ -41,7 +41,8 @@ export default function ServicePayModal({
   const [isPaying, setIsPaying] = useState(false);
   const [payMsg, setPayMsg] = useState("");
   const [msgSuccess, setMsgSuccess] = useState(false);
-
+  const router = useRouter();
+  
   // حسابات الكوينات
   const maxCoinDiscount = Math.floor(printingFee * 0.1 * 100);
   const coinDiscount = useCoins ? Math.min(coinsBalance, maxCoinDiscount) : 0;
@@ -187,7 +188,6 @@ export default function ServicePayModal({
   }
 
   // دفع بوابة
-const router = useRouter();
 
 async function handleGatewayPayWithElements() {
   setIsPaying(true);
