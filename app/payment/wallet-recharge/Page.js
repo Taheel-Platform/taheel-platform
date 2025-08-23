@@ -6,7 +6,7 @@ import Image from "next/image";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
 
-// Stripe publishable key (from env)
+// Stripe publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 const LANG = {
@@ -36,6 +36,7 @@ const LANG = {
   }
 };
 
+// نموذج الدفع بالكارت
 function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -65,12 +66,12 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
       return;
     }
 
-    // After success: update wallet, add coins, notification, send email
+    // بعد نجاح الدفع: تحديث الرصيد وإرسال إشعار وإيميل
     if (paymentIntent && paymentIntent.status === "succeeded") {
       setMsgSuccess(true);
       setPayMsg(LANG[lang].success);
 
-      // Update wallet & coins
+      // تحديث الرصيد والكوينات
       const userRef = doc(firestore, "users", customerId);
       const snap = await getDoc(userRef);
       let currentWallet = 0, currentCoins = 0;
@@ -82,7 +83,7 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
       await updateDoc(userRef, { walletBalance: currentWallet + amount });
       await updateDoc(userRef, { coins: currentCoins + coinsBonus });
 
-      // Notification to user
+      // إشعار للعميل
       await addDoc(collection(firestore, "notifications"), {
         targetId: customerId,
         title: lang === "ar" ? "تم شحن المحفظة" : "Wallet Recharged",
@@ -93,7 +94,7 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
         isRead: false
       });
 
-      // Send confirmation email
+      // إرسال إيميل تأكيد
       await fetch("/api/sendWalletEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,6 +196,7 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
   );
 }
 
+// صفحة الدفع نفسها
 export default function WalletRechargePage() {
   const [success, setSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
@@ -205,7 +207,7 @@ export default function WalletRechargePage() {
     setPaymentData(data);
   }, []);
 
-  // تأكد من وجود clientSecret (بعد إنشاء intent من السيرفر)
+  // بيانات الدفع غير موجودة (مثلاً لو دخل الصفحة مباشرة)
   if (!paymentData || !paymentData.clientSecret) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
@@ -214,6 +216,7 @@ export default function WalletRechargePage() {
     );
   }
 
+  // بعد نجاح الدفع
   if (success) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white">
@@ -232,6 +235,7 @@ export default function WalletRechargePage() {
     );
   }
 
+  // نموذج الدفع بالكارت
   return (
     <div
       dir={paymentData.lang === "ar" ? "rtl" : "ltr"}

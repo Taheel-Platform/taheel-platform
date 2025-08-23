@@ -18,17 +18,15 @@ export default function WalletWidget({
   userId,
   coins = 0,
   lang = "ar",
-  onBalanceChange,
-  onCoinsChange,
   customerId,
   userEmail,
 }) {
   const [showModal, setShowModal] = useState(false);
   const [wallet, setWallet] = useState(balance);
   const [userCoins, setUserCoins] = useState(coins);
-
   const router = useRouter();
 
+  // تحديث الرصيد و الكوينات لحظيا
   useEffect(() => {
     if (!userId) return;
     const userRef = doc(firestore, "users", userId);
@@ -37,61 +35,54 @@ export default function WalletWidget({
         const data = snap.data();
         setWallet(Number(data.walletBalance ?? 0));
         setUserCoins(Number(data.coins ?? 0));
-        if (typeof onBalanceChange === "function") onBalanceChange(Number(data.walletBalance ?? 0));
-        if (typeof onCoinsChange === "function") onCoinsChange(Number(data.coins ?? 0));
       }
     });
     return () => unsubscribe();
-  }, [userId, onBalanceChange, onCoinsChange]);
+  }, [userId]);
 
-  const valueText =
-    lang === "ar"
-      ? `رصيدك في المحفظة: ${wallet} درهم\nرصيد الكوينات: ${userCoins} كوين`
-      : `Your wallet balance: ${wallet} AED\nCoins: ${userCoins}`;
+  // عند اختيار الشحن
+  async function handleRechargeClick(amount, coinsBonus) {
+    try {
+      const res = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount,
+          serviceId: "wallet-recharge",
+          serviceName: lang === "ar" ? "شحن المحفظة" : "Wallet Recharge",
+          customerId: userId,
+          userEmail,
+          coinsUsed: 0,
+          coinsGiven: coinsBonus,
+        }),
+      });
 
-  // الكود الجديد لإنشاء PaymentIntent وحفظ البيانات كاملة
-async function handleRechargeClick(amount, coinsBonus) {
-  try {
-    const res = await fetch("/api/create-payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount,
-        serviceId: "wallet-recharge",
-        serviceName: lang === "ar" ? "شحن المحفظة" : "Wallet Recharge",
-        customerId: userId,
-        userEmail,
-        coinsUsed: 0,
-        coinsGiven: coinsBonus,
-      }),
-    });
+      const result = await res.json();
+      if (!result.clientSecret) {
+        alert("خطأ أثناء إنشاء عملية الدفع! " + (result.error || ""));
+        return;
+      }
 
-    const result = await res.json();
-    if (!result.clientSecret) {
-      alert("خطأ أثناء إنشاء عملية الدفع! " + (result.error || ""));
-      return;
+      // حفظ البيانات في localStorage
+      localStorage.setItem(
+        "walletRechargeData",
+        JSON.stringify({
+          amount,
+          coinsBonus,
+          userId,
+          userEmail,
+          lang,
+          customerId: userId,
+          clientSecret: result.clientSecret,
+        })
+      );
+      // تحويل لصفحة الدفع مباشرة
+      router.push("/payment/wallet-recharge");
+      setShowModal(false);
+    } catch (error) {
+      alert("حدث خطأ غير متوقع أثناء المعالجة.");
     }
-
-// بعد نجاح إنشاء PaymentIntent
-localStorage.setItem(
-  "walletRechargeData",
-  JSON.stringify({
-    amount,
-    coinsBonus,
-    userId,
-    userEmail,
-    lang,
-    customerId: userId,
-    clientSecret: result.clientSecret,
-    // لا حاجة لأي Order Number
-  })
-);
-router.push("/payment/wallet-recharge");
-setShowModal(false);
-  } catch (error) {
-    alert("حدث خطأ غير متوقع أثناء المعالجة.");
   }
-}
 
   return (
     <>
@@ -99,7 +90,11 @@ setShowModal(false);
       <motion.button
         type="button"
         className="relative flex items-center justify-center bg-transparent border-none p-0 m-0 focus:outline-none cursor-pointer"
-        title={valueText}
+        title={
+          lang === "ar"
+            ? `رصيدك في المحفظة: ${wallet} درهم\nرصيد الكوينات: ${userCoins} كوين`
+            : `Your wallet balance: ${wallet} AED\nCoins: ${userCoins}`
+        }
         tabIndex={0}
         style={{ minWidth: 36, minHeight: 36 }}
         onClick={() => setShowModal(true)}
@@ -107,10 +102,7 @@ setShowModal(false);
         whileTap={{ scale: 0.97 }}
         transition={{ type: "spring", stiffness: 250, damping: 18 }}
       >
-        <FaWallet
-          className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-500 drop-shadow-lg transition-all duration-150"
-          style={{ filter: "drop-shadow(0 2px 8px #05966955)" }}
-        />
+        <FaWallet className="text-[27px] sm:text-[29px] lg:text-[32px] text-emerald-500 drop-shadow-lg transition-all duration-150" />
         <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[11px] font-bold rounded-full px-[6px] py-[2px] shadow border-2 border-white/80">
           {wallet}
         </span>
@@ -147,12 +139,8 @@ setShowModal(false);
                 className="absolute top-2 left-2 text-gray-400 hover:text-red-700 text-2xl px-2 z-20 cursor-pointer"
                 title={lang === "ar" ? "إغلاق" : "Close"}
               >×</button>
-              <motion.div
-                className="flex flex-col items-center gap-1 cursor-pointer select-none"
-                whileTap={{ scale: 0.97 }}
-                title={lang === "ar" ? "اضغط لإعادة الشحن ببوابة الدفع" : "Click to recharge with payment gateway"}
-              >
-                <span className="text-xl font-extrabold text-emerald-700 drop-shadow-sm flex items-center gap-2">
+              <div className="flex flex-col items-center gap-1 select-none">
+                <span className="text-xl font-extrabold text-emerald-700 flex items-center gap-2">
                   {wallet}
                   <span className="text-[14px] text-gray-500 font-bold">
                     {lang === "ar" ? "درهم" : "AED"}
@@ -167,7 +155,7 @@ setShowModal(false);
                 <span className="text-xs text-blue-400 font-bold animate-pulse">
                   {lang === "ar" ? "اضغط لإعادة الشحن بوسيلة دفع إلكترونية" : "Click to recharge via payment gateway"}
                 </span>
-              </motion.div>
+              </div>
 
               {/* خيارات الشحن */}
               <div className="flex flex-col gap-3 mt-2">
@@ -198,7 +186,6 @@ setShowModal(false);
                   </motion.button>
                 ))}
               </div>
-
               <div className="text-xs text-gray-500 text-center mb-0 whitespace-pre-line mt-1">
                 {lang === "ar"
                   ? "يمكنك شحن المحفظة أو الدفع مباشرة من الرصيد\nواستلام كوينات مجانية حسب قيمة الشحن"
