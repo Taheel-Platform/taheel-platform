@@ -20,6 +20,7 @@ const LANG = {
     vat: "VAT",
     print: "Printing Fee",
     coinDiscount: "Coins Discount",
+    processingFee: "Processing Fee",
     totalBeforeDiscount: "Total Before Discount",
     total: "Total",
     back: "Back to Home",
@@ -37,6 +38,7 @@ const LANG = {
     vat: "ضريبة القيمة المضافة",
     print: "رسوم الطباعة",
     coinDiscount: "خصم الكوينات",
+    processingFee: "رسوم معالجة الدفع الإلكتروني",
     totalBeforeDiscount: "الإجمالي قبل الخصم",
     total: "الإجمالي",
     back: "العودة للرئيسية",
@@ -52,7 +54,14 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
   const [msgSuccess, setMsgSuccess] = useState(false);
 
   // البيانات المرسلة من المودال
-  const { service, totalPrice, finalPrice, orderNumber, clientSecret } = paymentData;
+  const {
+    service,
+    totalPrice,
+    finalPrice,
+    orderNumber,
+    clientSecret,
+    processingFee // رسوم معالجة الدفع الإلكتروني
+  } = paymentData;
   const dir = lang === "ar" ? "rtl" : "ltr";
 
   const handleSubmit = async (e) => {
@@ -90,6 +99,7 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
           printingFee: service.printingFee,
           vat: service.vat,
           coinDiscount: service.coinDiscount,
+          processingFee, // أضفها في الإيميل أيضاً
           finalPrice,
           paymentId: paymentIntent.id,
           paymentMethod: "gateway",
@@ -147,6 +157,14 @@ function CardForm({ paymentData, lang = "ar", onSuccess }) {
               <td>
                 {service.coinDiscount && Number(service.coinDiscount) > 0
                   ? `-${Number(service.coinDiscount).toFixed(2)} د.إ`
+                  : "0 د.إ"}
+              </td>
+            </tr>
+            <tr>
+              <td className="text-gray-300">{LANG[lang].processingFee}:</td>
+              <td>
+                {processingFee
+                  ? `${Number(processingFee).toFixed(2)} د.إ`
                   : "0 د.إ"}
               </td>
             </tr>
@@ -237,6 +255,7 @@ export default function CardPaymentPage() {
         orderNumber={orderNumber}
         printingFee={paymentData.service?.printingFee || 0}
         vat={paymentData.service?.vat || 0}
+        processingFee={paymentData.processingFee || 0}
         lang={paymentData.lang}
       />
     );
