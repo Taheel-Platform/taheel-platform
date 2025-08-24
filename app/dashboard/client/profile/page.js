@@ -693,13 +693,19 @@ function ClientProfilePageInner({ userId }) {
             >
               {lang === "ar" ? "ENGLISH" : "عربي"}
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-700 text-white text-xs sm:text-sm font-ounded-full shadow transition cursor-pointer"
-              title={lang === "ar" ? "تسجيل الخروج" : "Logout"}
-            >
-              <FaSignOutAlt /> {lang === "ar" ? "تسجيل الخروج" : "Logout"}
-            </button>
+<button
+  className="
+    flex items-center gap-2 px-4 py-2 rounded-full font-bold
+    bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-700
+    text-white shadow hover:scale-105 hover:brightness-110
+    border border-emerald-200 transition
+  "
+  style={{ minHeight: 38, fontSize: 15, cursor: "pointer" }}
+  onClick={handleLogout} // دالة تسجيل الخروج
+>
+  <FaSignOutAlt size={18} />
+  تسجيل الخروج
+</button>
           </div>
         </header>
 

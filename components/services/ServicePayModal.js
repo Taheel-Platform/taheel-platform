@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { translateText } from "@/utils/translate";
 import { useRouter } from "next/navigation";
+import calcStripeFees from "@/utils/calcStripeFees"; // ← دالة حساب رسوم سترايب
 
 // دالة توليد رقم تتبع بالشكل المطلوب
 function generateOrderNumber() {
@@ -50,6 +51,14 @@ export default function ServicePayModal({
   const coinDiscountValue = coinDiscount / 100;
   const finalPrice = totalPrice - coinDiscountValue;
   const willGetCashback = !useCoins;
+
+  // حساب رسوم Stripe عند الدفع بالكارت فقط (Gateway)
+  const stripeFeesResult = calcStripeFees(finalPrice, {
+    isInternational: false, // غير لو فيه عملاء دوليين
+    isCurrencyConversion: false // غير لو فيه تحويل عملة
+  });
+  const finalPriceWithFees = payMethod === "gateway" ? stripeFeesResult.totalAmount : finalPrice;
+  const stripeFeeValue = payMethod === "gateway" ? stripeFeesResult.stripeFee : 0;
 
   // دفع المحفظة (بدون أي تعديل على منطقك)
   async function handlePayment() {
@@ -188,7 +197,7 @@ export default function ServicePayModal({
     }
   }
 
-  // دفع بوابة Stripe Elements (نفس حسابات المحفظة)
+  // دفع بوابة Stripe Elements (نفس حسابات المحفظة + رسوم سترايب)
   async function handleGatewayPayWithElements() {
     setIsPaying(true);
     setPayMsg("");
@@ -211,7 +220,7 @@ export default function ServicePayModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: finalPrice, // نفس الحساب النهائي
+          amount: finalPriceWithFees, // السعر النهائي شامل رسوم سترايب
           serviceName: uiServiceName,
           customerId,
           userEmail,
@@ -223,23 +232,23 @@ export default function ServicePayModal({
       const result = await response.json();
       if (result.clientSecret) {
         // حفظ بيانات الدفع في localStorage بنفس الحسابات
-localStorage.setItem("paymentData", JSON.stringify({
-  clientSecret: result.clientSecret,
-  service: {
-    name: uiServiceName,
-    id: serviceId,
-    price: (totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))),
-    printingFee,
-    vat: (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)),
-    coinDiscount: useCoins ? coinDiscountValue : 0,
-    userEmail
-  },
-  totalPrice, // الإجمالي قبل الخصم
-  finalPrice, // السعر النهائي بعد الخصم
-  customerId,
-  lang,
-  orderNumber: result.orderNumber
-}));
+        localStorage.setItem("paymentData", JSON.stringify({
+          clientSecret: result.clientSecret,
+          service: {
+            name: uiServiceName,
+            id: serviceId,
+            price: (totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))),
+            printingFee,
+            vat: (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)),
+            coinDiscount: useCoins ? coinDiscountValue : 0,
+            userEmail
+          },
+          totalPrice, // الإجمالي قبل الخصم
+          finalPrice: finalPriceWithFees, // السعر النهائي بعد الخصم + سترايب
+          customerId,
+          lang,
+          orderNumber: result.orderNumber
+        }));
         // تحويل المستخدم لصفحة الدفع بالكارت
         router.push("/payment/service");
       } else {
@@ -295,39 +304,43 @@ localStorage.setItem("paymentData", JSON.stringify({
           </button>
           <div className="text-emerald-700 font-black text-lg mb-1 text-center">{lang === "ar" ? "دفع الخدمة" : "Service Payment"}</div>
           <div className="font-bold text-emerald-900 text-base mb-3 text-center">{serviceName}</div>
-<table className="w-full text-xs text-gray-700 font-bold mb-2 border-separate border-spacing-y-1">
-  <tbody>
-    <tr>
-      <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
-      <td className="text-right">{(totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))).toFixed(2)} د.إ</td>
-    </tr>
-    <tr>
-      <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
-      <td className="text-right">{printingFee.toFixed(2)} د.إ</td>
-    </tr>
-    <tr>
-      <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5%"}</td>
-      <td className="text-right">{(typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)).toFixed(2)} د.إ</td>
-    </tr>
-    <tr>
-      <td className="flex items-center gap-1">
-        <FaCoins className="text-yellow-500 mr-1" size={10} />
-        {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
-      </td>
-      <td className="text-right text-yellow-700">
-        {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
-      </td>
-    </tr>
-    <tr>
-      <td>{lang === "ar" ? "الإجمالي قبل الخصم" : "Total Before Discount"}</td>
-      <td className="text-right">{totalPrice.toFixed(2)} د.إ</td>
-    </tr>
-    <tr>
-      <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
-      <td className="font-extrabold text-emerald-800 text-right">{finalPrice.toFixed(2)} د.إ</td>
-    </tr>
-  </tbody>
-</table>
+          <table className="w-full text-xs text-gray-700 font-bold mb-2 border-separate border-spacing-y-1">
+            <tbody>
+              <tr>
+                <td>{lang === "ar" ? "سعر الخدمة" : "Service Price"}</td>
+                <td className="text-right">{(totalPrice - printingFee - (typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2))).toFixed(2)} د.إ</td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "رسوم الطباعة" : "Printing Fee"}</td>
+                <td className="text-right">{printingFee.toFixed(2)} د.إ</td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "ضريبة القيمة المضافة 5%" : "VAT 5%"}</td>
+                <td className="text-right">{(typeof tax !== "undefined" ? tax : +(printingFee * 0.05).toFixed(2)).toFixed(2)} د.إ</td>
+              </tr>
+              <tr>
+                <td className="flex items-center gap-1">
+                  <FaCoins className="text-yellow-500 mr-1" size={10} />
+                  {lang === "ar" ? "خصم الكوينات" : "Coins Discount"}
+                </td>
+                <td className="text-right text-yellow-700">
+                  {useCoins ? `-${coinDiscountValue.toFixed(2)} د.إ` : "0 د.إ"}
+                </td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "الإجمالي قبل الخصم" : "Total Before Discount"}</td>
+                <td className="text-right">{totalPrice.toFixed(2)} د.إ</td>
+              </tr>
+              <tr>
+                <td>{lang === "ar" ? "رسوم معالجة الدفع الإلكتروني" : "Processing Fee"}</td>
+                <td className="text-right">{payMethod === "gateway" ? stripeFeeValue.toFixed(2) : "0.00"} د.إ</td>
+              </tr>
+              <tr>
+                <td className="font-extrabold text-emerald-700">{lang === "ar" ? "السعر النهائي" : "Final"}</td>
+                <td className="font-extrabold text-emerald-800 text-right">{finalPriceWithFees.toFixed(2)} د.إ</td>
+              </tr>
+            </tbody>
+          </table>
           <div className="w-full flex flex-row items-center justify-between mb-1">
             <label className="flex items-center gap-1 font-bold text-xs text-emerald-700 cursor-pointer">
               <input
@@ -405,7 +418,7 @@ localStorage.setItem("paymentData", JSON.stringify({
                 {lang === "ar" ? "جاري الدفع..." : "Processing..."}
               </span>
             ) : (
-              <span>{lang === "ar" ? `دفع الآن (${finalPrice.toFixed(2)} د.إ)` : `Pay Now (${finalPrice.toFixed(2)} AED)`}</span>
+              <span>{lang === "ar" ? `دفع الآن (${finalPriceWithFees.toFixed(2)} د.إ)` : `Pay Now (${finalPriceWithFees.toFixed(2)} AED)`}</span>
             )}
           </button>
           {payMsg && (
