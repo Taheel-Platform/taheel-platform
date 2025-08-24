@@ -245,6 +245,7 @@ export default function ServicePayModal({
           },
           totalPrice, // الإجمالي قبل الخصم
           finalPrice: finalPriceWithFees, // السعر النهائي بعد الخصم + سترايب
+          processingFee: stripeFeeValue,
           customerId,
           lang,
           orderNumber: result.orderNumber
