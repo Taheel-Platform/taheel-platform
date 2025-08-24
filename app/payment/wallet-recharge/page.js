@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import Image from "next/image";
-import { useRouter } from "next/navigation"; // إضافة
+import { useRouter } from "next/navigation";
 import { firestore } from "@/lib/firebase.client";
 import { doc, updateDoc, getDoc, collection, addDoc } from "firebase/firestore";
 
@@ -200,18 +200,26 @@ function WalletCardForm({ paymentData, lang = "ar", onSuccess }) {
   );
 }
 
-// صفحة الدفع نفسها
 export default function WalletRechargePage() {
   const [success, setSuccess] = useState(false);
-  const [showThanks, setShowThanks] = useState(false);
   const [paymentId, setPaymentId] = useState("");
   const [paymentData, setPaymentData] = useState(null);
-  const router = useRouter(); // إضافة
+  const router = useRouter();
 
   useEffect(() => {
     const data = JSON.parse(localStorage.getItem("walletRechargeData"));
     setPaymentData(data);
   }, []);
+
+  // حل مشكلة الـHooks: ضع useEffect هنا يراقب success
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        router.push("/dashboard/client"); // غير المسار حسب احتياجك
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success, router]);
 
   // بيانات الدفع غير موجودة (مثلاً لو دخل الصفحة مباشرة)
   if (!paymentData || !paymentData.clientSecret) {
@@ -224,15 +232,6 @@ export default function WalletRechargePage() {
 
   // بعد نجاح الدفع
   if (success) {
-    // عرض رسالة شكر وكلمة دعائية وحركة سبينر
-    useEffect(() => {
-      setShowThanks(true);
-      const timer = setTimeout(() => {
-        router.push("/dashboard/client"); // غير المسار حسب احتياجك
-      }, 3000);
-      return () => clearTimeout(timer);
-    }, []);
-
     return (
       <div className="min-h-screen flex flex-col items-center justify-center font-sans bg-black text-white animate-fade-in">
         <Image src="/logo-transparent-large.png" width={90} height={90} alt="Logo" className="mb-6 rounded-full shadow-lg ring-2 ring-emerald-500 bg-white" />
