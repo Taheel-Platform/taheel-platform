@@ -75,39 +75,54 @@ function useEmployeeOrders({ employeeId, orders }) {
   const month = today.getMonth() + 1;
   const year = today.getFullYear();
 
-  // حساب عدد مرات "completed" أو "rejected" في statusHistory لهذا الموظف في الشهر الحالي
   let filteredEvents = [];
   let totalEarnings = 0;
+  const uniqueRequests = new Set();
 
   orders.forEach(o => {
+    // الطلبات المسندة للموظف فقط
     if (o.assignedTo === employeeId) {
+      let eligible = false;
+      let earning = 0;
+      let createdAt = o.createdAt;
+
+      // لو فيه statusHistory فيه حالة مكتمل أو مرفوض في الشهر الحالي
       if (Array.isArray(o.statusHistory)) {
-        o.statusHistory.forEach(event => {
-          const d = new Date(event.timestamp);
-          if (
-            (event.status === "completed" || event.status === "rejected") &&
-            d.getMonth() + 1 === month && d.getFullYear() === year
-          ) {
-            filteredEvents.push({
-              requestId: o.requestId,
-              createdAt: event.timestamp,
-              earning: Number(o.printingFee || 0) * 0.4
-            });
-            totalEarnings += Number(o.printingFee || 0) * 0.4;
-          }
+        const event = o.statusHistory.find(evt => {
+          const d = new Date(evt.timestamp);
+          return (
+            (evt.status === "completed" || evt.status === "rejected") &&
+            d.getMonth() + 1 === month &&
+            d.getFullYear() === year
+          );
         });
-      } else if (
-        (o.status === "completed" || o.status === "rejected") // في حالة لا يوجد statusHistory
+        if (event) {
+          eligible = true;
+          earning = Number(o.printingFee || 0) * 0.4;
+          createdAt = event.timestamp;
+        }
+      }
+      // أو لو الحالة الحالية مكتمل أو مرفوض في الشهر الحالي
+      else if (
+        (o.status === "completed" || o.status === "rejected")
       ) {
         const d = new Date(o.createdAt);
         if (d.getMonth() + 1 === month && d.getFullYear() === year) {
-          filteredEvents.push({
-            requestId: o.requestId,
-            createdAt: o.createdAt,
-            earning: Number(o.printingFee || 0) * 0.4
-          });
-          totalEarnings += Number(o.printingFee || 0) * 0.4;
+          eligible = true;
+          earning = Number(o.printingFee || 0) * 0.4;
         }
+      }
+
+      // أضف الطلب مرة واحدة فقط لو eligible
+      if (eligible && !uniqueRequests.has(o.requestId)) {
+        uniqueRequests.add(o.requestId);
+        filteredEvents.push({
+          requestId: o.requestId,
+          createdAt,
+          status: o.status,
+          earning
+        });
+        totalEarnings += earning;
       }
     }
   });
@@ -275,23 +290,27 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
         </div>
         {/* جدول عرض التفاصيل - فقط ربح الموظف */}
         <table className="w-full text-sm border-separate border-spacing-y-1 mt-2">
-          <thead>
-            <tr>
-              <th>{t.orderNum}</th>
-              <th>{t.createdAt}</th>
-              <th>{t.yourEarning}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEvents.map(o => (
-              <tr key={o.requestId + o.createdAt}>
-                <td>{o.requestId}</td>
-                <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
-                <td className="font-bold text-emerald-600">{o.earning.toFixed(2)} د.إ</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  <thead>
+    <tr>
+      <th>{t.orderNum}</th>
+      <th>{t.createdAt}</th>
+      <th>{t.yourEarning}</th>
+      <th>{lang === "ar" ? "الحالة" : "Status"}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filteredEvents.map(o => (
+      <tr key={o.requestId + o.createdAt}>
+        <td>{o.requestId}</td>
+        <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
+        <td className="font-bold text-emerald-600">{o.earning.toFixed(2)} د.إ</td>
+        <td className={`font-bold ${o.status === "completed" ? "text-green-600" : "text-red-600"}`}>
+          {o.status === "completed" ? (lang === "ar" ? "مكتمل" : "Completed") : (lang === "ar" ? "مرفوض" : "Rejected")}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
       </div>
 
       {/* مكان فارغ لإنشاء خدمة وربطه لاحقاً */}
