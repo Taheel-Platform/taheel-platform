@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
+import { FaWallet, FaCoins } from "react-icons/fa";
 
 // ===== Helper functions =====
 
@@ -74,9 +75,10 @@ function useEmployeeOrders({ employeeId, orders }) {
       d.getMonth() + 1 === month && d.getFullYear() === year;
   });
 
-  // لا يوجد حساب أرباح على رسوم الطباعة
-  // لو فيه حساب جديد ضيفه هنا، حالياً فقط عدد الطلبات
-  const totalEarnings = 0; // مكان لحساب جديد لو أردت
+  // حساب أرباح الموظف = مجموع 40% من قيمة رسوم الطباعة
+  const totalEarnings = filteredOrders.reduce(
+    (sum, o) => sum + (Number(o.printingFee || 0) * 0.4), 0
+  );
 
   return { filteredOrders, totalEarnings };
 }
@@ -102,12 +104,13 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "تصفير الشهر",
       rest: "راحة",
       noData: "لا يوجد حضور لهذا الشهر.",
-      earningsTitle: "طلباتك المنجزة هذا الشهر",
+      earningsTitle: "الأرباح الشهرية",
       ordersCount: "عدد الطلبات (مكتمل/مرفوض)",
       totalEarnings: "إجمالي الأرباح",
       orderNum: "رقم الطلب",
-      createdAt: "تاريخ الإنشاء"
-      // بند الأرباح فارغ لأن لا يوجد حساب حالياً
+      printingFee: "رسوم الطباعة",
+      createdAt: "تاريخ الإنشاء",
+      yourEarning: "ربحك"
     },
     en: {
       title: "Monthly Attendance",
@@ -122,12 +125,13 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "Reset Month",
       rest: "Rest",
       noData: "No attendance for this month.",
-      earningsTitle: "Your completed/rejected orders this month",
+      earningsTitle: "Monthly Earnings",
       ordersCount: "Completed/Rejected Orders",
       totalEarnings: "Total Earnings",
       orderNum: "Order No.",
-      createdAt: "Created At"
-      // Earnings field empty
+      printingFee: "Printing Fee",
+      createdAt: "Created At",
+      yourEarning: "Your Earning"
     }
   }[lang === "en" ? "en" : "ar"];
 
@@ -184,7 +188,7 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
   };
 
-  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
+  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر + الأرباح
   const { filteredOrders, totalEarnings } = useEmployeeOrders({
     employeeId: employeeData?.id,
     orders
@@ -208,28 +212,40 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
         </button>
       </div>
 
-      {/* الطلبات المنجزة (مكتمل/مرفوض) */}
+      {/* أرباح الطلبات المنجزة (مكتمل/مرفوض) */}
       <div className="mb-8 p-6 bg-indigo-50 rounded-xl shadow border max-w-2xl mx-auto text-center">
         <h3 className="text-xl font-black text-emerald-700 mb-3">{t.earningsTitle}</h3>
-        <div className="text-lg mb-3">
-          {t.ordersCount}: <span className="font-bold">{filteredOrders.length}</span>
+        <div className="flex flex-wrap items-center justify-center gap-6 mb-4">
+          <div className="flex flex-col items-center">
+            <FaWallet className="text-emerald-600 mb-1" size={26} />
+            <div className="text-lg font-bold text-indigo-900">
+              {t.ordersCount}: <span className="mx-2 text-emerald-700">{filteredOrders.length}</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaCoins className="text-yellow-500 mb-1" size={26} />
+            <div className="text-lg font-bold text-indigo-900">
+              {t.totalEarnings}: <span className="mx-2 text-emerald-700">{totalEarnings.toFixed(2)} د.إ</span>
+            </div>
+          </div>
         </div>
-        {/* هنا يمكنك إضافة حساب أرباح جديد مستقبلاً */}
-        {/* جدول الطلبات */}
-        <table className="w-full text-sm border-separate border-spacing-y-1">
+        {/* جدول عرض التفاصيل */}
+        <table className="w-full text-sm border-separate border-spacing-y-1 mt-2">
           <thead>
             <tr>
               <th>{t.orderNum}</th>
+              <th>{t.printingFee}</th>
               <th>{t.createdAt}</th>
-              {/* مكان لأي بند إضافي مستقبلاً */}
+              <th>{t.yourEarning}</th>
             </tr>
           </thead>
           <tbody>
             {filteredOrders.map(o => (
               <tr key={o.requestId}>
                 <td>{o.requestId}</td>
+                <td>{Number(o.printingFee || 0).toFixed(2)} د.إ</td>
                 <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
-                {/* أي بند إضافي هنا */}
+                <td className="font-bold text-emerald-600">{(Number(o.printingFee || 0) * 0.4).toFixed(2)} د.إ</td>
               </tr>
             ))}
           </tbody>
