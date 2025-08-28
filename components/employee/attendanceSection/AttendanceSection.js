@@ -18,7 +18,6 @@ function getDuration(inTime, outTime) {
 // تقسيم الشهر إلى أسابيع (كل أسبوع 7 أيام)
 function splitToWeeks(attendanceArr) {
   const sorted = [...attendanceArr].sort((a, b) => a.date.localeCompare(b.date));
-  // أول يوم في الشهر حسب الداتا
   if (!sorted.length) return [];
   const firstDate = new Date(sorted[0].date);
   const year = firstDate.getFullYear();
@@ -61,25 +60,25 @@ function exportToCSV(attendanceArr, lang) {
   URL.revokeObjectURL(url);
 }
 
-// === أرباح الطلبات المنجزة (40% من رسوم الطباعة) ===
+// === أرباح الطلبات المنجزة (لحالة مكتمل أو مرفوض فقط) ===
 function useEmployeeOrders({ employeeId, orders }) {
-  // الشهر الحالي
   const today = new Date();
   const month = today.getMonth() + 1;
   const year = today.getFullYear();
 
-  const completedOrdersThisMonth = orders.filter(o => {
+  // فقط الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
+  const filteredOrders = orders.filter(o => {
     const d = new Date(o.createdAt);
     return o.assignedTo === employeeId &&
-      o.status === "completed" &&
+      (o.status === "completed" || o.status === "rejected") &&
       d.getMonth() + 1 === month && d.getFullYear() === year;
   });
 
-  const totalEarnings = completedOrdersThisMonth.reduce(
-    (sum, o) => sum + (Number(o.printingFee || 0) * 0.4), 0
-  );
+  // لا يوجد حساب أرباح على رسوم الطباعة
+  // لو فيه حساب جديد ضيفه هنا، حالياً فقط عدد الطلبات
+  const totalEarnings = 0; // مكان لحساب جديد لو أردت
 
-  return { completedOrdersThisMonth, totalEarnings };
+  return { filteredOrders, totalEarnings };
 }
 
 // ======== Main AttendanceSection Component =========
@@ -103,13 +102,12 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "تصفير الشهر",
       rest: "راحة",
       noData: "لا يوجد حضور لهذا الشهر.",
-      earningsTitle: "أرباحك من الطلبات المنجزة هذا الشهر",
-      ordersCount: "عدد الطلبات المنجزة",
+      earningsTitle: "طلباتك المنجزة هذا الشهر",
+      ordersCount: "عدد الطلبات (مكتمل/مرفوض)",
       totalEarnings: "إجمالي الأرباح",
       orderNum: "رقم الطلب",
-      printingFee: "رسوم الطباعة",
-      createdAt: "تاريخ الإنشاء",
-      yourEarning: "ربحك"
+      createdAt: "تاريخ الإنشاء"
+      // بند الأرباح فارغ لأن لا يوجد حساب حالياً
     },
     en: {
       title: "Monthly Attendance",
@@ -124,13 +122,12 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "Reset Month",
       rest: "Rest",
       noData: "No attendance for this month.",
-      earningsTitle: "Your earnings from completed orders this month",
-      ordersCount: "Completed Orders",
+      earningsTitle: "Your completed/rejected orders this month",
+      ordersCount: "Completed/Rejected Orders",
       totalEarnings: "Total Earnings",
       orderNum: "Order No.",
-      printingFee: "Printing Fee",
-      createdAt: "Created At",
-      yourEarning: "Your Earning"
+      createdAt: "Created At"
+      // Earnings field empty
     }
   }[lang === "en" ? "en" : "ar"];
 
@@ -153,7 +150,6 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     if (last && last.date) {
       const lastMonth = new Date(last.date).getMonth();
       const currentMonth = today.getMonth();
-      // إذا البيانات لأكثر من شهر أو الشهر تغيّر، صفر الداتا
       if (lastMonth !== currentMonth) {
         updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
       }
@@ -173,7 +169,7 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     ? ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
     : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-  // اجعل يوم الراحة دائماً الجمعة (index 5 في week) أو غيّره كما تريد
+  // اجعل يوم الراحة دائماً الجمعة (index 5 في week)
   const isRestDay = (i) => i === 5;
 
   // تصدير كـ CSV
@@ -188,8 +184,8 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
   };
 
-  // أرباح الطلبات المنجزة
-  const { completedOrdersThisMonth, totalEarnings } = useEmployeeOrders({
+  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
+  const { filteredOrders, totalEarnings } = useEmployeeOrders({
     employeeId: employeeData?.id,
     orders
   });
@@ -212,36 +208,37 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
         </button>
       </div>
 
-      {/* أرباح الطلبات المنجزة */}
+      {/* الطلبات المنجزة (مكتمل/مرفوض) */}
       <div className="mb-8 p-6 bg-indigo-50 rounded-xl shadow border max-w-2xl mx-auto text-center">
         <h3 className="text-xl font-black text-emerald-700 mb-3">{t.earningsTitle}</h3>
         <div className="text-lg mb-3">
-          {t.ordersCount}: <span className="font-bold">{completedOrdersThisMonth.length}</span>
+          {t.ordersCount}: <span className="font-bold">{filteredOrders.length}</span>
         </div>
-        <div className="text-lg mb-3">
-          {t.totalEarnings}: <span className="font-bold text-emerald-600">{totalEarnings.toFixed(2)} د.إ</span>
-        </div>
+        {/* هنا يمكنك إضافة حساب أرباح جديد مستقبلاً */}
         {/* جدول الطلبات */}
         <table className="w-full text-sm border-separate border-spacing-y-1">
           <thead>
             <tr>
               <th>{t.orderNum}</th>
-              <th>{t.printingFee}</th>
               <th>{t.createdAt}</th>
-              <th>{t.yourEarning}</th>
+              {/* مكان لأي بند إضافي مستقبلاً */}
             </tr>
           </thead>
           <tbody>
-            {completedOrdersThisMonth.map(o => (
+            {filteredOrders.map(o => (
               <tr key={o.requestId}>
                 <td>{o.requestId}</td>
-                <td>{Number(o.printingFee || 0).toFixed(2)} د.إ</td>
                 <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
-                <td className="font-bold text-emerald-600">{(Number(o.printingFee || 0) * 0.4).toFixed(2)} د.إ</td>
+                {/* أي بند إضافي هنا */}
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* مكان فارغ لإنشاء خدمة وربطه لاحقاً */}
+      <div className="my-8">
+        {/* هنا سيتم إضافة كومبوننت إنشاء خدمة لاحقاً */}
       </div>
 
       {/* جدول الحضور */}
