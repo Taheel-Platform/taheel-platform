@@ -152,6 +152,7 @@ export default function ServicePayModal({
         serviceId: serviceData.serviceId || serviceId || "",
         providers, // ← كما في الخدمة
         paidAmount: finalPrice,
+        printingFee: printingFee,
         coinsUsed: useCoins ? coinDiscountValue : 0,
         coinsGiven: willGetCashback ? cashbackCoins : 0,
         createdAt: new Date().toISOString(),
