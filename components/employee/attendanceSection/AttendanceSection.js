@@ -298,4 +298,3 @@ function AttendanceSection(props) {
 }
 
 export { AttendanceSection, AttendanceSectionInner };
-  // ======== End of AttendanceSection Component =========       
