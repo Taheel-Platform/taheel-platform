@@ -253,31 +253,29 @@ function MyOrdersSection({ employeeData, lang = "ar" }) {
 
   // ---- تغيير حالة الطلب ----
   async function confirmChangeStatus(pendingStatusArg) {
-    const ps = pendingStatusArg || pendingStatus;
-    if (!ps) return;
-    const { order, newStatus, note } = ps;
-    const statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
-    const updatedHistory = [
-      ...statusHistory,
-      {
-        status: newStatus,
-        timestamp: new Date().toISOString(),
-        updatedBy: employeeData.name,
-        ...(note ? { note } : {})
-      }
-    ];
-    await updateDoc(doc(db, "requests", order.requestId), {
+  const ps = pendingStatusArg || pendingStatus;
+  if (!ps) return;
+  const { order, newStatus, note } = ps;
+  const statusHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+  const updatedHistory = [
+    ...statusHistory,
+    {
       status: newStatus,
-      statusHistory: updatedHistory
-    });
-    setSelected((s) =>
-      s && s.requestId === order.requestId
-        ? { ...s, status: newStatus, statusHistory: updatedHistory }
-        : s
-    );
-    await sendAutoNotification(order, newStatus);
-    setPendingStatus(null);
-  }
+      timestamp: new Date().toISOString(),
+      updatedBy: employeeData.name,
+      ...(note ? { note } : {})
+    }
+  ];
+  await updateDoc(doc(db, "requests", order.requestId), {
+    status: newStatus,
+    statusHistory: updatedHistory
+  });
+  await sendAutoNotification(order, newStatus);
+
+  // أغلق مربع التأكيد ومودال الطلب بعد التنفيذ
+  setPendingStatus(null);
+  setSelected(null);
+}
 
   // ---- إشعار مخصص ----
   async function sendCustomNotification(order, content) {
