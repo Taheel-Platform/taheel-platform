@@ -9,6 +9,7 @@ import {
   onSnapshot,
   updateDoc,
   addDoc,
+  getDocs,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 import {
@@ -20,7 +21,6 @@ import {
 } from "react-icons/fa";
 import ChatWidgetFull from "@/components/ClientChat/ChatWidgetFull";
 
-// Status metadata
 const statusIcons = {
   new: "🆕",
   under_review: "🔎",
@@ -56,6 +56,7 @@ const typeTabs = [
   { key: "other", label: "أخرى", icon: <FaUserAlt /> }
 ];
 
+// --------- بيانات الموظف الحالي (يفضل جلبها من السياق أو Auth) ----------
 const currentEmployee = {
   userId: typeof window !== "undefined" && window.localStorage
     ? window.localStorage.getItem("userId") || "EMP1"
@@ -86,10 +87,7 @@ function OrdersSectionInner({ lang = "ar" }) {
   const [playNotif, setPlayNotif] = useState(false);
   const notifAudioRef = useRef();
 
-  // الخدمات: استخراج التصنيفات الفرعية ووجهات الخدمة لقوائم البحث/العرض
-  const [subCategories, setSubCategories] = useState([]);
-  const [destinations, setDestinations] = useState([]);
-
+  // جلب الطلبات والعملاء والخدمات والموظفين من Firestore
   useEffect(() => {
     // الطلبات
     const unsubOrders = onSnapshot(collection(db, "requests"), snap => {
@@ -97,6 +95,7 @@ function OrdersSectionInner({ lang = "ar" }) {
       snap.forEach(docSnap => arr.push({ ...docSnap.data(), requestId: docSnap.id }));
       setOrders(arr);
     });
+
     // العملاء والموظفين
     const unsubUsers = onSnapshot(collection(db, "users"), snap => {
       const usersObj = {};
@@ -109,29 +108,34 @@ function OrdersSectionInner({ lang = "ar" }) {
       setClients(usersObj);
       setEmployees(empArr);
     });
-    // الخدمات + التصنيفات الفرعية ووجهات الخدمة
+
+    // الخدمات (تفكيك الهيكل إذا كان nested)
     const unsubServices = onSnapshot(collection(db, "servicesByClientType"), async (snap) => {
+      // Firestore لا يدعم nested subcollections مباشرة مثل RTDB
+      // يمكنك هنا جلب كل الخدمات لكل نوع عميل
       const flat = {};
-      let subCats = [];
-      let dests = [];
       for (const docSnap of snap.docs) {
-        const data = docSnap.data();
+        const data = docSnap.data(); // نوع عميل: {serviceId: {...}, ...}
         Object.entries(data).forEach(([sid, s]) => {
           flat[sid] = { ...s, type: docSnap.id, id: sid };
-          if (s.subCategory) subCats.push(s.subCategory);
-          if (s.destination) dests.push(s.destination);
         });
       }
       setServices(flat);
-      setSubCategories([...new Set(subCats)]);
-      setDestinations([...new Set(dests)]);
     });
+
     return () => {
       unsubOrders();
       unsubUsers();
       unsubServices();
     };
   }, []);
+
+  // جلب معاينة الشات للطلبات الجديدة + صوت إشعار (تحتاج تعديل حسب نظام الشات لديك)
+  useEffect(() => {
+    // هنا يمكنك تركها فارغة أو ربطها مع Firestore حسب هيكلة الشات لديك (مثلاً collection(chatRooms) => subcollection(messages))
+    // setChatPreview({...});
+    // setPlayNotif(true); // إذا أردت تشغيل صوت عند وصول طلب جديد
+  }, [orders.length]);
 
   useEffect(() => {
     if (playNotif && notifAudioRef.current) {
@@ -148,12 +152,14 @@ function OrdersSectionInner({ lang = "ar" }) {
     return "other";
   }
 
+  // عدادات الحالات
   const statusCounts = {};
   orders.forEach((o) => {
     const s = o.status || "new";
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
+  // الفلترة الرئيسية
   let filteredOrders = orders.filter((o) => {
     const type = getOrderType(o.clientId);
     if (tab !== "all" && type !== tab) return false;
@@ -169,8 +175,6 @@ function OrdersSectionInner({ lang = "ar" }) {
         client.userId,
         svc.name,
         svc.name_en,
-        svc.subCategory,
-        svc.destination,
         o.status,
         client.email,
         client.phone
@@ -187,6 +191,7 @@ function OrdersSectionInner({ lang = "ar" }) {
     .filter((o) => (o.status || "new") === "new")
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
+  // إشعار تلقائي عند تغيير الحالة
   async function sendAutoNotification(order, newStatus) {
     const client = clients[order.clientId];
     if (!client) return;
@@ -235,8 +240,8 @@ function OrdersSectionInner({ lang = "ar" }) {
     if (!employee) return;
 
     await updateDoc(doc(db, "requests", order.requestId), {
-      assignedTo: employee.userId,
-      assignedToName: employee.name || "",
+      assignedTo: employee.userId,          // 👈 رقم الموظف وليس الاسم
+      assignedToName: employee.name || "",  // (اختياري للعرض فقط)
       lastUpdated: new Date().toISOString()
     });
 
@@ -248,6 +253,7 @@ function OrdersSectionInner({ lang = "ar" }) {
     );
   }
 
+  // إشعار مخصص
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
     const client = clients[order.clientId];
@@ -309,219 +315,241 @@ function OrdersSectionInner({ lang = "ar" }) {
     );
   }
 
-  function renderOrderDetails(order) {
-    if (!order) return null;
-    const client = clients[order.clientId];
-    const service = services[order.serviceId];
-    const assignedEmp = employees.find((e) => e.userId === order.assignedTo);
-    const now = new Date();
-    const created = order.createdAt ? new Date(order.createdAt) : null;
-    const minutesAgo = created ? Math.floor((now - created) / 60000) : null;
-    let notes = null;
-    if (Array.isArray(order.statusHistory)) {
-      const last = [...order.statusHistory].reverse().find(
-        (h) => h.status === order.status && h.note
-      );
-      notes = last && last.note ? last.note : null;
-    }
-    const whatsappLink = client?.phone ? `https://wa.me/${client.phone.replace(/^0/, "971")}` : null;
-    const mailtoLink = client?.email ? `mailto:${client.email}` : null;
 
-    return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" style={{ padding: "20px", boxSizing: "border-box" }}>
-        <div className="bg-white rounded-2xl shadow-2xl border max-w-[820px] w-full flex flex-col md:flex-row gap-4 md:gap-6 items-stretch p-0 overflow-auto" style={{ minHeight: "60vh", maxHeight: "90vh" }}>
-          {/* الكارت الجانبي للعميل */}
-          <div className="flex-none bg-white p-4 md:p-6 border-r md:min-w-[280px] md:max-w-[320px] flex flex-col items-center justify-center rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none shadow-none border-b md:border-b-0" style={{ minWidth: 0 }}>
-            {renderClientCard(client)}
+
+
+function renderOrderDetails(order) {
+  if (!order) return null;
+  const client = clients[order.clientId];
+  const service = services[order.serviceId];
+  const assignedEmp = employees.find((e) => e.userId === order.assignedTo);
+  const now = new Date();
+  const created = order.createdAt ? new Date(order.createdAt) : null;
+  const minutesAgo = created ? Math.floor((now - created) / 60000) : null;
+  let notes = null;
+  if (Array.isArray(order.statusHistory)) {
+    const last = [...order.statusHistory].reverse().find(
+      (h) => h.status === order.status && h.note
+    );
+    notes = last && last.note ? last.note : null;
+  }
+  const whatsappLink = client?.phone ? `https://wa.me/${client.phone.replace(/^0/, "971")}` : null;
+  const mailtoLink = client?.email ? `mailto:${client.email}` : null;
+
+  return (
+    <div
+      className="
+        fixed inset-0 bg-black/40 flex items-center justify-center z-50
+      "
+      style={{padding: "20px", boxSizing: "border-box"}}
+    >
+      <div
+        className="
+          bg-white rounded-2xl shadow-2xl border max-w-[760px] w-full
+          flex flex-col md:flex-row gap-4 md:gap-6 items-stretch
+          p-0 overflow-auto
+        "
+        style={{
+          minHeight: "60vh",
+          maxHeight: "90vh",
+        }}
+      >
+        {/* الكارت الجانبي للعميل */}
+        <div
+          className="
+            flex-none bg-white p-4 md:p-6 border-r md:min-w-[280px] md:max-w-[320px]
+            flex flex-col items-center justify-center
+            rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none
+            shadow-none border-b md:border-b-0
+          "
+          style={{minWidth: 0}}
+        >
+          {/* كارت العميل */}
+          {renderClientCard(client)}
+        </div>
+
+        {/* باقي تفاصيل الطلب */}
+        <div
+          className="flex-1 flex flex-col gap-4 text-base text-gray-900 font-semibold p-4 md:p-6 overflow-auto"
+          style={{minWidth: 0}}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className={"inline-flex items-center gap-1 px-2 py-1 rounded border font-bold text-xs " + (statusColor[order.status] || "bg-gray-100 text-gray-900 border-gray-400")}>
+              {statusIcons[order.status] || "❓"} {statusLabel[order.status] || order.status}
+            </div>
+            <button className="text-2xl text-gray-400 hover:text-gray-900 font-bold cursor-pointer" onClick={() => setSelected(null)}>
+              <MdClose />
+            </button>
           </div>
-          {/* باقي تفاصيل الطلب */}
-          <div className="flex-1 flex flex-col gap-4 text-base text-gray-900 font-semibold p-4 md:p-6 overflow-auto" style={{ minWidth: 0 }}>
-            <div className="flex items-center justify-between mb-2">
-              <div className={"inline-flex items-center gap-1 px-2 py-1 rounded border font-bold text-xs " + (statusColor[order.status] || "bg-gray-100 text-gray-900 border-gray-400")}>
-                {statusIcons[order.status] || "❓"} {statusLabel[order.status] || order.status}
-              </div>
-              <button className="text-2xl text-gray-400 hover:text-gray-900 font-bold cursor-pointer" onClick={() => setSelected(null)}>
-                <MdClose />
-              </button>
-            </div>
-            <div className="font-extrabold text-emerald-800 text-lg mb-2">{service?.name || service?.name_en || order.serviceId}</div>
-            {/* التصنيف الفرعي ووجهة الخدمة */}
-            <div className="flex flex-row gap-3 mb-2">
-              <div>
-                <span className="font-bold text-gray-700">التصنيف الفرعي:</span>{" "}
-                <span className="bg-emerald-50 px-2 py-1 rounded font-bold">{service?.subCategory || "-"}</span>
-              </div>
-              <div>
-                <span className="font-bold text-gray-700">وجهة الخدمة:</span>{" "}
-                <span className="bg-indigo-50 px-2 py-1 rounded font-bold">{service?.destination || "-"}</span>
-              </div>
-            </div>
+          <div className="font-extrabold text-emerald-800 text-lg mb-2">{service?.name || service?.name_en || order.serviceId}</div>
+          <div>
+            <span className="font-bold text-gray-700">رقم الطلب:</span>{" "}
+            <span className="font-mono text-indigo-700 font-bold">{order.trackingNumber || order.requestId}</span>
+          </div>
+          {/* عرض المرفقات */}
+          {(order.fileUrl || (Array.isArray(order.attachments) && order.attachments.length > 0)) && (
             <div>
-              <span className="font-bold text-gray-700">رقم الطلب:</span>{" "}
-              <span className="font-mono text-indigo-700 font-bold">{order.trackingNumber || order.requestId}</span>
-            </div>
-            {(order.fileUrl || (Array.isArray(order.attachments) && order.attachments.length > 0)) && (
-              <div>
-                <span className="font-bold text-gray-700">المرفقات:</span>
-                <ul className="list-disc ml-6">
-                  {Array.isArray(order.attachments) && order.attachments.length > 0 ? (
-                    order.attachments.map((att, i) => (
-                      <li key={i}>
-                        <a
-                          href={att.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-700 underline font-bold"
-                          download={att.name}
-                        >
-                          {att.name || `مرفق ${i + 1}`}
-                        </a>
-                      </li>
-                    ))
-                  ) : (
-                    <li>
+              <span className="font-bold text-gray-700">المرفقات:</span>
+              <ul className="list-disc ml-6">
+                {Array.isArray(order.attachments) && order.attachments.length > 0 ? (
+                  order.attachments.map((att, i) => (
+                    <li key={i}>
                       <a
-                        href={order.fileUrl}
+                        href={att.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-700 underline font-bold"
-                        download={order.fileName}
+                        download={att.name}
                       >
-                        {order.fileName || "تحميل المستند"}
+                        {att.name || `مرفق ${i + 1}`}
                       </a>
                     </li>
-                  )}
-                </ul>
-              </div>
-            )}
-            <div>
-              <span className="font-bold text-gray-700">الموظف الحالي:</span>{" "}
-              <span className="inline-flex items-center gap-1">
-                <FaUserTie className="text-indigo-600" />
-                {assignedEmp ? assignedEmp.name : (order.assignedTo || "غير معين")}
-              </span>
+                  ))
+                ) : (
+                  <li>
+                    <a
+                      href={order.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 underline font-bold"
+                      download={order.fileName}
+                    >
+                      {order.fileName || "تحميل المستند"}
+                    </a>
+                  </li>
+                )}
+              </ul>
             </div>
-            <div className="flex flex-row gap-3">
-              <div>
-                <span className="font-bold text-gray-700">المبلغ:</span> <span className="text-green-700">{order.paidAmount} درهم</span>
-              </div>
-              {order.processingFee !== undefined && (
-                <div>
-                  <span className="font-bold text-gray-700">رسوم معالجة الدفع الإلكتروني:</span>{" "}
-                  <span className="text-orange-700">{Number(order.processingFee).toFixed(2)} درهم</span>
-                </div>
-              )}
+          )}
+          <div>
+            <span className="font-bold text-gray-700">الموظف الحالي:</span>{" "}
+            <span className="inline-flex items-center gap-1">
+              <FaUserTie className="text-indigo-600" />
+              {assignedEmp ? assignedEmp.name : (order.assignedTo || "غير معين")}
+            </span>
+          </div>
+          <div>
+            <span className="font-bold text-gray-700">المبلغ:</span> <span className="text-green-700">{order.paidAmount} درهم</span>
+          </div>
+          <div>
+            <span className="font-bold text-gray-700">وقت الطلب:</span>{" "}
+            {created ? created.toLocaleString("ar-EG") + ` (${minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`} مضت)` : "-"}
+          </div>
+          {notes && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-yellow-700 font-semibold">
+              <span className="font-bold">ملاحظة الموظف:</span>
+              <div>{notes}</div>
             </div>
-            <div>
-              <span className="font-bold text-gray-700">وقت الطلب:</span>{" "}
-              {created ? created.toLocaleString("ar-EG") + ` (${minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`} مضت)` : "-"}
-            </div>
-            {notes && (
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-yellow-700 font-semibold">
-                <span className="font-bold">ملاحظة الموظف:</span>
-                <div>{notes}</div>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2 items-center mt-2">
-              <span className="font-bold text-gray-800">تواصل مع العميل:</span>
-              <button className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
-                onClick={() => setShowChat(!showChat)}
-                disabled={!client?.userId}
-                style={{ cursor: client?.userId ? "pointer" : "not-allowed" }}>
-                <MdOutlineChat /> شات داخلي
-              </button>
-              {whatsappLink && (
-                <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
-                >
-                  <MdWhatsapp /> واتساب
-                </a>
-              )}
-              {mailtoLink && (
-                <a href={mailtoLink} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
-                >
-                  <MdEmail /> إرسال إيميل
-                </a>
-              )}
-              <button className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
-                onClick={() => setShowNotifModal(true)}>
-                <MdNotificationsActive /> إشعار مخصص
-              </button>
-            </div>
-            {showChat && client?.userId && (
-              <div className="mt-4 border rounded-xl bg-gray-50 p-2 shadow-inner">
-                <ChatWidgetFull
-                  userId={currentEmployee.userId}
-                  userName={currentEmployee.name}
-                  roomId={client.userId}
-                />
-              </div>
-            )}
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                const status = e.target.status.value;
-                const note = e.target.note.value;
-                setPendingStatus({ order, newStatus: status, note });
-              }}
-              className="flex flex-col gap-2 mt-3"
-            >
-              <label className="font-bold text-gray-800">تغيير الحالة:</label>
-              <select name="status" defaultValue={order.status} className="border rounded px-2 py-1 cursor-pointer focus:ring-2 focus:ring-emerald-500">
-                {Object.keys(statusLabel).map((k) => (
-                  <option key={k} value={k}>
-                    {statusIcons[k]} {statusLabel[k]}
-                  </option>
-                ))}
-              </select>
-              <input type="text" name="note" className="border rounded px-2 py-1" placeholder="ملاحظة الموظف (اختياري)" />
-              <button type="submit" className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 text-white px-5 py-2 rounded font-bold shadow cursor-pointer transition-all">
-                <MdNotificationsActive /> حفظ الحالة وإشعار العميل
-              </button>
-            </form>
-            <div className="mt-4">
-              <button
-                className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-400 hover:from-indigo-700 hover:to-indigo-500 text-white px-5 py-2 rounded font-bold shadow cursor-pointer transition-all"
-                onClick={() => setAssignModal(true)}
+          )}
+          {/* تواصل مع العميل */}
+          <div className="flex flex-wrap gap-2 items-center mt-2">
+            <span className="font-bold text-gray-800">تواصل مع العميل:</span>
+            <button className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
+              onClick={() => setShowChat(!showChat)}
+              disabled={!client?.userId}
+              style={{cursor: client?.userId ? "pointer" : "not-allowed"}}>
+              <MdOutlineChat /> شات داخلي
+            </button>
+            {whatsappLink && (
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
               >
-                <FaUserTie /> تصدير الطلب لموظف آخر
-              </button>
+                <MdWhatsapp /> واتساب
+              </a>
+            )}
+            {mailtoLink && (
+              <a href={mailtoLink} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
+              >
+                <MdEmail /> إرسال إيميل
+              </a>
+            )}
+            <button className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
+              onClick={() => setShowNotifModal(true)}>
+              <MdNotificationsActive /> إشعار مخصص
+            </button>
+          </div>
+          {/* الشات الداخلى (الموظف كطرف مرسل) */}
+          {showChat && client?.userId && (
+            <div className="mt-4 border rounded-xl bg-gray-50 p-2 shadow-inner">
+              <ChatWidgetFull
+                userId={currentEmployee.userId}
+                userName={currentEmployee.name}
+                roomId={client.userId}
+              />
+            </div>
+          )}
+          {/* تغيير حالة الطلب */}
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              const status = e.target.status.value;
+              const note = e.target.note.value;
+              setPendingStatus({order, newStatus: status, note});
+            }}
+            className="flex flex-col gap-2 mt-3"
+          >
+            <label className="font-bold text-gray-800">تغيير الحالة:</label>
+            <select name="status" defaultValue={order.status} className="border rounded px-2 py-1 cursor-pointer focus:ring-2 focus:ring-emerald-500">
+              {Object.keys(statusLabel).map((k) => (
+                <option key={k} value={k}>
+                  {statusIcons[k]} {statusLabel[k]}
+                </option>
+              ))}
+            </select>
+            <input type="text" name="note" className="border rounded px-2 py-1" placeholder="ملاحظة الموظف (اختياري)" />
+            <button type="submit" className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 text-white px-5 py-2 rounded font-bold shadow cursor-pointer transition-all">
+              <MdNotificationsActive /> حفظ الحالة وإشعار العميل
+            </button>
+          </form>
+          <div className="mt-4">
+            <button
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-400 hover:from-indigo-700 hover:to-indigo-500 text-white px-5 py-2 rounded font-bold shadow cursor-pointer transition-all"
+              onClick={() => setAssignModal(true)}
+            >
+              <FaUserTie /> تصدير الطلب لموظف آخر
+            </button>
             </div>
           </div>
         </div>
+        {/* مودال اختيار الموظف */}
         {assignModal && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative border border-emerald-200">
-              <button className="absolute top-2 left-2 text-2xl font-bold text-gray-700 hover:text-emerald-800 transition" onClick={() => setAssignModal(false)}>
-                ×
-              </button>
-              <div className="font-bold mb-3 text-emerald-800 flex items-center gap-2 text-lg">
-                <FaUserTie className="text-indigo-600" /> اختر الموظف
-              </div>
-              <select
-                className="border-2 border-emerald-200 rounded w-full px-3 py-2 mb-3 cursor-pointer text-gray-900 font-bold bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-300"
-                value={assignTo}
-                onChange={e => setAssignTo(e.target.value)}
-              >
-                <option value="">اختر الموظف</option>
-                {employees.map(e => (
-                  <option value={e.userId} key={e.userId}>{e.name}</option>
-                ))}
-              </select>
-              <button
-                className="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded font-bold w-full cursor-pointer mb-2 transition"
-                disabled={!assignTo}
-                onClick={() => handleAssign(order, assignTo)}
-              >
-                تحويل الطلب
-              </button>
-              <button className="absolute top-2 right-2 text-2xl font-bold text-gray-400 hover:text-red-500 cursor-pointer transition" onClick={() => setAssignModal(false)}>
-                <MdClose />
-              </button>
-            </div>
-          </div>
-        )}
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative border border-emerald-200">
+      <button
+        className="absolute top-2 left-2 text-2xl font-bold text-gray-700 hover:text-emerald-800 transition"
+        onClick={() => setAssignModal(false)}>
+        ×
+      </button>
+      <div className="font-bold mb-3 text-emerald-800 flex items-center gap-2 text-lg">
+        <FaUserTie className="text-indigo-600" /> اختر الموظف
+      </div>
+      <select
+        className="border-2 border-emerald-200 rounded w-full px-3 py-2 mb-3 cursor-pointer text-gray-900 font-bold bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-300"
+        value={assignTo}
+        onChange={e => setAssignTo(e.target.value)}
+      >
+        <option value="">اختر الموظف</option>
+        {employees.map(e => (
+          <option value={e.userId} key={e.userId}>{e.name}</option>
+        ))}
+      </select>
+      <button
+        className="bg-indigo-700 hover:bg-indigo-800 text-white px-4 py-2 rounded font-bold w-full cursor-pointer mb-2 transition"
+        disabled={!assignTo}
+        onClick={() => handleAssign(order, assignTo)}
+      >
+        تحويل الطلب
+      </button>
+      <button
+        className="absolute top-2 right-2 text-2xl font-bold text-gray-400 hover:text-red-500 cursor-pointer transition"
+        onClick={() => setAssignModal(false)}>
+        <MdClose />
+      </button>
+    </div>
+  </div>
+)}
+        {/* إشعار مخصص */}
         {showNotifModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative">
@@ -581,6 +609,7 @@ function OrdersSectionInner({ lang = "ar" }) {
                   <span className="font-bold">منذ: </span>
                   {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
                 </div>
+                {/* معاينة الشات */}
                 {chatMsg && (
                   <div className="mt-2 flex items-center gap-1 text-xs bg-white rounded px-2 py-1 border border-emerald-100 shadow">
                     <MdOutlineChat className="text-emerald-600" />
@@ -593,6 +622,7 @@ function OrdersSectionInner({ lang = "ar" }) {
           })}
         </div>
         <audio ref={notifAudioRef} src="/sounds/new-order.mp3" preload="auto" />
+        {/* ضع ملف صوتي باسم new-order.mp3 داخل public/sounds */}
       </div>
     );
   }
@@ -614,29 +644,6 @@ function OrdersSectionInner({ lang = "ar" }) {
             {t.icon}{t.label}
           </button>
         ))}
-      </div>
-      {/* قوائم التصنيف الفرعي ووجهة الخدمة للبحث */}
-      <div className="flex gap-2 mb-4">
-        <select
-          className="border rounded px-2 py-1"
-          onChange={e => setSearch(e.target.value)}
-          defaultValue=""
-        >
-          <option value="">كل التصنيفات الفرعية</option>
-          {subCategories.map((cat, idx) => (
-            <option key={idx} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <select
-          className="border rounded px-2 py-1"
-          onChange={e => setSearch(e.target.value)}
-          defaultValue=""
-        >
-          <option value="">كل الوجهات</option>
-          {destinations.map((dest, idx) => (
-            <option key={idx} value={dest}>{dest}</option>
-          ))}
-        </select>
       </div>
       {/* عدادات الحالات */}
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -671,6 +678,7 @@ function OrdersSectionInner({ lang = "ar" }) {
         >
           <MdNotificationsActive /> الطلبات الجديدة <span className="font-mono">{newOrders.length}</span>
         </button>
+        {/* زر كتم/تشغيل الصوت للطلبات الجديدة */}
         <button
           className="ml-2 flex items-center gap-1 bg-white border border-yellow-300 hover:bg-yellow-50 text-yellow-700 px-3 py-2 rounded shadow transition cursor-pointer"
           onClick={() => { if (notifAudioRef.current) notifAudioRef.current.play(); }}
@@ -681,17 +689,15 @@ function OrdersSectionInner({ lang = "ar" }) {
       </div>
       {/* جدول الطلبات */}
       <div className="overflow-x-auto rounded-xl shadow bg-white/90">
-        <table className="min-w-full text-center table-fixed">
+        <table className="min-w-full text-center">
           <thead>
             <tr className="bg-emerald-50 text-emerald-900 text-sm">
-              <th className="py-2 px-3 w-32">رقم الطلب</th>
-              <th className="py-2 px-3 w-36">الخدمة</th>
-              <th className="py-2 px-3 w-36">التصنيف الفرعي</th>
-              <th className="py-2 px-3 w-36">وجهة الخدمة</th>
-              <th className="py-2 px-3 w-32">العميل</th>
-              <th className="py-2 px-3 w-32">الحالة</th>
-              <th className="py-2 px-3 w-32">الموظف</th>
-              <th className="py-2 px-3 w-28">منذ</th>
+              <th className="py-2 px-3">رقم الطلب</th>
+              <th className="py-2 px-3">الخدمة</th>
+              <th className="py-2 px-3">العميل</th>
+              <th className="py-2 px-3">الحالة</th>
+              <th className="py-2 px-3">الموظف</th>
+              <th className="py-2 px-3">منذ</th>
             </tr>
           </thead>
           <tbody>
@@ -707,12 +713,10 @@ function OrdersSectionInner({ lang = "ar" }) {
                   onClick={() => setSelected(o)}
                 >
                   <td className="font-mono font-bold text-indigo-800">{o.trackingNumber || o.requestId}</td>
-                  <td className="text-emerald-900 font-extrabold truncate">{service?.name || o.serviceId}</td>
-                  <td className="text-xs font-bold text-gray-700 truncate">{service?.subCategory || "-"}</td>
-                  <td className="text-xs font-bold text-gray-700 truncate">{service?.destination || "-"}</td>
+                  <td className="text-emerald-900 font-extrabold">{service?.name || o.serviceId}</td>
                   <td>
                     <span
-                      className="text-emerald-700 font-bold underline hover:text-emerald-900 cursor-pointer truncate"
+                      className="text-emerald-700 font-bold underline hover:text-emerald-900 cursor-pointer"
                       onClick={e => { e.stopPropagation(); setShowClientCard(client); }}
                     >
                       {client?.name || o.clientId}
@@ -734,7 +738,7 @@ function OrdersSectionInner({ lang = "ar" }) {
             })}
             {filteredOrders.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-6 text-gray-400">
+                <td colSpan={7} className="py-6 text-gray-400">
                   لا يوجد طلبات بهذه البيانات.
                 </td>
               </tr>
@@ -742,11 +746,13 @@ function OrdersSectionInner({ lang = "ar" }) {
           </tbody>
         </table>
       </div>
+      {/* تفاصيل الطلب */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           {renderOrderDetails(selected)}
         </div>
       )}
+      {/* كارت العميل */}
       {showClientCard && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="relative">
@@ -754,7 +760,10 @@ function OrdersSectionInner({ lang = "ar" }) {
           </div>
         </div>
       )}
+      {/* Sidebar الطلبات الجديدة */}
       {renderNewSidebar()}
+
+      {/* تأكيد تغيير الحالة */}
       {pendingStatus && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative flex flex-col items-center">
@@ -777,7 +786,6 @@ function OrdersSectionInner({ lang = "ar" }) {
     </div>
   );
 }
-
 export default function OrdersSection(props) {
   return (
     <Suspense fallback={null}>
