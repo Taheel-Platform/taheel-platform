@@ -9,7 +9,6 @@ import {
   onSnapshot,
   updateDoc,
   addDoc,
-  getDocs,
 } from "firebase/firestore";
 import { firestore as db } from "@/lib/firebase.client";
 import {
@@ -57,7 +56,6 @@ const typeTabs = [
   { key: "other", label: "أخرى", icon: <FaUserAlt /> }
 ];
 
-// بيانات الموظف الحالي
 const currentEmployee = {
   userId: typeof window !== "undefined" && window.localStorage
     ? window.localStorage.getItem("userId") || "EMP1"
@@ -125,7 +123,6 @@ function OrdersSectionInner({ lang = "ar" }) {
         });
       }
       setServices(flat);
-      // قوائم فريدة فقط
       setSubCategories([...new Set(subCats)]);
       setDestinations([...new Set(dests)]);
     });
@@ -151,14 +148,12 @@ function OrdersSectionInner({ lang = "ar" }) {
     return "other";
   }
 
-  // عدادات الحالات
   const statusCounts = {};
   orders.forEach((o) => {
     const s = o.status || "new";
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
-  // الفلترة الرئيسية
   let filteredOrders = orders.filter((o) => {
     const type = getOrderType(o.clientId);
     if (tab !== "all" && type !== tab) return false;
@@ -192,7 +187,6 @@ function OrdersSectionInner({ lang = "ar" }) {
     .filter((o) => (o.status || "new") === "new")
     .sort((a, b) => (a.createdAt || "") > (b.createdAt || "") ? 1 : -1);
 
-  // إشعار تلقائي عند تغيير الحالة
   async function sendAutoNotification(order, newStatus) {
     const client = clients[order.clientId];
     if (!client) return;
@@ -254,7 +248,6 @@ function OrdersSectionInner({ lang = "ar" }) {
     );
   }
 
-  // إشعار مخصص
   async function sendCustomNotification(order, content) {
     if (!content || !order) return;
     const client = clients[order.clientId];
@@ -367,7 +360,6 @@ function OrdersSectionInner({ lang = "ar" }) {
               <span className="font-bold text-gray-700">رقم الطلب:</span>{" "}
               <span className="font-mono text-indigo-700 font-bold">{order.trackingNumber || order.requestId}</span>
             </div>
-            {/* عرض المرفقات */}
             {(order.fileUrl || (Array.isArray(order.attachments) && order.attachments.length > 0)) && (
               <div>
                 <span className="font-bold text-gray-700">المرفقات:</span>
@@ -430,7 +422,6 @@ function OrdersSectionInner({ lang = "ar" }) {
                 <div>{notes}</div>
               </div>
             )}
-            {/* تواصل مع العميل */}
             <div className="flex flex-wrap gap-2 items-center mt-2">
               <span className="font-bold text-gray-800">تواصل مع العميل:</span>
               <button className="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-3 py-1 rounded shadow cursor-pointer"
@@ -467,7 +458,6 @@ function OrdersSectionInner({ lang = "ar" }) {
                 />
               </div>
             )}
-            {/* تغيير حالة الطلب */}
             <form
               onSubmit={e => {
                 e.preventDefault();
@@ -500,7 +490,6 @@ function OrdersSectionInner({ lang = "ar" }) {
             </div>
           </div>
         </div>
-        {/* مودال اختيار الموظف */}
         {assignModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative border border-emerald-200">
@@ -533,7 +522,6 @@ function OrdersSectionInner({ lang = "ar" }) {
             </div>
           </div>
         )}
-        {/* إشعار مخصص */}
         {showNotifModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative">
@@ -593,7 +581,6 @@ function OrdersSectionInner({ lang = "ar" }) {
                   <span className="font-bold">منذ: </span>
                   {minutesAgo < 60 ? `${minutesAgo} دقيقة` : `${Math.round(minutesAgo / 60)} ساعة`}
                 </div>
-                {/* معاينة الشات */}
                 {chatMsg && (
                   <div className="mt-2 flex items-center gap-1 text-xs bg-white rounded px-2 py-1 border border-emerald-100 shadow">
                     <MdOutlineChat className="text-emerald-600" />
@@ -755,13 +742,11 @@ function OrdersSectionInner({ lang = "ar" }) {
           </tbody>
         </table>
       </div>
-      {/* تفاصيل الطلب */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           {renderOrderDetails(selected)}
         </div>
       )}
-      {/* كارت العميل */}
       {showClientCard && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="relative">
@@ -769,9 +754,7 @@ function OrdersSectionInner({ lang = "ar" }) {
           </div>
         </div>
       )}
-      {/* Sidebar الطلبات الجديدة */}
       {renderNewSidebar()}
-      {/* تأكيد تغيير الحالة */}
       {pendingStatus && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full relative flex flex-col items-center">
