@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, getDoc, setDoc } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 import { FaWallet, FaCoins } from "react-icons/fa";
 
@@ -106,6 +106,7 @@ function useEmployeeOrders({ employeeId, orders }) {
 function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userDocReady, setUserDocReady] = useState(false);
 
   const t = {
     ar: {
@@ -150,15 +151,42 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     }
   }[lang === "en" ? "en" : "ar"];
 
+  // تحقق وإنشاء المستخدم تلقائي لو مش موجود مع كل الحقول
   useEffect(() => {
     if (!employeeData?.id) return;
+    const userRef = doc(firestore, "users", employeeData.id);
+
+    async function ensureUserDoc() {
+      const docSnap = await getDoc(userRef);
+      if (!docSnap.exists()) {
+        // إنشاء كل الحقول من employeeData + attendance فارغ
+        await setDoc(userRef, {
+          ...employeeData,
+          attendance: []
+        });
+      } else {
+        // لو موجود بالفعل، لو attendance مش موجود أضفه فقط
+        if (!docSnap.data().attendance) {
+          await updateDoc(userRef, { attendance: [] });
+        }
+      }
+      setUserDocReady(true);
+    }
+
+    ensureUserDoc();
+  }, [employeeData?.id, employeeData]);
+
+  // جلب الحضور مباشرة من الفايرستور (تحديث لحظي)
+  useEffect(() => {
+    if (!employeeData?.id || !userDocReady) return;
     setLoading(true);
-    const unsub = onSnapshot(doc(firestore, "users", employeeData.id), (snap) => {
+    const userRef = doc(firestore, "users", employeeData.id);
+    const unsub = onSnapshot(userRef, (snap) => {
       setAttendance(Array.isArray(snap.data()?.attendance) ? snap.data().attendance : []);
       setLoading(false);
     });
     return () => unsub();
-  }, [employeeData?.id]);
+  }, [employeeData?.id, userDocReady]);
 
   useEffect(() => {
     if (!employeeData?.id || !attendance.length) return;
@@ -186,14 +214,11 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
   const handleExport = () => exportToCSV(attendance, lang);
   const handleReset = async () => {
     if (!employeeData?.id) return;
-    if (!window.confirm(lang === "ar"
-      ? "هل أنت متأكد من تصفير الحضور لهذا الشهر؟"
-      : "Are you sure to reset this month's attendance?")) return;
     await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
   };
 
   // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر + الربح فقط
-  const { filteredOrders, totalEarnings } = useEmployeeOrders({
+  const { filteredEvents, totalEarnings } = useEmployeeOrders({
     employeeId: employeeData?.id,
     orders
   });
@@ -223,7 +248,7 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
           <div className="flex flex-col items-center">
             <FaWallet className="text-emerald-600 mb-1" size={26} />
             <div className="text-lg font-bold text-indigo-900">
-              {t.ordersCount}: <span className="mx-2 text-emerald-700">{filteredOrders.length}</span>
+              {t.ordersCount}: <span className="mx-2 text-emerald-700">{filteredEvents.length}</span>
             </div>
           </div>
           <div className="flex flex-col items-center">
@@ -243,11 +268,11 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.map(o => (
-              <tr key={o.requestId}>
+            {filteredEvents.map(o => (
+              <tr key={o.requestId + o.createdAt}>
                 <td>{o.requestId}</td>
                 <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
-                <td className="font-bold text-emerald-600">{(Number(o.printingFee || 0) * 0.4).toFixed(2)} د.إ</td>
+                <td className="font-bold text-emerald-600">{o.earning.toFixed(2)} د.إ</td>
               </tr>
             ))}
           </tbody>
