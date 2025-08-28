@@ -61,20 +61,44 @@ function useEmployeeOrders({ employeeId, orders }) {
   const month = today.getMonth() + 1;
   const year = today.getFullYear();
 
-  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
-  const filteredOrders = orders.filter(o => {
-    const d = new Date(o.createdAt);
-    return o.assignedTo === employeeId &&
-      (o.status === "completed" || o.status === "rejected") &&
-      d.getMonth() + 1 === month && d.getFullYear() === year;
+  // حساب عدد مرات "completed" أو "rejected" في statusHistory لهذا الموظف في الشهر الحالي
+  let filteredEvents = [];
+  let totalEarnings = 0;
+
+  orders.forEach(o => {
+    if (o.assignedTo === employeeId) {
+      if (Array.isArray(o.statusHistory)) {
+        o.statusHistory.forEach(event => {
+          const d = new Date(event.timestamp);
+          if (
+            (event.status === "completed" || event.status === "rejected") &&
+            d.getMonth() + 1 === month && d.getFullYear() === year
+          ) {
+            filteredEvents.push({
+              requestId: o.requestId,
+              createdAt: event.timestamp,
+              earning: Number(o.printingFee || 0) * 0.4
+            });
+            totalEarnings += Number(o.printingFee || 0) * 0.4;
+          }
+        });
+      } else if (
+        (o.status === "completed" || o.status === "rejected") // في حالة لا يوجد statusHistory
+      ) {
+        const d = new Date(o.createdAt);
+        if (d.getMonth() + 1 === month && d.getFullYear() === year) {
+          filteredEvents.push({
+            requestId: o.requestId,
+            createdAt: o.createdAt,
+            earning: Number(o.printingFee || 0) * 0.4
+          });
+          totalEarnings += Number(o.printingFee || 0) * 0.4;
+        }
+      }
+    }
   });
 
-  // حساب الربح فقط (40% من رسوم الطباعة)
-  const totalEarnings = filteredOrders.reduce(
-    (sum, o) => sum + (Number(o.printingFee || 0) * 0.4), 0
-  );
-
-  return { filteredOrders, totalEarnings };
+  return { filteredEvents, totalEarnings };
 }
 
 // ======== Main AttendanceSection Component =========
