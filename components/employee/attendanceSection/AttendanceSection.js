@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, getDoc, setDoc, collection } from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 import { FaWallet, FaCoins } from "react-icons/fa";
 
@@ -55,6 +55,20 @@ function exportToCSV(attendanceArr, lang) {
   URL.revokeObjectURL(url);
 }
 
+// ==== Live fetch for orders: تحديث لحظي للطلبات ====
+function useLiveOrders() {
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(firestore, "requests"), (snap) => {
+      const arr = [];
+      snap.forEach(docSnap => arr.push(docSnap.data()));
+      setOrders(arr);
+    });
+    return () => unsub();
+  }, []);
+  return orders;
+}
+
 // === أرباح الطلبات المنجزة (لحالة مكتمل أو مرفوض فقط) ===
 function useEmployeeOrders({ employeeId, orders }) {
   const today = new Date();
@@ -103,7 +117,8 @@ function useEmployeeOrders({ employeeId, orders }) {
 
 // ======== Main AttendanceSection Component =========
 
-function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
+function AttendanceSectionInner({ employeeData, lang = "ar" }) {
+  const orders = useLiveOrders(); // جلب الطلبات لحظياً
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userDocReady, setUserDocReady] = useState(false);
