@@ -332,7 +332,7 @@ function TrackingForm({ LANG, lang = "ar", isArabic = true }) {
   );
 }
 
-import { AttendanceSectionInner } from "@/components/employee/AttendanceSection";
+import { AttendanceSectionInner } from "@/components/employee/attendanceSection/AttendanceSection";
 
 function AttendanceSection(props) {
   return (

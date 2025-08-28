@@ -13,7 +13,7 @@ import {
   FaChevronRight, FaChevronLeft, FaClock, FaEnvelope
 } from "react-icons/fa";
 import ProfileSection from "@/components/employee/ProfileSection";
-import { AttendanceSection } from "@/components/employee/AttendanceSection";
+import { AttendanceSection } from "@/components/employee/attendanceSection/AttendanceSection";
 import MyOrdersSection from "@/components/employee/ordersection/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
