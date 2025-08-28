@@ -17,7 +17,6 @@ function getDuration(inTime, outTime) {
 
 // تقسيم الشهر إلى أسابيع (كل أسبوع 7 أيام)
 function splitToWeeks(attendanceArr) {
-  // ترتيب الحضور تصاعدي حسب التاريخ
   const sorted = [...attendanceArr].sort((a, b) => a.date.localeCompare(b.date));
   // أول يوم في الشهر حسب الداتا
   if (!sorted.length) return [];
@@ -62,9 +61,30 @@ function exportToCSV(attendanceArr, lang) {
   URL.revokeObjectURL(url);
 }
 
+// === أرباح الطلبات المنجزة (40% من رسوم الطباعة) ===
+function useEmployeeOrders({ employeeId, orders }) {
+  // الشهر الحالي
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const year = today.getFullYear();
+
+  const completedOrdersThisMonth = orders.filter(o => {
+    const d = new Date(o.createdAt);
+    return o.assignedTo === employeeId &&
+      o.status === "completed" &&
+      d.getMonth() + 1 === month && d.getFullYear() === year;
+  });
+
+  const totalEarnings = completedOrdersThisMonth.reduce(
+    (sum, o) => sum + (Number(o.printingFee || 0) * 0.4), 0
+  );
+
+  return { completedOrdersThisMonth, totalEarnings };
+}
+
 // ======== Main AttendanceSection Component =========
 
-function AttendanceSectionInner({ employeeData, lang = "ar" }) {
+function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,7 +102,14 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
       export: "تصدير كـ CSV",
       reset: "تصفير الشهر",
       rest: "راحة",
-      noData: "لا يوجد حضور لهذا الشهر."
+      noData: "لا يوجد حضور لهذا الشهر.",
+      earningsTitle: "أرباحك من الطلبات المنجزة هذا الشهر",
+      ordersCount: "عدد الطلبات المنجزة",
+      totalEarnings: "إجمالي الأرباح",
+      orderNum: "رقم الطلب",
+      printingFee: "رسوم الطباعة",
+      createdAt: "تاريخ الإنشاء",
+      yourEarning: "ربحك"
     },
     en: {
       title: "Monthly Attendance",
@@ -96,7 +123,14 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
       export: "Export as CSV",
       reset: "Reset Month",
       rest: "Rest",
-      noData: "No attendance for this month."
+      noData: "No attendance for this month.",
+      earningsTitle: "Your earnings from completed orders this month",
+      ordersCount: "Completed Orders",
+      totalEarnings: "Total Earnings",
+      orderNum: "Order No.",
+      printingFee: "Printing Fee",
+      createdAt: "Created At",
+      yourEarning: "Your Earning"
     }
   }[lang === "en" ? "en" : "ar"];
 
@@ -154,6 +188,12 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
     await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
   };
 
+  // أرباح الطلبات المنجزة
+  const { completedOrdersThisMonth, totalEarnings } = useEmployeeOrders({
+    employeeId: employeeData?.id,
+    orders
+  });
+
   return (
     <div className="bg-white rounded-xl p-8 text-center shadow text-indigo-700">
       <h2 className="text-2xl font-bold mb-6">{t.title}</h2>
@@ -171,6 +211,40 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
           {t.reset}
         </button>
       </div>
+
+      {/* أرباح الطلبات المنجزة */}
+      <div className="mb-8 p-6 bg-indigo-50 rounded-xl shadow border max-w-2xl mx-auto text-center">
+        <h3 className="text-xl font-black text-emerald-700 mb-3">{t.earningsTitle}</h3>
+        <div className="text-lg mb-3">
+          {t.ordersCount}: <span className="font-bold">{completedOrdersThisMonth.length}</span>
+        </div>
+        <div className="text-lg mb-3">
+          {t.totalEarnings}: <span className="font-bold text-emerald-600">{totalEarnings.toFixed(2)} د.إ</span>
+        </div>
+        {/* جدول الطلبات */}
+        <table className="w-full text-sm border-separate border-spacing-y-1">
+          <thead>
+            <tr>
+              <th>{t.orderNum}</th>
+              <th>{t.printingFee}</th>
+              <th>{t.createdAt}</th>
+              <th>{t.yourEarning}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {completedOrdersThisMonth.map(o => (
+              <tr key={o.requestId}>
+                <td>{o.requestId}</td>
+                <td>{Number(o.printingFee || 0).toFixed(2)} د.إ</td>
+                <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
+                <td className="font-bold text-emerald-600">{(Number(o.printingFee || 0) * 0.4).toFixed(2)} د.إ</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* جدول الحضور */}
       {loading ? (
         <div className="text-gray-400">...</div>
       ) : !weeks.length ? (
