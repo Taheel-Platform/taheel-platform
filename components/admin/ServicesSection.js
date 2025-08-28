@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   serverTimestamp,
   deleteField,
@@ -66,6 +67,7 @@ export default function ServicesSection({ lang = "ar" }) {
   const [editingId, setEditingId] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
+  // جلب البيانات
   useEffect(() => {
     async function fetchData() {
       if (!clientType) return;
@@ -105,60 +107,49 @@ export default function ServicesSection({ lang = "ar" }) {
 
   const { tax, clientPrice, print } = calcAll(newService.price, newService.printingFee);
 
+  // إضافة أو تعديل خدمة
+  async function saveService(serviceFieldName, serviceData) {
+    const docRef = doc(db, "servicesByClientType", clientType);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      await setDoc(docRef, { [serviceFieldName]: serviceData }, { merge: true });
+    } else {
+      await updateDoc(docRef, { [serviceFieldName]: serviceData });
+    }
+  }
+
   async function handleAddService(e) {
     e.preventDefault();
     setLoading(true);
     const serviceFieldName = `service${Date.now()}`;
-    await updateDoc(
-      doc(db, "servicesByClientType", clientType),
-      {
-        [serviceFieldName]: {
-          name: newService.name,
-          description: newService.description,
-          category: clientType,
-          subcategory: newService.subcategory,
-          providers: Array.isArray(newService.providers)
-            ? newService.providers.filter(Boolean)
-            : typeof newService.providers === "string" && newService.providers
-              ? [newService.providers]
-              : [],
-          price: Number(newService.price),
-          printingFee: Number(newService.printingFee),
-          coins: Number(newService.coins),
-          profit: Number(newService.printingFee),
-          tax: Number(tax),
-          clientPrice: Number(clientPrice),
-          requiredDocuments: newService.requireUpload
-            ? documentsFields.map((s) => s.trim()).filter(Boolean)
-            : [],
-          duration: newService.duration,
-          requireUpload: !!newService.requireUpload,
-          repeatable: !!newService.repeatable,
-          serviceId: generateServiceId(clientType),
-          createdAt: serverTimestamp(),
-          active: true,
-        },
-      }
-    );
-    setNewService({
-      name: "",
-      description: "",
+    const serviceData = {
+      name: newService.name,
+      description: newService.description,
       category: clientType,
-      subcategory: "",
-      providers: [],
-      price: "",
-      printingFee: "",
-      coins: "",
-      requiredDocuments: [],
-      duration: "",
-      requireUpload: false,
-      repeatable: false,
-    });
-    setDocumentsFields([""]);
-    setDocumentsCount(1);
-    setShowAdd(false);
-    setEditMode(false);
-    setEditingId(null);
+      subcategory: newService.subcategory,
+      providers: Array.isArray(newService.providers)
+        ? newService.providers.filter(Boolean)
+        : typeof newService.providers === "string" && newService.providers
+          ? [newService.providers]
+          : [],
+      price: Number(newService.price),
+      printingFee: Number(newService.printingFee),
+      coins: Number(newService.coins),
+      profit: Number(newService.printingFee),
+      tax: Number(tax),
+      clientPrice: Number(clientPrice),
+      requiredDocuments: newService.requireUpload
+        ? documentsFields.map((s) => s.trim()).filter(Boolean)
+        : [],
+      duration: newService.duration,
+      requireUpload: !!newService.requireUpload,
+      repeatable: !!newService.repeatable,
+      serviceId: generateServiceId(clientType),
+      createdAt: serverTimestamp(),
+      active: true,
+    };
+    await saveService(serviceFieldName, serviceData);
+    resetForm();
     setLoading(false);
   }
 
@@ -174,34 +165,79 @@ export default function ServicesSection({ lang = "ar" }) {
   async function handleEditService(e) {
     e.preventDefault();
     setLoading(true);
-    const { tax, clientPrice } = calcAll(newService.price, newService.printingFee);
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      [editingId]: {
-        name: newService.name,
-        description: newService.description,
-        category: clientType,
-        subcategory: newService.subcategory,
-        providers: Array.isArray(newService.providers)
-          ? newService.providers.filter(Boolean)
-          : typeof newService.providers === "string" && newService.providers
-            ? [newService.providers]
-            : [],
-        price: Number(newService.price),
-        printingFee: Number(newService.printingFee),
-        coins: Number(newService.coins),
-        profit: Number(newService.printingFee),
-        tax: Number(tax),
-        clientPrice: Number(clientPrice),
-        requiredDocuments: newService.requireUpload
-          ? documentsFields.map((s) => s.trim()).filter(Boolean)
+    const serviceData = {
+      name: newService.name,
+      description: newService.description,
+      category: clientType,
+      subcategory: newService.subcategory,
+      providers: Array.isArray(newService.providers)
+        ? newService.providers.filter(Boolean)
+        : typeof newService.providers === "string" && newService.providers
+          ? [newService.providers]
           : [],
-        duration: newService.duration,
-        requireUpload: !!newService.requireUpload,
-        repeatable: !!newService.repeatable,
-      },
+      price: Number(newService.price),
+      printingFee: Number(newService.printingFee),
+      coins: Number(newService.coins),
+      profit: Number(newService.printingFee),
+      tax: Number(tax),
+      clientPrice: Number(clientPrice),
+      requiredDocuments: newService.requireUpload
+        ? documentsFields.map((s) => s.trim()).filter(Boolean)
+        : [],
+      duration: newService.duration,
+      requireUpload: !!newService.requireUpload,
+      repeatable: !!newService.repeatable,
+      serviceId: newService.serviceId || generateServiceId(clientType),
+      active: true,
+    };
+    await saveService(editingId, serviceData);
+    resetForm();
+    setLoading(false);
+  }
+
+  // إدارة التصنيفات الفرعية
+  async function handleAddSubcategory(subcat) {
+    if (!subcat.trim()) return;
+    setLoading(true);
+    const docRef = doc(db, "servicesByClientType", clientType);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      await setDoc(docRef, { subcategories: [subcat.trim()] }, { merge: true });
+    } else {
+      await updateDoc(docRef, { subcategories: arrayUnion(subcat.trim()) });
+    }
+    setLoading(false);
+  }
+  async function handleRemoveSubcategory(subcat) {
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      subcategories: arrayRemove(subcat),
     });
-    setEditingId(null);
-    setEditMode(false);
+    setLoading(false);
+  }
+
+  // إدارة جهات الخدمة
+  async function handleAddProvider(provider) {
+    if (!provider.trim()) return;
+    setLoading(true);
+    const docRef = doc(db, "servicesByClientType", clientType);
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      await setDoc(docRef, { providers: [provider.trim()] }, { merge: true });
+    } else {
+      await updateDoc(docRef, { providers: arrayUnion(provider.trim()) });
+    }
+    setLoading(false);
+  }
+  async function handleRemoveProvider(provider) {
+    setLoading(true);
+    await updateDoc(doc(db, "servicesByClientType", clientType), {
+      providers: arrayRemove(provider),
+    });
+    setLoading(false);
+  }
+
+  function resetForm() {
     setNewService({
       name: "",
       description: "",
@@ -219,41 +255,8 @@ export default function ServicesSection({ lang = "ar" }) {
     setDocumentsFields([""]);
     setDocumentsCount(1);
     setShowAdd(false);
-    setLoading(false);
-  }
-
-  async function handleAddSubcategory(subcat) {
-    if (!subcat.trim()) return;
-    setLoading(true);
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      subcategories: arrayUnion(subcat.trim()),
-    });
-    setLoading(false);
-  }
-
-  async function handleRemoveSubcategory(subcat) {
-    setLoading(true);
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      subcategories: arrayRemove(subcat),
-    });
-    setLoading(false);
-  }
-
-  async function handleAddProvider(provider) {
-    if (!provider.trim()) return;
-    setLoading(true);
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      providers: arrayUnion(provider.trim()),
-    });
-    setLoading(false);
-  }
-
-  async function handleRemoveProvider(provider) {
-    setLoading(true);
-    await updateDoc(doc(db, "servicesByClientType", clientType), {
-      providers: arrayRemove(provider),
-    });
-    setLoading(false);
+    setEditMode(false);
+    setEditingId(null);
   }
 
   const filteredServices =
@@ -281,7 +284,7 @@ export default function ServicesSection({ lang = "ar" }) {
                 category: e.target.value,
               }));
             }}
-            className="p-2 rounded border text-cyan-800 font-bold bg-cyan-50 text-sm"
+            className="p-2 w-56 rounded border text-cyan-800 font-bold bg-cyan-50 text-sm"
           >
             {categories.filter((c) => c.key !== "all").map((cat) => (
               <option value={cat.key} key={cat.key}>
@@ -293,27 +296,10 @@ export default function ServicesSection({ lang = "ar" }) {
             onClick={() => {
               setShowAdd((v) => !v);
               if (showAdd) {
-                setEditMode(false);
-                setEditingId(null);
-                setNewService({
-                  name: "",
-                  description: "",
-                  category: clientType,
-                  subcategory: "",
-                  providers: [],
-                  price: "",
-                  printingFee: "",
-                  coins: "",
-                  requiredDocuments: [],
-                  duration: "",
-                  requireUpload: false,
-                  repeatable: false,
-                });
-                setDocumentsFields([""]);
-                setDocumentsCount(1);
+                resetForm();
               }
             }}
-            className="px-3 py-2 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer text-sm"
+            className="px-3 py-2 w-56 rounded bg-cyan-700 hover:bg-cyan-900 text-white font-bold shadow mt-2 md:mt-0 transition cursor-pointer text-sm"
           >
             {lang === "ar"
               ? showAdd
@@ -357,7 +343,7 @@ export default function ServicesSection({ lang = "ar" }) {
                 value={newSubcatInput}
                 onChange={e => setNewSubcatInput(e.target.value)}
                 placeholder={lang === "ar" ? "جديد..." : "New..."}
-                className="p-1 rounded border text-cyan-900 text-xs"
+                className="p-1 w-32 rounded border text-cyan-900 text-xs"
               />
               <button
                 type="submit"
@@ -395,7 +381,7 @@ export default function ServicesSection({ lang = "ar" }) {
                 value={newProviderInput}
                 onChange={e => setNewProviderInput(e.target.value)}
                 placeholder={lang === "ar" ? "جديد..." : "New..."}
-                className="p-1 rounded border text-cyan-900 text-xs"
+                className="p-1 w-32 rounded border text-cyan-900 text-xs"
               />
               <button
                 type="submit"
@@ -412,7 +398,7 @@ export default function ServicesSection({ lang = "ar" }) {
           <button
             key={cat.key}
             onClick={() => setFilter(cat.key)}
-            className={`px-3 py-1 rounded-lg border font-semibold transition cursor-pointer text-xs ${
+            className={`px-3 py-1 w-32 rounded-lg border font-semibold transition cursor-pointer text-xs ${
               filter === cat.key
                 ? "bg-cyan-700 text-white border-cyan-700"
                 : "bg-white text-cyan-700 border-cyan-300 hover:bg-cyan-50"
@@ -429,40 +415,27 @@ export default function ServicesSection({ lang = "ar" }) {
           onSubmit={editMode ? handleEditService : handleAddService}
           className="bg-cyan-50 rounded-lg p-4 mb-6 shadow flex flex-col gap-2 border border-cyan-200"
         >
-          <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-wrap gap-2 mb-2 justify-center">
             <input
               required
-              className="p-2 rounded border text-gray-900 font-semibold flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 font-semibold text-sm"
               placeholder={lang === "ar" ? "اسم الخدمة" : "Service name"}
               value={newService.name}
               onChange={(e) =>
                 setNewService({ ...newService, name: e.target.value })
               }
             />
-            <textarea
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+            <input
+              required
+              className="p-2 w-56 rounded border text-gray-900 text-sm"
               placeholder={lang === "ar" ? "وصف الخدمة" : "Service Description"}
-              rows={2}
               value={newService.description}
               onChange={(e) =>
                 setNewService({ ...newService, description: e.target.value })
               }
             />
-          </div>
-          <div className="flex flex-col md:flex-row gap-2">
             <select
-              className="p-2 rounded border text-gray-900 font-semibold flex-1 text-sm"
-              value={newService.category}
-              disabled
-            >
-              <option value={clientType}>
-                {lang === "ar"
-                  ? categories.find((c) => c.key === clientType)?.label_ar
-                  : categories.find((c) => c.key === clientType)?.label_en}
-              </option>
-            </select>
-            <select
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 font-semibold text-sm"
               value={newService.subcategory}
               onChange={e =>
                 setNewService({ ...newService, subcategory: e.target.value })
@@ -481,7 +454,7 @@ export default function ServicesSection({ lang = "ar" }) {
             </select>
             <select
               multiple
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 text-sm"
               value={newService.providers}
               onChange={e => {
                 const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
@@ -494,13 +467,11 @@ export default function ServicesSection({ lang = "ar" }) {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="flex flex-col md:flex-row gap-2">
             <input
               required
               type="number"
               min="0"
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 text-sm"
               placeholder={
                 lang === "ar"
                   ? "سعر الخدمة (بدون رسوم الطباعة)"
@@ -514,7 +485,7 @@ export default function ServicesSection({ lang = "ar" }) {
             <input
               type="number"
               min="0"
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 text-sm"
               placeholder={
                 lang === "ar" ? "رسوم الطباعة" : "Printing Fee"
               }
@@ -528,12 +499,12 @@ export default function ServicesSection({ lang = "ar" }) {
               type="number"
               min="0"
               readOnly
-              className="p-2 rounded border text-gray-900 flex-1 bg-gray-100 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 bg-gray-100 text-sm"
               placeholder={lang === "ar" ? "عدد الكوينات" : "Coins"}
               value={newService.coins}
             />
             <input
-              className="p-2 rounded border text-gray-900 flex-1 text-sm"
+              className="p-2 w-56 rounded border text-gray-900 text-sm"
               placeholder={lang === "ar" ? "وقت الإنجاز" : "Estimated Duration"}
               value={newService.duration}
               onChange={(e) =>
@@ -610,7 +581,7 @@ export default function ServicesSection({ lang = "ar" }) {
               {Array.from({ length: documentsCount }).map((_, i) => (
                 <input
                   key={i}
-                  className="p-2 rounded border text-gray-900 text-xs"
+                  className="p-2 w-56 rounded border text-gray-900 text-xs"
                   placeholder={
                     lang === "ar"
                       ? `اسم المستند #${i + 1}`
@@ -647,35 +618,15 @@ export default function ServicesSection({ lang = "ar" }) {
             {editMode && (
               <button
                 type="button"
-                onClick={() => {
-                  setEditMode(false);
-                  setEditingId(null);
-                  setNewService({
-                    name: "",
-                    description: "",
-                    category: clientType,
-                    subcategory: "",
-                    providers: [],
-                    price: "",
-                    printingFee: "",
-                    coins: "",
-                    requiredDocuments: [],
-                    duration: "",
-                    requireUpload: false,
-                    repeatable: false,
-                  });
-                  setDocumentsFields([""]);
-                  setDocumentsCount(1);
-                  setShowAdd(false);
-                }}
-                className="px-3 py-2 rounded bg-gray-400 hover:bg-gray-600 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
+                onClick={resetForm}
+                className="px-3 py-2 w-32 rounded bg-gray-400 hover:bg-gray-600 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
               >
                 {lang === "ar" ? "إلغاء التعديل" : "Cancel Edit"}
               </button>
             )}
             <button
               disabled={loading}
-              className="px-3 py-2 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
+              className="px-3 py-2 w-32 rounded bg-cyan-800 hover:bg-cyan-900 text-white font-bold shadow mt-2 transition cursor-pointer text-xs"
             >
               {lang === "ar"
                 ? editMode
@@ -790,13 +741,13 @@ export default function ServicesSection({ lang = "ar" }) {
                           : 1
                       );
                     }}
-                    className="px-2 py-1 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer text-xs"
+                    className="px-2 py-1 w-20 bg-cyan-600 hover:bg-cyan-800 text-white rounded mx-1 transition cursor-pointer text-xs"
                   >
                     {lang === "ar" ? "تعديل" : "Edit"}
                   </button>
                   <button
                     onClick={() => handleDeleteService(service.id)}
-                    className="px-2 py-1 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer text-xs"
+                    className="px-2 py-1 w-20 bg-red-600 hover:bg-red-800 text-white rounded mx-1 transition cursor-pointer text-xs"
                   >
                     {lang === "ar" ? "حذف" : "Delete"}
                   </button>
