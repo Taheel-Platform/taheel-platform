@@ -6,42 +6,36 @@ import { FaWallet, FaCoins } from "react-icons/fa";
 
 // ===== Helper functions =====
 
-// احسب مدة العمل بين in و out بالساعات
 function getDuration(inTime, outTime) {
   if (!inTime || !outTime) return 0;
   const [h1, m1] = inTime.split(":").map(Number);
   const [h2, m2] = outTime.split(":").map(Number);
   let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
   if (mins < 0) mins += 24 * 60;
-  return +(mins / 60).toFixed(2); // عدد الساعات (float)
+  return +(mins / 60).toFixed(2);
 }
 
-// تقسيم الشهر إلى أسابيع (كل أسبوع 7 أيام)
 function splitToWeeks(attendanceArr) {
   const sorted = [...attendanceArr].sort((a, b) => a.date.localeCompare(b.date));
   if (!sorted.length) return [];
   const firstDate = new Date(sorted[0].date);
   const year = firstDate.getFullYear();
   const month = firstDate.getMonth();
-  // جميع أيام الشهر
   const allDays = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let d = 1; d <= daysInMonth; d++) {
     const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     allDays.push(date);
   }
-  // قسمة الأيام إلى أسابيع
   const weeks = [];
   for (let i = 0; i < allDays.length; i += 7) {
     weeks.push(allDays.slice(i, i + 7));
   }
-  // ربط كل يوم ببيانات الحضور لو موجود وإلا فارغ
   return weeks.map(weekDays =>
     weekDays.map(date => sorted.find(a => a.date === date) || { date, in: "", out: "" })
   );
 }
 
-// تصدير كـ CSV
 function exportToCSV(attendanceArr, lang) {
   const t = lang === "ar"
     ? ["التاريخ", "وقت الدخول", "وقت الخروج", "عدد الساعات"]
@@ -67,7 +61,7 @@ function useEmployeeOrders({ employeeId, orders }) {
   const month = today.getMonth() + 1;
   const year = today.getFullYear();
 
-  // فقط الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
+  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر
   const filteredOrders = orders.filter(o => {
     const d = new Date(o.createdAt);
     return o.assignedTo === employeeId &&
@@ -75,7 +69,7 @@ function useEmployeeOrders({ employeeId, orders }) {
       d.getMonth() + 1 === month && d.getFullYear() === year;
   });
 
-  // حساب أرباح الموظف = مجموع 40% من قيمة رسوم الطباعة
+  // حساب الربح فقط (40% من رسوم الطباعة)
   const totalEarnings = filteredOrders.reduce(
     (sum, o) => sum + (Number(o.printingFee || 0) * 0.4), 0
   );
@@ -89,7 +83,6 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ترجمة
   const t = {
     ar: {
       title: "سجل الحضور الشهري",
@@ -104,11 +97,10 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "تصفير الشهر",
       rest: "راحة",
       noData: "لا يوجد حضور لهذا الشهر.",
-      earningsTitle: "الأرباح الشهرية",
+      earningsTitle: "أرباحك الشهرية",
       ordersCount: "عدد الطلبات (مكتمل/مرفوض)",
-      totalEarnings: "إجمالي الأرباح",
+      totalEarnings: "إجمالي الربح",
       orderNum: "رقم الطلب",
-      printingFee: "رسوم الطباعة",
       createdAt: "تاريخ الإنشاء",
       yourEarning: "ربحك"
     },
@@ -125,17 +117,15 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
       reset: "Reset Month",
       rest: "Rest",
       noData: "No attendance for this month.",
-      earningsTitle: "Monthly Earnings",
-      ordersCount: "Completed/Rejected Orders",
+      earningsTitle: "Your Monthly Earnings",
+      ordersCount: "Orders (Completed/Rejected)",
       totalEarnings: "Total Earnings",
       orderNum: "Order No.",
-      printingFee: "Printing Fee",
       createdAt: "Created At",
       yourEarning: "Your Earning"
     }
   }[lang === "en" ? "en" : "ar"];
 
-  // جلب الحضور مباشرة من الفايرستور (تحديث لحظي)
   useEffect(() => {
     if (!employeeData?.id) return;
     setLoading(true);
@@ -146,7 +136,6 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     return () => unsub();
   }, [employeeData?.id]);
 
-  // تصفير الحضور أول كل شهر تلقائياً (يعمل عند أول دخول في الشهر الجديد)
   useEffect(() => {
     if (!employeeData?.id || !attendance.length) return;
     const today = new Date();
@@ -160,26 +149,17 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     }
   }, [employeeData?.id, attendance]);
 
-  // تقسيم الشهر إلى أسابيع (كل أسبوع 7 أيام)
   const weeks = splitToWeeks(attendance);
-
-  // احسب ساعات العمل الكلية لكل أسبوع ولكل الشهر
   const getWeekHours = (week) =>
     week.reduce((sum, day) => sum + getDuration(day.in, day.out), 0);
   const totalMonthHours = weeks.reduce((s, w) => s + getWeekHours(w), 0);
 
-  // اسماء الأيام حسب اللغة
   const daysNames = lang === "ar"
     ? ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
     : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-  // اجعل يوم الراحة دائماً الجمعة (index 5 في week)
   const isRestDay = (i) => i === 5;
-
-  // تصدير كـ CSV
   const handleExport = () => exportToCSV(attendance, lang);
-
-  // تصفير يدوي للشهر (زر)
   const handleReset = async () => {
     if (!employeeData?.id) return;
     if (!window.confirm(lang === "ar"
@@ -188,7 +168,7 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
     await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
   };
 
-  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر + الأرباح
+  // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر + الربح فقط
   const { filteredOrders, totalEarnings } = useEmployeeOrders({
     employeeId: employeeData?.id,
     orders
@@ -229,12 +209,11 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
             </div>
           </div>
         </div>
-        {/* جدول عرض التفاصيل */}
+        {/* جدول عرض التفاصيل - فقط ربح الموظف */}
         <table className="w-full text-sm border-separate border-spacing-y-1 mt-2">
           <thead>
             <tr>
               <th>{t.orderNum}</th>
-              <th>{t.printingFee}</th>
               <th>{t.createdAt}</th>
               <th>{t.yourEarning}</th>
             </tr>
@@ -243,7 +222,6 @@ function AttendanceSectionInner({ employeeData, orders = [], lang = "ar" }) {
             {filteredOrders.map(o => (
               <tr key={o.requestId}>
                 <td>{o.requestId}</td>
-                <td>{Number(o.printingFee || 0).toFixed(2)} د.إ</td>
                 <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
                 <td className="font-bold text-emerald-600">{(Number(o.printingFee || 0) * 0.4).toFixed(2)} د.إ</td>
               </tr>
