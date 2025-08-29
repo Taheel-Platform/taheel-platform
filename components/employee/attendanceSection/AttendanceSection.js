@@ -1,6 +1,16 @@
 "use client";
 import { Suspense, useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc, getDoc, setDoc, collection } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs
+} from "firebase/firestore";
 import { firestore } from "@/lib/firebase.client";
 import { FaWallet, FaCoins } from "react-icons/fa";
 
@@ -67,6 +77,19 @@ function useLiveOrders() {
     return () => unsub();
   }, []);
   return orders;
+}
+
+// دالة جديدة: جلب docId الصحيح للموظف بناءً على employeeNumber أو uid
+async function getEmployeeDocId(employeeData) {
+  // لو employeeData.id موجود وموثق كـ UID أو docId استخدمه مباشرة
+  if (employeeData?.id) return employeeData.id;
+  // لو عندك employeeNumber ابحث به
+  if (employeeData?.employeeNumber) {
+    const q = query(collection(firestore, "users"), where("employeeNumber", "==", employeeData.employeeNumber));
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].id;
+  }
+  return null;
 }
 
 // === أرباح الطلبات المنجزة (لحالة مكتمل أو مرفوض فقط) ===
@@ -137,6 +160,7 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userDocReady, setUserDocReady] = useState(false);
+  const [docId, setDocId] = useState(null);
 
   const t = {
     ar: {
@@ -181,10 +205,19 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
     }
   }[lang === "en" ? "en" : "ar"];
 
+  // جلب docId الصحيح للموظف في البداية
+  useEffect(() => {
+    async function fetchDocId() {
+      const id = await getEmployeeDocId(employeeData);
+      setDocId(id);
+    }
+    fetchDocId();
+  }, [employeeData]);
+
   // تحقق وإنشاء المستخدم تلقائي لو مش موجود مع كل الحقول
   useEffect(() => {
-    if (!employeeData?.id) return;
-    const userRef = doc(firestore, "users", employeeData.id);
+    if (!docId) return;
+    const userRef = doc(firestore, "users", docId);
 
     async function ensureUserDoc() {
       const docSnap = await getDoc(userRef);
@@ -204,32 +237,32 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
     }
 
     ensureUserDoc();
-  }, [employeeData?.id, employeeData]);
+  }, [docId, employeeData]);
 
   // جلب الحضور مباشرة من الفايرستور (تحديث لحظي)
   useEffect(() => {
-    if (!employeeData?.id || !userDocReady) return;
+    if (!docId || !userDocReady) return;
     setLoading(true);
-    const userRef = doc(firestore, "users", employeeData.id);
+    const userRef = doc(firestore, "users", docId);
     const unsub = onSnapshot(userRef, (snap) => {
       setAttendance(Array.isArray(snap.data()?.attendance) ? snap.data().attendance : []);
       setLoading(false);
     });
     return () => unsub();
-  }, [employeeData?.id, userDocReady]);
+  }, [docId, userDocReady]);
 
   useEffect(() => {
-    if (!employeeData?.id || !attendance.length) return;
+    if (!docId || !attendance.length) return;
     const today = new Date();
     const [last] = [...attendance].sort((a, b) => b.date.localeCompare(a.date));
     if (last && last.date) {
       const lastMonth = new Date(last.date).getMonth();
       const currentMonth = today.getMonth();
       if (lastMonth !== currentMonth) {
-        updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
+        updateDoc(doc(firestore, "users", docId), { attendance: [] });
       }
     }
-  }, [employeeData?.id, attendance]);
+  }, [docId, attendance]);
 
   const weeks = splitToWeeks(attendance);
   const getWeekHours = (week) =>
@@ -243,13 +276,13 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
   const isRestDay = (i) => i === 5;
   const handleExport = () => exportToCSV(attendance, lang);
   const handleReset = async () => {
-    if (!employeeData?.id) return;
-    await updateDoc(doc(firestore, "users", employeeData.id), { attendance: [] });
+    if (!docId) return;
+    await updateDoc(doc(firestore, "users", docId), { attendance: [] });
   };
 
   // الطلبات المكتملة أو المرفوضة لهذا الموظف في هذا الشهر + الربح فقط
   const { filteredEvents, totalEarnings } = useEmployeeOrders({
-    employeeId: employeeData?.id,
+    employeeId: docId,
     orders
   });
 
@@ -290,27 +323,27 @@ function AttendanceSectionInner({ employeeData, lang = "ar" }) {
         </div>
         {/* جدول عرض التفاصيل - فقط ربح الموظف */}
         <table className="w-full text-sm border-separate border-spacing-y-1 mt-2">
-  <thead>
-    <tr>
-      <th>{t.orderNum}</th>
-      <th>{t.createdAt}</th>
-      <th>{t.yourEarning}</th>
-      <th>{lang === "ar" ? "الحالة" : "Status"}</th>
-    </tr>
-  </thead>
-  <tbody>
-    {filteredEvents.map(o => (
-      <tr key={o.requestId + o.createdAt}>
-        <td>{o.requestId}</td>
-        <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
-        <td className="font-bold text-emerald-600">{o.earning.toFixed(2)} د.إ</td>
-        <td className={`font-bold ${o.status === "completed" ? "text-green-600" : "text-red-600"}`}>
-          {o.status === "completed" ? (lang === "ar" ? "مكتمل" : "Completed") : (lang === "ar" ? "مرفوض" : "Rejected")}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+          <thead>
+            <tr>
+              <th>{t.orderNum}</th>
+              <th>{t.createdAt}</th>
+              <th>{t.yourEarning}</th>
+              <th>{lang === "ar" ? "الحالة" : "Status"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEvents.map(o => (
+              <tr key={o.requestId + o.createdAt}>
+                <td>{o.requestId}</td>
+                <td>{new Date(o.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}</td>
+                <td className="font-bold text-emerald-600">{o.earning.toFixed(2)} د.إ</td>
+                <td className={`font-bold ${o.status === "completed" ? "text-green-600" : "text-red-600"}`}>
+                  {o.status === "completed" ? (lang === "ar" ? "مكتمل" : "Completed") : (lang === "ar" ? "مرفوض" : "Rejected")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* مكان فارغ لإنشاء خدمة وربطه لاحقاً */}

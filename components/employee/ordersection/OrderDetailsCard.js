@@ -54,6 +54,7 @@ export default function OrderDetailsCard({
   const [notifContent, setNotifContent] = useState("");
   const [pendingStatus, setPendingStatus] = useState(null);
   const [transferTo, setTransferTo] = useState("");
+  const [note, setNote] = useState(""); // أضفنا حالة للملاحظة
 
   if (!order) return null;
   const now = new Date();
@@ -236,7 +237,7 @@ export default function OrderDetailsCard({
             name="status"
             defaultValue={order.status}
             className="border rounded px-2 py-1 cursor-pointer focus:ring-2 focus:ring-blue-500 text-xs"
-            onChange={e => setPendingStatus({ order, newStatus: e.target.value })}
+            onChange={e => setPendingStatus({ order, newStatus: e.target.value, note })}
           >
             {Object.keys(statusLabel).map((k) => (
               <option key={k} value={k}>
@@ -254,8 +255,15 @@ export default function OrderDetailsCard({
               إرسال طلب دفع للمدير المسؤول
             </button>
           )}
-          <input type="text" name="note" className="border rounded px-2 py-1 text-xs" placeholder="ملاحظة الموظف (اختياري)" />
-          <button type="button" style={btnStyle} onClick={() => onChangeStatus(pendingStatus)}>
+          <input
+            type="text"
+            name="note"
+            className="border rounded px-2 py-1 text-xs"
+            placeholder="ملاحظة الموظف (اختياري)"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+          />
+          <button type="button" style={btnStyle} onClick={() => onChangeStatus({ ...pendingStatus, note })}>
             <MdNotificationsActive /> حفظ الحالة وإشعار العميل
           </button>
         </div>
@@ -298,7 +306,7 @@ export default function OrderDetailsCard({
               </div>
               <div className="mb-3">هل أنت متأكد أنك تريد تعيين هذه الحالة للطلب؟ سيتم إرسال إشعار تلقائي للعميل.</div>
               <div className="flex gap-3 w-full">
-                <button style={btnStyle} className="w-full" onClick={() => onChangeStatus(pendingStatus)}>تأكيد</button>
+                <button style={btnStyle} className="w-full" onClick={() => onChangeStatus({ ...pendingStatus, note })}>تأكيد</button>
                 <button style={{...btnStyle, background:"#f3f3f3", color:"#17427a"}} className="w-full" onClick={() => setPendingStatus(null)}>إلغاء</button>
               </div>
             </div>
