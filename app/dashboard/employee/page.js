@@ -201,22 +201,24 @@ const greeting = `${lang === "ar" ? "مرحباً" : "Welcome"}, ${employeeName}
     router.replace("/login");
   };
 
-  function renderSection() {
-    switch (activeSection) {
-      case "profile":
-        return <ProfileSection employeeData={employeeData} lang={lang} />;
-      case "attendance":
-        return <AttendanceSection employeeData={employeeData} lang={lang} />;
-      case "myorders":
-        return <MyOrdersSection employeeData={employeeData} lang={lang} />;
-      case "notifications":
-        return <NotificationsSection userId={employeeData.id} lang={lang} />;
-      case "support":
-        return <SupportSection employeeId={employeeData.id} lang={lang} />;
-      default:
-        return null;
-    }
+function renderSection() {
+  switch (activeSection) {
+    case "profile":
+      return <ProfileSection employeeData={employeeData} lang={lang} />;
+    case "attendance":
+      return <AttendanceSection employeeData={employeeData} lang={lang} />;
+    case "myorders":
+      return <MyOrdersSection employeeData={employeeData} lang={lang} />;
+    case "notifications":
+      return <NotificationsSection userId={employeeData.id} lang={lang} />;
+    case "support":
+      return <SupportSection employeeId={employeeData.id} lang={lang} />;
+    case "services": 
+      return <ServicesManagementSection employeeData={employeeData} lang={lang} />;
+    default:
+      return null;
   }
+}
 
   // ألوان عالمية عصرية (أزرق بنفسجي رمادي)
   const MAIN_BG = "bg-gradient-to-br from-[#e7e9fb] via-[#f6f7fc] to-[#eef2fb]";
