@@ -66,16 +66,23 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(null);
   }
 
-  async function fetchServicesForType(type) {
-    if (!type) return setServices([]);
-    // تحويل النوع ليكون lowercase لأن المسار في قاعدة البيانات كذلك
-    const clientType = String(type).toLowerCase();
-    const collRef = collection(firestore, "servicesByClientType", clientType, clientType);
-    const snap = await getDocs(collRef);
-    let arr = [];
-    snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-    setServices(arr);
+async function fetchServicesForType(type) {
+  if (!type) return setServices([]);
+  const clientType = String(type).toLowerCase();
+  // جلب الوثيقة نفسها
+  const docRef = doc(firestore, "servicesByClientType", clientType);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    // استخراج كل الحقول التي تبدأ بـ service و active = true
+    const servicesArr = Object.entries(data)
+      .filter(([key, val]) => key.startsWith("service") && val.active)
+      .map(([key, val]) => ({ id: key, ...val }));
+    setServices(servicesArr);
+  } else {
+    setServices([]);
   }
+}
 
   async function fetchOtherServices() {
     const q = query(collection(firestore, "services"), where("type", "==", "other"));
