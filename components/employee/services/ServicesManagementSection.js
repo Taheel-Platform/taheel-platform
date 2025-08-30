@@ -10,9 +10,9 @@ const PREFIXES = [
 ];
 
 export default function ServicesManagementSection({ employeeData, lang }) {
-  // حقول البحث
+  // البحث
   const [prefix, setPrefix] = useState("RES");
-  const [clientNumber, setClientNumber] = useState(""); // مثال: 200-9180
+  const [clientNumber, setClientNumber] = useState("");
   const [fullClientId, setFullClientId] = useState("");
   const [client, setClient] = useState(null);
 
@@ -22,7 +22,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedService, setSelectedService] = useState(null);
 
-  // معالجة الإدخال: إضافة "-" تلقائي بعد أول 3 أرقام
+  // إضافة "-" بعد أول 3 أرقام
   function handleClientNumberChange(e) {
     let value = e.target.value.replace(/\D/g, "");
     if (value.length > 7) value = value.slice(0, 7);
@@ -33,7 +33,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setClientNumber(formatted);
   }
 
-  // عند الضغط على زر البحث يتم تكوين رقم العميل النهائي ويبدأ البحث
+  // الضغط على زر البحث
   async function handleSearch(e) {
     e.preventDefault();
     const isValid = /^\d{3}-\d{4}$/.test(clientNumber);
@@ -66,7 +66,6 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(null);
   }
 
-  // جلب الخدمات حسب النوع
   async function fetchServicesForType(type) {
     if (!type) return setServices([]);
     const q = query(collection(firestore, "services"), where("type", "==", type));
@@ -78,7 +77,6 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setServices(arr);
   }
 
-  // جلب الخدمات الأخرى
   async function fetchOtherServices() {
     const q = query(collection(firestore, "services"), where("type", "==", "other"));
     const snap = await getDocs(q);
@@ -89,7 +87,6 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setOtherServices(arr);
   }
 
-  // اختيار الخدمة
   useEffect(() => {
     if (!selectedServiceId) return setSelectedService(null);
     const all = [...services, ...otherServices];
@@ -97,7 +94,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(srv || null);
   }, [selectedServiceId, services, otherServices]);
 
-  // تفاصيل الخدمة (Box)
+  // تفاصيل الخدمة
   function DetailsBox() {
     if (!client) return null;
     return (
@@ -107,29 +104,29 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         </div>
         <div className="px-4 py-4 grid grid-cols-1 gap-2 text-base font-semibold text-gray-800">
           <div>
-            <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "اسم العميل:" : "Client Name:"}</span>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "اسم العميل:" : "Client Name:"}</span>
             <span>{client.firstName} {client.lastName}</span>
           </div>
           <div>
-            <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "رقم العميل:" : "Client ID:"}</span>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "رقم العميل:" : "Client ID:"}</span>
             <span>{client.customerId}</span>
           </div>
           <div>
-            <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "نوع العميل:" : "Client Type:"}</span>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "نوع العميل:" : "Client Type:"}</span>
             <span>{client.accountType || client.type}</span>
           </div>
           {selectedService && (
             <>
               <div>
-                <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "الخدمة:" : "Service:"}</span>
+                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الخدمة:" : "Service:"}</span>
                 <span>{selectedService.name}</span>
               </div>
               <div>
-                <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "السعر:" : "Price:"}</span>
+                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "السعر:" : "Price:"}</span>
                 <span>{selectedService.price} AED</span>
               </div>
               <div>
-                <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "وصف الخدمة:" : "Description:"}</span>
+                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "وصف الخدمة:" : "Description:"}</span>
                 <span>{selectedService.desc}</span>
               </div>
             </>
@@ -139,9 +136,9 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
-  // التصميم النهائي ثابت وأنيق وصغير الحجم
+  // تصميم الحقول: عرض أفقي ثابت، بدون رقم العميل تحت الحقل
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-700 mb-6 text-center tracking-tight drop-shadow">
         {lang === "ar" ? "إنشاء خدمة للعميل" : "Create Client Service"}
       </h2>
@@ -151,7 +148,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         onSubmit={handleSearch}
       >
         {/* نوع العميل */}
-        <div className="flex flex-col items-start w-28">
+        <div className="flex flex-col items-start w-28 min-w-[90px]">
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "نوع العميل" : "Client Type"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 w-full shadow focus:outline-emerald-500 text-base font-bold text-emerald-900 bg-white"
@@ -165,7 +162,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
           </select>
         </div>
         {/* رقم العميل */}
-        <div className="flex flex-col items-start w-36">
+        <div className="flex flex-col items-start w-36 min-w-[110px]">
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
           <div className="relative w-full flex flex-row items-center">
             <input
@@ -188,12 +185,9 @@ export default function ServicesManagementSection({ employeeData, lang }) {
               {lang === "ar" ? "بحث" : "Search"}
             </button>
           </div>
-          <div className="mt-1 text-emerald-700 font-bold text-sm text-center w-full select-all">
-            {/^\d{3}-\d{4}$/.test(clientNumber) ? `${prefix}-${clientNumber}` : ""}
-          </div>
         </div>
-        {/* قائمة الخدمات تظهر إذا وجد العميل */}
-        <div className="flex flex-col items-start w-40">
+        {/* الخدمة */}
+        <div className="flex flex-col items-start w-40 min-w-[130px]">
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 shadow text-base font-bold text-emerald-900 bg-white w-full"
