@@ -12,8 +12,7 @@ const PREFIXES = [
 export default function ServicesManagementSection({ employeeData, lang }) {
   // حقول البحث
   const [prefix, setPrefix] = useState("RES");
-  const [first3, setFirst3] = useState("");
-  const [last4, setLast4] = useState("");
+  const [clientNumber, setClientNumber] = useState(""); // مثال: 200-9180
   const [fullClientId, setFullClientId] = useState("");
   const [client, setClient] = useState(null);
 
@@ -23,13 +22,23 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedService, setSelectedService] = useState(null);
 
+  // معالجة الإدخال: إضافة "-" تلقائي بعد أول 3 أرقام
+  function handleClientNumberChange(e) {
+    let value = e.target.value.replace(/\D/g, ""); // فقط أرقام
+    if (value.length > 7) value = value.slice(0, 7); // حد أقصى 7 أرقام
+    let formatted = value;
+    if (value.length > 3) {
+      formatted = value.slice(0, 3) + '-' + value.slice(3);
+    }
+    setClientNumber(formatted);
+  }
+
   // تكوين رقم العميل النهائي عند الكتابة
   useEffect(() => {
-    let f3 = first3.slice(0, 3);
-    let l4 = last4.slice(0, 4);
-    const clientId = f3 && l4 ? `${prefix}-${f3}-${l4}` : "";
-    setFullClientId(clientId);
-  }, [prefix, first3, last4]);
+    // لو الرقم كامل (3 أرقام + 4 أرقام)
+    const isValid = /^\d{3}-\d{4}$/.test(clientNumber);
+    setFullClientId(isValid ? `${prefix}-${clientNumber}` : "");
+  }, [prefix, clientNumber]);
 
   // البحث عن العميل تلقائي عند اكتمال الرقم
   useEffect(() => {
@@ -144,7 +153,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
       </h2>
       <form className="bg-white/95 rounded-xl shadow-xl p-8 flex flex-row gap-4 items-center justify-center" style={{ minHeight: 110 }}>
         {/* نوع العميل */}
-        <div className="flex flex-col items-start w-32">
+        <div className="flex flex-col items-start w-40">
           <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "نوع العميل" : "Client Type"}</label>
           <select
             className="border-2 rounded-xl px-3 py-2 w-full shadow focus:outline-emerald-500 text-lg font-bold text-emerald-900 bg-white"
@@ -156,60 +165,31 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             ))}
           </select>
         </div>
-        {/* أول 3 أرقام */}
-        <div className="flex flex-col items-start w-24">
-          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "أول 3 أرقام" : "First 3 digits"}</label>
-          <input
-            type="number"
-            value={first3}
-            onChange={e => setFirst3(e.target.value.replace(/\D/g, "").slice(0,3))}
-            className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-white text-center"
-            maxLength={3}
-            min={0}
-            max={999}
-            autoComplete="off"
-          />
-        </div>
-        {/* علامة - تلقائية */}
-        <div className="font-extrabold text-emerald-500 text-2xl pt-6">-</div>
-        {/* آخر 4 أرقام */}
-        <div className="flex flex-col items-start w-28">
-          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "آخر 4 أرقام" : "Last 4 digits"}</label>
-          <input
-            type="number"
-            value={last4}
-            onChange={e => setLast4(e.target.value.replace(/\D/g, "").slice(0,4))}
-            className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-white text-center"
-            maxLength={4}
-            min={0}
-            max={9999}
-            autoComplete="off"
-          />
-        </div>
-        {/* زر البحث */}
-        <div className="pt-6">
-          <button
-            type="button"
-            className="px-5 py-2 rounded-full font-bold text-lg shadow-lg bg-emerald-600 hover:bg-emerald-800 text-white flex items-center gap-2"
-            disabled={!first3 || !last4}
-            onClick={e => e.preventDefault()}
-            style={{ cursor: (!first3 || !last4) ? "not-allowed" : "pointer" }}
-            tabIndex={-1}
-          >
-            <FaSearch /> {lang === "ar" ? "بحث" : "Search"}
-          </button>
-        </div>
-        {/* عرض رقم العميل النهائي */}
+        {/* رقم العميل */}
         <div className="flex flex-col items-start w-40">
-          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "رقم العميل النهائي" : "Client ID"}</label>
-          <div className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-gray-100 text-center select-all">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
+          <div className="relative w-full">
+            <input
+              type="text"
+              value={clientNumber}
+              onChange={handleClientNumberChange}
+              placeholder={lang === "ar" ? "مثال: 2009180" : "e.g. 2009180"}
+              className="border-2 rounded-xl px-5 py-3 w-full shadow focus:outline-emerald-500 text-lg font-bold text-emerald-900 tracking-widest bg-white text-center"
+              maxLength={8}
+              style={{ letterSpacing: "2px" }}
+              autoComplete="off"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400">
+              <FaSearch />
+            </span>
+          </div>
+          {/* عرض رقم العميل النهائي تحت الحقل */}
+          <div className="mt-2 text-emerald-700 font-bold text-base text-center w-full select-all">
             {fullClientId}
           </div>
         </div>
-      </form>
-      {/* قائمة الخدمات */}
-      <div className="flex flex-row gap-4 items-center mt-6 justify-center">
-        <div className="flex flex-col items-start w-60">
+        {/* قائمة الخدمات تظهر إذا وجد العميل */}
+        <div className="flex flex-col items-start w-56">
           <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border-2 rounded-xl px-4 py-3 shadow text-lg font-bold text-emerald-900 bg-white"
@@ -230,7 +210,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             )}
           </select>
         </div>
-      </div>
+      </form>
       {/* جدول التفاصيل */}
       <div className="rounded-xl bg-white/95 p-5 shadow-lg border border-emerald-100 mt-6">
         {client && <DetailsTable />}
