@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const PREFIXES = [
-  { key: "resident", labelAr: "مقيم", labelEn: "Resident" },
-  { key: "nonresident", labelAr: "غير مقيم", labelEn: "Non-Resident" },
-  { key: "company", labelAr: "شركة", labelEn: "Company" }
+  { key: "RES", labelAr: "مقيم", labelEn: "Resident" },
+  { key: "NON", labelAr: "غير مقيم", labelEn: "Non-Resident" },
+  { key: "COM", labelAr: "شركة", labelEn: "Company" }
 ];
 
 export default function ServicesManagementSection({ employeeData, lang }) {
   // البحث
-  const [prefix, setPrefix] = useState("resident");
+  const [prefix, setPrefix] = useState("RES");
   const [clientNumber, setClientNumber] = useState("");
   const [fullClientId, setFullClientId] = useState("");
   const [client, setClient] = useState(null);
@@ -19,8 +19,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   // الخدمات
   const [services, setServices] = useState([]);
   const [otherServices, setOtherServices] = useState([]);
-  const [serviceQuery, setServiceQuery] = useState(""); // للبحث التلقائي
-  const [filteredServices, setFilteredServices] = useState([]);
+  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedService, setSelectedService] = useState(null);
 
   // إضافة "-" بعد أول 3 أرقام
@@ -34,17 +33,18 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setClientNumber(formatted);
   }
 
-  // البحث عن العميل (نفس الكود القديم)
+  // الضغط على زر البحث
   async function handleSearch(e) {
     e.preventDefault();
     const isValid = /^\d{3}-\d{4}$/.test(clientNumber);
-    const clientId = isValid ? `${prefix.toUpperCase()}-${clientNumber}` : "";
+    const clientId = isValid ? `${prefix}-${clientNumber}` : "";
     setFullClientId(clientId);
 
     if (!clientId || clientId.length < 12) {
       setClient(null);
       setServices([]);
       setOtherServices([]);
+      setSelectedServiceId("");
       setSelectedService(null);
       return;
     }
@@ -54,56 +54,51 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     if (snap.exists()) {
       const data = snap.data();
       setClient({ ...data, customerId: snap.id });
-      await fetchServicesForType(prefix);
+      const type = data.accountType || data.type;
+      await fetchServicesForType(type);
       await fetchOtherServices();
     } else {
       setClient(null);
       setServices([]);
       setOtherServices([]);
     }
+    setSelectedServiceId("");
     setSelectedService(null);
-    setServiceQuery("");
   }
 
-  // جلب خدمات نوع العميل
-async function fetchServicesForType(type) {
-  // جلب الخدمات من collection فرعي حسب النوع
-  if (!type) return setServices([]);
-  const collRef = collection(firestore, "servicesByClientType", type.toLowerCase(), type.toLowerCase());
-  const snap = await getDocs(collRef);
-  let arr = [];
-  snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-  setServices(arr);
-}
+  async function fetchServicesForType(type) {
+    if (!type) return setServices([]);
+    const q = query(collection(firestore, "services"), where("type", "==", type));
+    const snap = await getDocs(q);
+    let arr = [];
+    snap.forEach(doc => {
+      arr.push({ id: doc.id, ...doc.data() });
+    });
+    setServices(arr);
+  }
 
-async function fetchOtherServices() {
-  // جلب الخدمات الأخرى من collection other
-  const collRef = collection(firestore, "servicesByClientType", "other", "other");
-  const snap = await getDocs(collRef);
-  let arr = [];
-  snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-  setOtherServices(arr);
-}
+  async function fetchOtherServices() {
+    const q = query(collection(firestore, "services"), where("type", "==", "other"));
+    const snap = await getDocs(q);
+    let arr = [];
+    snap.forEach(doc => {
+      arr.push({ id: doc.id, ...doc.data() });
+    });
+    setOtherServices(arr);
+  }
 
-  // فلترة الخدمات عند الكتابة
   useEffect(() => {
-    let all = [...services, ...otherServices];
-    if (serviceQuery.trim() === "") {
-      setFilteredServices(all);
-    } else {
-      setFilteredServices(
-        all.filter(s =>
-          (s.name || "").toLowerCase().includes(serviceQuery.toLowerCase())
-        )
-      );
-    }
-  }, [serviceQuery, services, otherServices]);
+    if (!selectedServiceId) return setSelectedService(null);
+    const all = [...services, ...otherServices];
+    const srv = all.find(s => s.id === selectedServiceId);
+    setSelectedService(srv || null);
+  }, [selectedServiceId, services, otherServices]);
 
   // تفاصيل الخدمة
   function DetailsBox() {
     if (!client) return null;
     return (
-      <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in mt-4">
+      <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in">
         <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
           {lang === "ar" ? "تفاصيل الخدمة" : "Service Details"}
         </div>
@@ -132,7 +127,7 @@ async function fetchOtherServices() {
               </div>
               <div>
                 <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "وصف الخدمة:" : "Description:"}</span>
-                <span>{selectedService.description}</span>
+                <span>{selectedService.desc}</span>
               </div>
             </>
           )}
@@ -141,6 +136,7 @@ async function fetchOtherServices() {
     );
   }
 
+  // توسيع المكان الرئيسي للحقول
   return (
     <div className="w-full max-w-4xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-700 mb-6 text-center tracking-tight drop-shadow">
@@ -190,56 +186,28 @@ async function fetchOtherServices() {
             </button>
           </div>
         </div>
-        {/* الخدمة مع البحث */}
-        <div className="flex flex-col items-start flex-1" style={{ minWidth: "350px", position: "relative" }}>
+        {/* الخدمة */}
+        <div className="flex flex-col items-start flex-1" style={{ minWidth: "350px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "الخدمة" : "Service"}</label>
-          <input
-            type="text"
-            value={serviceQuery}
-            onChange={e => {
-              setServiceQuery(e.target.value);
-              setSelectedService(null);
-            }}
-            placeholder={lang === "ar" ? "ابحث أو اكتب اسم الخدمة" : "Search or type service name"}
-            className="border-2 rounded-lg px-3 py-1 w-full shadow focus:outline-emerald-500 text-base font-bold text-emerald-900 bg-white"
-            style={{ height: 38, fontSize: "18px" }}
+          <select
+            className="border-2 rounded-lg px-2 py-1 shadow text-base font-bold text-emerald-900 bg-white w-full"
+            value={selectedServiceId}
+            onChange={e => setSelectedServiceId(e.target.value)}
             disabled={!client}
-            autoComplete="off"
-          />
-          {/* قائمة اقتراحات الخدمات */}
-          {serviceQuery && filteredServices.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border border-emerald-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-              {filteredServices.map(s => (
-                <li
-                  key={s.id}
-                  className="px-4 py-2 cursor-pointer hover:bg-emerald-50"
-                  onClick={() => {
-                    setSelectedService(s);
-                    setServiceQuery(s.name);
-                  }}
-                >
-                  {s.name}
-                </li>
-              ))}
-            </ul>
-          )}
-          {/* إظهار كل الخدمات لو لا يوجد بحث */}
-          {!serviceQuery && client && filteredServices.length > 0 && (
-            <ul className="absolute z-10 w-full bg-white border border-emerald-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
-              {filteredServices.map(s => (
-                <li
-                  key={s.id}
-                  className="px-4 py-2 cursor-pointer hover:bg-emerald-50"
-                  onClick={() => {
-                    setSelectedService(s);
-                    setServiceQuery(s.name);
-                  }}
-                >
-                  {s.name}
-                </li>
-              ))}
-            </ul>
-          )}
+            style={{ height: 38, fontSize: "18px" }}
+          >
+            <option value="">{lang === "ar" ? "-- اختر الخدمة --" : "-- Select Service --"}</option>
+            {services.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+            {otherServices.length > 0 && (
+              <optgroup label={lang === "ar" ? "خدمات أخرى" : "Other Services"}>
+                {otherServices.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
         </div>
       </form>
       {/* تفاصيل الخدمة بشكل أنيق */}
