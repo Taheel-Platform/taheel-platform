@@ -66,22 +66,24 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   }
 
   // جلب خدمات نوع العميل
-  async function fetchServicesForType(type) {
-    const collRef = collection(firestore, "servicesByClientType", type, type);
-    const snap = await getDocs(collRef);
-    let arr = [];
-    snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-    setServices(arr);
-  }
+async function fetchServicesForType(type) {
+  // جلب الخدمات من collection فرعي حسب النوع
+  if (!type) return setServices([]);
+  const collRef = collection(firestore, "servicesByClientType", type.toLowerCase(), type.toLowerCase());
+  const snap = await getDocs(collRef);
+  let arr = [];
+  snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
+  setServices(arr);
+}
 
-  // جلب خدمات other
-  async function fetchOtherServices() {
-    const collRef = collection(firestore, "servicesByClientType", "other", "other");
-    const snap = await getDocs(collRef);
-    let arr = [];
-    snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
-    setOtherServices(arr);
-  }
+async function fetchOtherServices() {
+  // جلب الخدمات الأخرى من collection other
+  const collRef = collection(firestore, "servicesByClientType", "other", "other");
+  const snap = await getDocs(collRef);
+  let arr = [];
+  snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
+  setOtherServices(arr);
+}
 
   // فلترة الخدمات عند الكتابة
   useEffect(() => {
