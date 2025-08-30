@@ -136,19 +136,19 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
-  // تصميم الحقول: عرض أفقي ثابت، بدون رقم العميل تحت الحقل
+  // تصميم الحقول: عرض أفقي ثابت + تعديلات العرض المطلوبة
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-700 mb-6 text-center tracking-tight drop-shadow">
         {lang === "ar" ? "إنشاء خدمة للعميل" : "Create Client Service"}
       </h2>
       <form
-        className="bg-white rounded-xl shadow-lg px-4 py-6 flex flex-row gap-3 items-center justify-center"
+        className="bg-white rounded-xl shadow-lg px-4 py-6 flex flex-row gap-4 items-center justify-center"
         style={{ minHeight: 80 }}
         onSubmit={handleSearch}
       >
         {/* نوع العميل */}
-        <div className="flex flex-col items-start w-28 min-w-[90px]">
+        <div className="flex flex-col items-start w-28 min-w-[90px] flex-shrink-0">
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "نوع العميل" : "Client Type"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 w-full shadow focus:outline-emerald-500 text-base font-bold text-emerald-900 bg-white"
@@ -161,8 +161,8 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             ))}
           </select>
         </div>
-        {/* رقم العميل */}
-        <div className="flex flex-col items-start w-36 min-w-[110px]">
+        {/* رقم العميل (عرض 3 أضعاف) */}
+        <div className="flex flex-col items-start" style={{ width: "330px", minWidth: "230px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
           <div className="relative w-full flex flex-row items-center">
             <input
@@ -172,13 +172,13 @@ export default function ServicesManagementSection({ employeeData, lang }) {
               placeholder={lang === "ar" ? "2009180" : "2009180"}
               className="border-2 rounded-lg px-3 py-1 w-full shadow focus:outline-emerald-500 text-base font-bold text-emerald-900 tracking-widest bg-white text-center"
               maxLength={8}
-              style={{ height: 36, letterSpacing: "2px" }}
+              style={{ height: 36, letterSpacing: "2px", fontSize: "18px" }}
               autoComplete="off"
             />
             <button
               type="submit"
               className="ml-2 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-800 text-white flex items-center gap-1 font-bold text-base"
-              style={{ height: 36 }}
+              style={{ height: 36, minWidth: "70px", fontSize: "16px" }}
               title={lang === "ar" ? "بحث" : "Search"}
             >
               <FaSearch />
@@ -186,15 +186,15 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             </button>
           </div>
         </div>
-        {/* الخدمة */}
-        <div className="flex flex-col items-start w-40 min-w-[130px]">
+        {/* الخدمة (عرض ضعف الحقل الأصلي) */}
+        <div className="flex flex-col items-start" style={{ width: "180px", minWidth: "150px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 shadow text-base font-bold text-emerald-900 bg-white w-full"
             value={selectedServiceId}
             onChange={e => setSelectedServiceId(e.target.value)}
             disabled={!client}
-            style={{ height: 36 }}
+            style={{ height: 36, fontSize: "16px" }}
           >
             <option value="">{lang === "ar" ? "-- اختر الخدمة --" : "-- Select Service --"}</option>
             {services.map(s => (
