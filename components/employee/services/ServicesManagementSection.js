@@ -136,7 +136,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
-  // تصميم الحقول: 3 حقول عريضة في صف واحد + زر بحث واضح
+  // تصميم الحقول: رقم العميل صغير، الخدمة عريض جدا، كل الحقول في صف واحد
   return (
     <div className="w-full max-w-2xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-700 mb-6 text-center tracking-tight drop-shadow">
@@ -161,8 +161,8 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             ))}
           </select>
         </div>
-        {/* رقم العميل (عرض 3 أضعاف) */}
-        <div className="flex flex-col items-start" style={{ width: "330px", minWidth: "230px" }}>
+        {/* رقم العميل (عرض مناسب للرقم فقط) */}
+        <div className="flex flex-col items-start" style={{ width: "130px", minWidth: "110px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
           <div className="relative w-full flex flex-row items-center">
             <input
@@ -186,8 +186,8 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             </button>
           </div>
         </div>
-        {/* الخدمة (عرض ضعف الحقل الأصلي) */}
-        <div className="flex flex-col items-start" style={{ width: "180px", minWidth: "150px" }}>
+        {/* الخدمة (بقية المساحة عريض جدا) */}
+        <div className="flex flex-col items-start flex-1" style={{ minWidth: "220px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 shadow text-base font-bold text-emerald-900 bg-white w-full"
