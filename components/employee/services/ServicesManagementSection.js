@@ -136,6 +136,29 @@ export default function ServicesManagementSection({ employeeData, lang }) {
       : (selectedService.requiredDocuments ? Object.values(selectedService.requiredDocuments) : []);
     const requireUpload = selectedService.requireUpload || requiredDocs.length > 0;
 
+    // زر رفع مستند منفصل لكل مستند
+    function UploadDocButtons() {
+      if (!requireUpload || requiredDocs.length === 0) return null;
+      return (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {requiredDocs.map((doc, idx) => {
+            // اسم المستند للعرض
+            let docName = typeof doc === "string" ? doc : (doc.ar || doc.en || doc.name || doc.label || `مستند ${idx+1}`);
+            return (
+              <button
+                key={idx}
+                type="button"
+                className="px-4 py-2 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-base shadow"
+                onClick={() => alert(`رفع مستند: ${docName}`)}
+              >
+                {lang === "ar" ? `رفع: ${docName}` : `Upload: ${docName}`}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
     return (
       <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in">
         <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
@@ -162,18 +185,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
                   <li key={idx}>{typeof doc === "string" ? doc : (doc.ar || doc.en || doc.name || doc.label)}</li>
                 ))}
               </ul>
-            </div>
-          )}
-          {/* زر رفع المستندات لو الخدمة محتاجاها */}
-          {requireUpload && (
-            <div className="mt-2">
-              <button
-                type="button"
-                className="px-4 py-2 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-base shadow"
-                onClick={() => alert("فتح مودال رفع المستندات (هتضيفه لاحقًا)")}
-              >
-                {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload Documents"}
-              </button>
+              <UploadDocButtons />
             </div>
           )}
         </div>
