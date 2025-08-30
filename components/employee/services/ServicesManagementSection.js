@@ -136,14 +136,14 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
-  // تصميم الحقول: رقم العميل عريض جدا (3 أضعاف)، باقي الحقول ثابتة بجوار بعض
+  // توسيع المكان الرئيسي للحقول
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto">
       <h2 className="text-xl sm:text-2xl font-extrabold text-emerald-700 mb-6 text-center tracking-tight drop-shadow">
         {lang === "ar" ? "إنشاء خدمة للعميل" : "Create Client Service"}
       </h2>
       <form
-        className="bg-white rounded-xl shadow-lg px-4 py-6 flex flex-row gap-5 items-center justify-center"
+        className="bg-white rounded-xl shadow-lg px-12 py-8 flex flex-row gap-8 items-center justify-center"
         style={{ minHeight: 80 }}
         onSubmit={handleSearch}
       >
@@ -161,7 +161,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
             ))}
           </select>
         </div>
-        {/* رقم العميل (عريض جدا) */}
+        {/* رقم العميل */}
         <div className="flex flex-col items-start" style={{ width: "290px", minWidth: "160px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
           <div className="relative w-full flex flex-row items-center">
