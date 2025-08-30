@@ -1,75 +1,107 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaUser, FaClipboardList } from "react-icons/fa";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { firestore as db } from "@/lib/firebase.client";
+import { FaSearch, FaClipboardList } from "react-icons/fa";
+import { firestore } from "@/lib/firebase.client";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+
+const PREFIXES = [
+  { key: "RES", labelAr: "مقيم", labelEn: "Resident" },
+  { key: "NON", labelAr: "غير مقيم", labelEn: "Non-Resident" },
+  { key: "COM", labelAr: "شركة", labelEn: "Company" }
+];
 
 export default function ServicesManagementSection({ employeeData, lang }) {
-  // State
-  const [clientSearch, setClientSearch] = useState("");
-  const [clientResult, setClientResult] = useState(null);
-  const [serviceList, setServiceList] = useState([]);
+  // البحث المركب للعميل
+  const [prefix, setPrefix] = useState("RES");
+  const [firstPart, setFirstPart] = useState("");
+  const [secondPart, setSecondPart] = useState("");
+  const [fullClientId, setFullClientId] = useState("");
+  const [client, setClient] = useState(null);
+
+  // الخدمات
+  const [services, setServices] = useState([]);
+  const [otherServices, setOtherServices] = useState([]);
+  const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedService, setSelectedService] = useState(null);
 
-  // بحث العميل
-  async function handleClientSearch() {
-    if (!clientSearch.trim()) return;
-    const q = query(
-      collection(db, "users"),
-      where("role", "==", "client")
-    );
-    const snap = await getDocs(q);
-    const searchLower = clientSearch.toLowerCase();
-    let found = null;
-    snap.forEach(doc => {
-      const data = doc.data();
-      const fullName = `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim();
-      if (
-        (data.customerId && data.customerId.includes(clientSearch)) ||
-        (fullName && fullName.toLowerCase().includes(searchLower))
-      ) {
-        found = {
-          id: data.customerId,
-          name: fullName,
-          phone: data.phone,
-          email: data.email,
-          type: data.type || data.accountType || "",
-        };
-      }
-    });
-    setClientResult(found);
-    setSelectedService(null); // امسح الخدمة لو غيرت العميل
-  }
-
-  // جلب الخدمات حسب نوع العميل
+  // -------- بناء رقم العميل تلقائي --------
   useEffect(() => {
-    async function fetchServices() {
-      if (!clientResult?.type) {
-        setServiceList([]);
+    if (firstPart.length === 3 && !secondPart) {
+      setSecondPart("");
+    }
+    if (firstPart.length > 3) {
+      setFirstPart(firstPart.slice(0, 3));
+    }
+    if (secondPart.length > 4) {
+      setSecondPart(secondPart.slice(0, 4));
+    }
+    setFullClientId(`${prefix}-${firstPart}${firstPart ? "-" : ""}${secondPart}`);
+  }, [prefix, firstPart, secondPart]);
+
+  // -------- البحث عن العميل تلقائي --------
+  useEffect(() => {
+    async function fetchClient() {
+      if (fullClientId.length < 12) {
+        setClient(null);
+        setServices([]);
+        setOtherServices([]);
         return;
       }
-      const q = query(
-        collection(db, "services"),
-        where("type", "==", clientResult.type)
-      );
-      const snap = await getDocs(q);
-      let services = [];
-      snap.forEach(doc => {
-        const data = doc.data();
-        services.push({
-          id: doc.id,
-          name: data.name,
-          price: data.price,
-          desc: data.desc,
-        });
-      });
-      setServiceList(services);
+      // جلب بيانات العميل
+      const docRef = doc(firestore, "users", fullClientId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        setClient({ ...data, customerId: snap.id });
+        // جلب الخدمات المناسبة لهذا النوع
+        const type = data.accountType || data.type;
+        fetchServicesForType(type);
+        fetchOtherServices(type);
+      } else {
+        setClient(null);
+        setServices([]);
+        setOtherServices([]);
+      }
+      setSelectedServiceId("");
+      setSelectedService(null);
     }
-    fetchServices();
-  }, [clientResult?.type]);
+    fetchClient();
+    // eslint-disable-next-line
+  }, [fullClientId]);
 
-  // تفاصيل الخدمة في جدول
-  function ServiceDetailsTable() {
-    if (!selectedService || !clientResult) return null;
+  // -------- جلب الخدمات حسب النوع --------
+  async function fetchServicesForType(type) {
+    if (!type) return setServices([]);
+    const q = query(collection(firestore, "services"), where("type", "==", type));
+    const snap = await getDocs(q);
+    let arr = [];
+    snap.forEach(doc => {
+      arr.push({ id: doc.id, ...doc.data() });
+    });
+    setServices(arr);
+  }
+
+  // -------- جلب الخدمات الأخرى --------
+  async function fetchOtherServices(type) {
+    const q = query(collection(firestore, "services"), where("type", "==", "other"));
+    const snap = await getDocs(q);
+    let arr = [];
+    snap.forEach(doc => {
+      arr.push({ id: doc.id, ...doc.data() });
+    });
+    setOtherServices(arr);
+  }
+
+  // -------- اختيار الخدمة --------
+  useEffect(() => {
+    if (!selectedServiceId) return setSelectedService(null);
+    const all = [...services, ...otherServices];
+    const srv = all.find(s => s.id === selectedServiceId);
+    setSelectedService(srv || null);
+  }, [selectedServiceId, services, otherServices]);
+
+  // -------- جدول تفاصيل --------
+  function DetailsTable() {
+    if (!client || !selectedService) return null;
     return (
       <table className="w-full mt-6 rounded-xl overflow-hidden shadow border border-indigo-100 bg-white animate-fade-in">
         <thead className="bg-indigo-50">
@@ -81,15 +113,15 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         <tbody>
           <tr>
             <td className="p-3 font-bold">{lang === "ar" ? "اسم العميل" : "Client Name"}</td>
-            <td className="p-3">{clientResult.name}</td>
+            <td className="p-3">{client.firstName} {client.lastName}</td>
           </tr>
           <tr>
             <td className="p-3 font-bold">{lang === "ar" ? "رقم العميل" : "Client ID"}</td>
-            <td className="p-3">{clientResult.id}</td>
+            <td className="p-3">{client.customerId}</td>
           </tr>
           <tr>
             <td className="p-3 font-bold">{lang === "ar" ? "نوع العميل" : "Client Type"}</td>
-            <td className="p-3">{clientResult.type}</td>
+            <td className="p-3">{client.accountType || client.type}</td>
           </tr>
           <tr>
             <td className="p-3 font-bold">{lang === "ar" ? "الخدمة" : "Service"}</td>
@@ -108,83 +140,100 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
+  // -------- الواجهة --------
   return (
     <div className="w-full max-w-4xl mx-auto">
       <h2 className="text-2xl font-extrabold text-indigo-700 mb-6 text-center tracking-tight">
         {lang === "ar" ? "إنشاء خدمة للعميل" : "Create Client Service"}
       </h2>
       <div className="flex flex-row gap-4 items-end mb-6 flex-wrap">
-        {/* بحث العميل */}
+        {/* اختيار البريفكس */}
         <div className="flex flex-col">
-          <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "اسم أو رقم العميل" : "Client Name or ID"}</label>
-          <div className="flex gap-1">
-            <input
-              type="text"
-              placeholder={lang === "ar" ? "اكتب هنا..." : "Type here..."}
-              value={clientSearch}
-              onChange={e => setClientSearch(e.target.value)}
-              className="border rounded-lg px-3 py-2 w-40 shadow focus:outline-indigo-500"
-              onKeyDown={e => { if (e.key === "Enter") handleClientSearch(); }}
-            />
-            <button
-              className="bg-indigo-600 hover:bg-indigo-800 text-white rounded-lg px-3 py-2 shadow flex items-center gap-1"
-              onClick={handleClientSearch}
-              title={lang === "ar" ? "بحث" : "Search"}
-            >
-              <FaSearch />
-              {lang === "ar" ? "بحث" : "Search"}
-            </button>
-          </div>
+          <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "نوع" : "Prefix"}</label>
+          <select
+            className="border rounded-lg px-3 py-2 w-28 shadow focus:outline-indigo-500"
+            value={prefix}
+            onChange={e => setPrefix(e.target.value)}
+          >
+            {PREFIXES.map(p => (
+              <option key={p.key} value={p.key}>{lang === "ar" ? p.labelAr : p.labelEn}</option>
+            ))}
+          </select>
+        </div>
+        {/* أول 3 أرقام */}
+        <div className="flex flex-col">
+          <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "أول 3 أرقام" : "First 3 Digits"}</label>
+          <input
+            type="number"
+            value={firstPart}
+            onChange={e => setFirstPart(e.target.value.replace(/\D/g, ""))}
+            className="border rounded-lg px-3 py-2 w-24 shadow focus:outline-indigo-500 text-center"
+            maxLength={3}
+            min={0}
+            max={999}
+          />
+        </div>
+        {/* آخر 4 أرقام */}
+        <div className="flex flex-col">
+          <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "آخر 4 أرقام" : "Last 4 Digits"}</label>
+          <input
+            type="number"
+            value={secondPart}
+            onChange={e => setSecondPart(e.target.value.replace(/\D/g, ""))}
+            className="border rounded-lg px-3 py-2 w-28 shadow focus:outline-indigo-500 text-center"
+            maxLength={4}
+            min={0}
+            max={9999}
+          />
+        </div>
+        {/* زر البحث */}
+        <div>
+          <button
+            className="px-5 py-2 rounded-full font-bold text-lg shadow-lg bg-indigo-600 hover:bg-indigo-800 text-white"
+            onClick={() => setFullClientId(`${prefix}-${firstPart}${firstPart ? "-" : ""}${secondPart}`)}
+            disabled={!firstPart || !secondPart}
+          >
+            <FaSearch /> {lang === "ar" ? "بحث" : "Search"}
+          </button>
         </div>
         {/* نوع العميل يظهر تلقائي */}
         <div className="flex flex-col">
           <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "نوع العميل" : "Client Type"}</label>
           <input
             type="text"
-            value={clientResult?.type ? clientResult.type : ""}
+            value={client?.accountType || client?.type || ""}
             readOnly
             className="border rounded-lg px-3 py-2 w-32 shadow bg-gray-100 text-gray-700"
             placeholder={lang === "ar" ? "..." : "..."}
           />
         </div>
-        {/* قائمة الخدمات المناسبة */}
+        {/* قائمة الخدمات تظهر تلقائي */}
         <div className="flex flex-col">
           <label className="font-bold text-indigo-800 mb-1">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border rounded-lg px-3 py-2 w-48 shadow"
-            value={selectedService?.id || ""}
-            onChange={e => {
-              const srv = serviceList.find(s => s.id === e.target.value);
-              setSelectedService(srv || null);
-            }}
-            disabled={!clientResult}
+            value={selectedServiceId}
+            onChange={e => setSelectedServiceId(e.target.value)}
+            disabled={!client}
           >
             <option value="">{lang === "ar" ? "-- اختر الخدمة --" : "-- Select Service --"}</option>
-            {serviceList.map(s => (
+            {services.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
+            {otherServices.length > 0 && (
+              <optgroup label={lang === "ar" ? "خدمات أخرى" : "Other Services"}>
+                {otherServices.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
-        {/* زر إنشاء الخدمة */}
-        <div>
-          <button
-            className={`px-5 py-2 rounded-full font-bold text-lg shadow-lg transition ${
-              clientResult && selectedService
-                ? "bg-indigo-600 hover:bg-indigo-800 text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-            disabled={!clientResult || !selectedService}
-            onClick={() => alert("تم إنشاء الخدمة! (هنا يتم توليد رابط الدفع وتسجيل الطلب)")}>
-            {lang === "ar" ? "إنشاء الخدمة" : "Create Service"}
-          </button>
-        </div>
       </div>
-      {/* تفاصيل الخدمة وجدول العميل */}
-      {clientResult && selectedService && (
-        <ServiceDetailsTable />
-      )}
+      {/* جدول التفاصيل */}
+      {client && selectedService && <DetailsTable />}
       {/* رسالة لو العميل غير موجود */}
-      {clientSearch && !clientResult && (
+      {fullClientId.length >= 12 && !client && (
         <div className="mt-6 text-red-600 font-bold text-center">
           {lang === "ar" ? "العميل غير موجود أو البيانات غير صحيحة." : "Client not found or incorrect info."}
         </div>
