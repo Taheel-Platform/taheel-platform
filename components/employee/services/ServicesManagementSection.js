@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const PREFIXES = [
   { key: "resident", labelAr: "مقيم", labelEn: "Resident" },
@@ -49,11 +49,14 @@ export default function ServicesManagementSection({ employeeData, lang }) {
       return;
     }
 
-    const docRef = doc(firestore, "users", clientId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      setClient({ ...data, customerId: snap.id });
+    // البحث بالدوكيومنت في حقل customerId وليس باسم الوثيقة نفسها
+    const q = query(collection(firestore, "users"), where("customerId", "==", clientId));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      const data = docSnap.data();
+      setClient({ ...data, customerId: data.customerId, id: docSnap.id });
       const type = (data.accountType || data.type || "resident").toLowerCase();
       await fetchServicesForType(type);
       await fetchOtherServices();
