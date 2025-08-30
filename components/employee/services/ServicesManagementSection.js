@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaSearch, FaClipboardList } from "react-icons/fa";
+import { FaSearch } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
@@ -10,10 +10,11 @@ const PREFIXES = [
 ];
 
 export default function ServicesManagementSection({ employeeData, lang }) {
-  // حقل موحد للبحث (prefix + باقي الرقم)
-  const [inputValue, setInputValue] = useState("");
-  const [fullClientId, setFullClientId] = useState("");
+  // حقول البحث
   const [prefix, setPrefix] = useState("RES");
+  const [first3, setFirst3] = useState("");
+  const [last4, setLast4] = useState("");
+  const [fullClientId, setFullClientId] = useState("");
   const [client, setClient] = useState(null);
 
   // الخدمات
@@ -22,45 +23,31 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [selectedService, setSelectedService] = useState(null);
 
-  // -------- معالجة إدخال الموظف --------
-  function handleInputChange(e) {
-    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    // افصل البريفكس
-    let foundPrefix = PREFIXES.find(p => value.startsWith(p.key));
-    let prefixVal = foundPrefix ? foundPrefix.key : prefix;
-    setPrefix(prefixVal);
-
-    // شيل البريفكس من القيمة
-    let rest = foundPrefix ? value.slice(prefixVal.length) : value;
-    // ادخل الـ - بعد أول 3 أرقام (أو أقل)
-    let firstNum = rest.slice(0, 3);
-    let lastNum = rest.slice(3, 7);
-
-    // كوّن الشكل النهائي للرقم
-    let clientId = `${prefixVal}-${firstNum}${firstNum.length === 3 ? "-" : ""}${lastNum}`;
-    setInputValue(value); // الأصلية للكتابة
+  // تكوين رقم العميل النهائي عند الكتابة
+  useEffect(() => {
+    let f3 = first3.slice(0, 3);
+    let l4 = last4.slice(0, 4);
+    const clientId = f3 && l4 ? `${prefix}-${f3}-${l4}` : "";
     setFullClientId(clientId);
-  }
+  }, [prefix, first3, last4]);
 
-  // -------- البحث عن العميل تلقائي --------
+  // البحث عن العميل تلقائي عند اكتمال الرقم
   useEffect(() => {
     async function fetchClient() {
-      if (fullClientId.length < 12) {
+      if (!fullClientId || fullClientId.length < 12) {
         setClient(null);
         setServices([]);
         setOtherServices([]);
         return;
       }
-      // جلب بيانات العميل
       const docRef = doc(firestore, "users", fullClientId);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
         setClient({ ...data, customerId: snap.id });
-        // جلب الخدمات المناسبة لهذا النوع
         const type = data.accountType || data.type;
         fetchServicesForType(type);
-        fetchOtherServices(type);
+        fetchOtherServices();
       } else {
         setClient(null);
         setServices([]);
@@ -73,7 +60,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     // eslint-disable-next-line
   }, [fullClientId]);
 
-  // -------- جلب الخدمات حسب النوع --------
+  // جلب الخدمات حسب النوع
   async function fetchServicesForType(type) {
     if (!type) return setServices([]);
     const q = query(collection(firestore, "services"), where("type", "==", type));
@@ -85,8 +72,8 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setServices(arr);
   }
 
-  // -------- جلب الخدمات الأخرى --------
-  async function fetchOtherServices(type) {
+  // جلب الخدمات الأخرى
+  async function fetchOtherServices() {
     const q = query(collection(firestore, "services"), where("type", "==", "other"));
     const snap = await getDocs(q);
     let arr = [];
@@ -96,7 +83,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setOtherServices(arr);
   }
 
-  // -------- اختيار الخدمة --------
+  // اختيار الخدمة
   useEffect(() => {
     if (!selectedServiceId) return setSelectedService(null);
     const all = [...services, ...otherServices];
@@ -104,7 +91,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(srv || null);
   }, [selectedServiceId, services, otherServices]);
 
-  // -------- جدول تفاصيل --------
+  // جدول التفاصيل
   function DetailsTable() {
     if (!client) return null;
     return (
@@ -149,62 +136,103 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     );
   }
 
-  // -------- الواجهة --------
+  // التصميم النهائي ثابت وأنيق
   return (
     <div className="w-full max-w-3xl mx-auto">
       <h2 className="text-2xl font-extrabold text-emerald-700 mb-8 text-center tracking-tight drop-shadow">
         {lang === "ar" ? "إنشاء خدمة للعميل" : "Create Client Service"}
       </h2>
-      <div className="flex flex-col gap-6 items-center mb-6">
-        {/* حقل بحث موحد */}
-        <div className="w-full flex flex-row gap-3 items-end">
-          <div className="flex flex-col flex-1">
-            <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "رقم العميل" : "Client ID"}</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={handleInputChange}
-                placeholder={lang === "ar" ? "مثال: RES2009180" : "e.g. RES2009180"}
-                className="border-2 rounded-xl px-5 py-3 w-full shadow focus:outline-emerald-500 text-lg font-bold text-emerald-900 tracking-widest bg-white"
-                maxLength={11}
-                style={{ letterSpacing: "2px" }}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400">
-                <FaSearch />
-              </span>
-            </div>
-            {/* عرض الرقم النهائي للعميل */}
-            <div className="mt-2 text-emerald-700 font-bold text-base">
-              {fullClientId}
-            </div>
+      <form className="bg-white/95 rounded-xl shadow-xl p-8 flex flex-row gap-4 items-center justify-center" style={{ minHeight: 110 }}>
+        {/* نوع العميل */}
+        <div className="flex flex-col items-start w-32">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "نوع العميل" : "Client Type"}</label>
+          <select
+            className="border-2 rounded-xl px-3 py-2 w-full shadow focus:outline-emerald-500 text-lg font-bold text-emerald-900 bg-white"
+            value={prefix}
+            onChange={e => setPrefix(e.target.value)}
+          >
+            {PREFIXES.map(p => (
+              <option key={p.key} value={p.key}>{lang === "ar" ? p.labelAr : p.labelEn}</option>
+            ))}
+          </select>
+        </div>
+        {/* أول 3 أرقام */}
+        <div className="flex flex-col items-start w-24">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "أول 3 أرقام" : "First 3 digits"}</label>
+          <input
+            type="number"
+            value={first3}
+            onChange={e => setFirst3(e.target.value.replace(/\D/g, "").slice(0,3))}
+            className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-white text-center"
+            maxLength={3}
+            min={0}
+            max={999}
+            autoComplete="off"
+          />
+        </div>
+        {/* علامة - تلقائية */}
+        <div className="font-extrabold text-emerald-500 text-2xl pt-6">-</div>
+        {/* آخر 4 أرقام */}
+        <div className="flex flex-col items-start w-28">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "آخر 4 أرقام" : "Last 4 digits"}</label>
+          <input
+            type="number"
+            value={last4}
+            onChange={e => setLast4(e.target.value.replace(/\D/g, "").slice(0,4))}
+            className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-white text-center"
+            maxLength={4}
+            min={0}
+            max={9999}
+            autoComplete="off"
+          />
+        </div>
+        {/* زر البحث */}
+        <div className="pt-6">
+          <button
+            type="button"
+            className="px-5 py-2 rounded-full font-bold text-lg shadow-lg bg-emerald-600 hover:bg-emerald-800 text-white flex items-center gap-2"
+            disabled={!first3 || !last4}
+            onClick={e => e.preventDefault()}
+            style={{ cursor: (!first3 || !last4) ? "not-allowed" : "pointer" }}
+            tabIndex={-1}
+          >
+            <FaSearch /> {lang === "ar" ? "بحث" : "Search"}
+          </button>
+        </div>
+        {/* عرض رقم العميل النهائي */}
+        <div className="flex flex-col items-start w-40">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "رقم العميل النهائي" : "Client ID"}</label>
+          <div className="border-2 rounded-xl px-3 py-2 w-full shadow text-lg font-bold text-emerald-900 bg-gray-100 text-center select-all">
+            {fullClientId}
           </div>
-          {/* قائمة الخدمات تظهر إذا وجد العميل */}
-          <div className="flex flex-col flex-1">
-            <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "الخدمة" : "Service"}</label>
-            <select
-              className="border-2 rounded-xl px-4 py-3 shadow text-lg font-bold text-emerald-900 bg-white"
-              value={selectedServiceId}
-              onChange={e => setSelectedServiceId(e.target.value)}
-              disabled={!client}
-            >
-              <option value="">{lang === "ar" ? "-- اختر الخدمة --" : "-- Select Service --"}</option>
-              {services.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-              {otherServices.length > 0 && (
-                <optgroup label={lang === "ar" ? "خدمات أخرى" : "Other Services"}>
-                  {otherServices.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
+        </div>
+      </form>
+      {/* قائمة الخدمات */}
+      <div className="flex flex-row gap-4 items-center mt-6 justify-center">
+        <div className="flex flex-col items-start w-60">
+          <label className="font-bold text-emerald-800 mb-1">{lang === "ar" ? "الخدمة" : "Service"}</label>
+          <select
+            className="border-2 rounded-xl px-4 py-3 shadow text-lg font-bold text-emerald-900 bg-white"
+            value={selectedServiceId}
+            onChange={e => setSelectedServiceId(e.target.value)}
+            disabled={!client}
+          >
+            <option value="">{lang === "ar" ? "-- اختر الخدمة --" : "-- Select Service --"}</option>
+            {services.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+            {otherServices.length > 0 && (
+              <optgroup label={lang === "ar" ? "خدمات أخرى" : "Other Services"}>
+                {otherServices.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
         </div>
       </div>
       {/* جدول التفاصيل */}
-      <div className="rounded-xl bg-white/95 p-5 shadow-lg border border-emerald-100">
+      <div className="rounded-xl bg-white/95 p-5 shadow-lg border border-emerald-100 mt-6">
         {client && <DetailsTable />}
         {fullClientId.length >= 12 && !client && (
           <div className="text-red-600 font-bold text-center py-6 text-lg">
