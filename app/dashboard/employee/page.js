@@ -17,7 +17,7 @@ import { AttendanceSection } from "@/components/employee/attendanceSection/Atten
 import MyOrdersSection from "@/components/employee/ordersection/MyOrdersSection";
 import NotificationsSection from "@/components/employee/NotificationsSection";
 import SupportSection from "@/components/employee/SupportSection";
-
+import ServicesManagementSection from "@/components/employee/services/ServicesManagementSection";
 // Force dynamic rendering to prevent static export issues
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +67,9 @@ const EMPLOYEE_SIDEBAR_LINKS = [
   { key: "attendance", icon: <FaClock />, labelAr: "الحضور", labelEn: "Attendance" },
   { key: "myorders", icon: <FaClipboardList />, labelAr: "طلباتي", labelEn: "My Requests" },
   { key: "notifications", icon: <FaBell />, labelAr: "إشعاراتي", labelEn: "Notifications" },
-  { key: "support", icon: <FaComments />, labelAr: "الدعم الفني", labelEn: "Support" }
+  { key: "support", icon: <FaComments />, labelAr: "الدعم الفني", labelEn: "Support" },
+  { key: "services", icon: <FaClipboardList />, labelAr: "إدارة الخدمات", labelEn: "Services Management" }
+
 ];
 
 // greeting logic
