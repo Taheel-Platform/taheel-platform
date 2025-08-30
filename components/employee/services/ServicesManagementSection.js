@@ -9,8 +9,6 @@ const PREFIXES = [
   { key: "COM", labelAr: "شركة", labelEn: "Company" }
 ];
 
-// ألوان وخطوط متناسقة + كل الحقول في صف واحد وصغيرة
-
 export default function ServicesManagementSection({ employeeData, lang }) {
   // حقول البحث
   const [prefix, setPrefix] = useState("RES");
@@ -35,40 +33,38 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setClientNumber(formatted);
   }
 
-  // تكوين رقم العميل النهائي عند الكتابة
-  useEffect(() => {
+  // عند الضغط على زر البحث يتم تكوين رقم العميل النهائي ويبدأ البحث
+  async function handleSearch(e) {
+    e.preventDefault();
     const isValid = /^\d{3}-\d{4}$/.test(clientNumber);
-    setFullClientId(isValid ? `${prefix}-${clientNumber}` : "");
-  }, [prefix, clientNumber]);
+    const clientId = isValid ? `${prefix}-${clientNumber}` : "";
+    setFullClientId(clientId);
 
-  // البحث عن العميل تلقائي عند اكتمال الرقم
-  useEffect(() => {
-    async function fetchClient() {
-      if (!fullClientId || fullClientId.length < 12) {
-        setClient(null);
-        setServices([]);
-        setOtherServices([]);
-        return;
-      }
-      const docRef = doc(firestore, "users", fullClientId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        setClient({ ...data, customerId: snap.id });
-        const type = data.accountType || data.type;
-        fetchServicesForType(type);
-        fetchOtherServices();
-      } else {
-        setClient(null);
-        setServices([]);
-        setOtherServices([]);
-      }
+    if (!clientId || clientId.length < 12) {
+      setClient(null);
+      setServices([]);
+      setOtherServices([]);
       setSelectedServiceId("");
       setSelectedService(null);
+      return;
     }
-    fetchClient();
-    // eslint-disable-next-line
-  }, [fullClientId]);
+
+    const docRef = doc(firestore, "users", clientId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      setClient({ ...data, customerId: snap.id });
+      const type = data.accountType || data.type;
+      await fetchServicesForType(type);
+      await fetchOtherServices();
+    } else {
+      setClient(null);
+      setServices([]);
+      setOtherServices([]);
+    }
+    setSelectedServiceId("");
+    setSelectedService(null);
+  }
 
   // جلب الخدمات حسب النوع
   async function fetchServicesForType(type) {
@@ -101,7 +97,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(srv || null);
   }, [selectedServiceId, services, otherServices]);
 
-  // جدول تفاصيل الخدمة (كلمة واحدة)
+  // تفاصيل الخدمة (Box)
   function DetailsBox() {
     if (!client) return null;
     return (
@@ -109,7 +105,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
           {lang === "ar" ? "تفاصيل الخدمة" : "Service Details"}
         </div>
-        <div className="px-4 py-4 grid grid-cols-1 gap-2 text-base font-semibold text-gray-700">
+        <div className="px-4 py-4 grid grid-cols-1 gap-2 text-base font-semibold text-gray-800">
           <div>
             <span className="inline-block w-36 text-emerald-700">{lang === "ar" ? "اسم العميل:" : "Client Name:"}</span>
             <span>{client.firstName} {client.lastName}</span>
@@ -152,7 +148,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
       <form
         className="bg-white rounded-xl shadow-lg px-4 py-6 flex flex-row gap-3 items-center justify-center"
         style={{ minHeight: 80 }}
-        onSubmit={e => e.preventDefault()}
+        onSubmit={handleSearch}
       >
         {/* نوع العميل */}
         <div className="flex flex-col items-start w-28">
@@ -171,7 +167,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         {/* رقم العميل */}
         <div className="flex flex-col items-start w-36">
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
-          <div className="relative w-full">
+          <div className="relative w-full flex flex-row items-center">
             <input
               type="text"
               value={clientNumber}
@@ -182,12 +178,18 @@ export default function ServicesManagementSection({ employeeData, lang }) {
               style={{ height: 36, letterSpacing: "2px" }}
               autoComplete="off"
             />
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-emerald-400 text-lg">
+            <button
+              type="submit"
+              className="ml-2 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-800 text-white flex items-center gap-1 font-bold text-base"
+              style={{ height: 36 }}
+              title={lang === "ar" ? "بحث" : "Search"}
+            >
               <FaSearch />
-            </span>
+              {lang === "ar" ? "بحث" : "Search"}
+            </button>
           </div>
           <div className="mt-1 text-emerald-700 font-bold text-sm text-center w-full select-all">
-            {fullClientId}
+            {/^\d{3}-\d{4}$/.test(clientNumber) ? `${prefix}-${clientNumber}` : ""}
           </div>
         </div>
         {/* قائمة الخدمات تظهر إذا وجد العميل */}
@@ -224,7 +226,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
         )}
         {!client && !fullClientId && (
           <div className="text-gray-500 text-center py-3 text-base">
-            {lang === "ar" ? "يرجى إدخال رقم العميل لعرض التفاصيل." : "Please enter Client ID to show details."}
+            {lang === "ar" ? "يرجى إدخال رقم العميل ثم الضغط على بحث." : "Please enter Client ID then click Search."}
           </div>
         )}
       </div>
