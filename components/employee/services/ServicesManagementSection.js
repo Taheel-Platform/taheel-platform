@@ -66,23 +66,23 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(null);
   }
 
-async function fetchServicesForType(type) {
-  if (!type) return setServices([]);
-  const clientType = String(type).toLowerCase();
-  // جلب الوثيقة نفسها
-  const docRef = doc(firestore, "servicesByClientType", clientType);
-  const snap = await getDoc(docRef);
-  if (snap.exists()) {
-    const data = snap.data();
-    // استخراج كل الحقول التي تبدأ بـ service و active = true
-    const servicesArr = Object.entries(data)
-      .filter(([key, val]) => key.startsWith("service") && val.active)
-      .map(([key, val]) => ({ id: key, ...val }));
-    setServices(servicesArr);
-  } else {
-    setServices([]);
+  async function fetchServicesForType(type) {
+    if (!type) return setServices([]);
+    const clientType = String(type).toLowerCase();
+    // جلب الوثيقة نفسها
+    const docRef = doc(firestore, "servicesByClientType", clientType);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      // استخراج كل الحقول التي تبدأ بـ service و active = true
+      const servicesArr = Object.entries(data)
+        .filter(([key, val]) => key.startsWith("service") && val.active)
+        .map(([key, val]) => ({ id: key, ...val }));
+      setServices(servicesArr);
+    } else {
+      setServices([]);
+    }
   }
-}
 
   async function fetchOtherServices() {
     const q = query(collection(firestore, "services"), where("type", "==", "other"));
@@ -101,22 +101,15 @@ async function fetchServicesForType(type) {
     setSelectedService(srv || null);
   }, [selectedServiceId, services, otherServices]);
 
-  // تفاصيل الخدمة
-function DetailsBox() {
-    if (!client || !selectedService) return null;
-
-    // المستندات المطلوبة
-    const requiredDocs = Array.isArray(selectedService.requiredDocuments)
-      ? selectedService.requiredDocuments
-      : (selectedService.requiredDocuments ? Object.values(selectedService.requiredDocuments) : []);
-    const requireUpload = selectedService.requireUpload || requiredDocs.length > 0;
-
+  // بيانات العميل فقط (بدون تفاصيل خدمة)
+  function ClientInfoBox() {
+    if (!client) return null;
     return (
-      <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in">
+      <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in mb-2">
         <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
-          {lang === "ar" ? "تفاصيل الخدمة" : "Service Details"}
+          {lang === "ar" ? "بيانات العميل" : "Client Info"}
         </div>
-        <div className="px-4 py-4 grid grid-cols-1 gap-3 text-base font-semibold text-gray-800">
+        <div className="px-4 py-4 grid grid-cols-1 gap-2 text-base font-semibold text-gray-800">
           <div>
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "اسم العميل:" : "Client Name:"}</span>
             <span>{client.firstName} {client.lastName}</span>
@@ -129,7 +122,26 @@ function DetailsBox() {
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "نوع العميل:" : "Client Type:"}</span>
             <span>{client.accountType || client.type}</span>
           </div>
-          <hr className="my-2 border-emerald-100"/>
+        </div>
+      </div>
+    );
+  }
+
+  // تفاصيل الخدمة (تظهر فقط بعد اختيار خدمة)
+  function ServiceDetailsBox() {
+    if (!client || !selectedService) return null;
+
+    const requiredDocs = Array.isArray(selectedService.requiredDocuments)
+      ? selectedService.requiredDocuments
+      : (selectedService.requiredDocuments ? Object.values(selectedService.requiredDocuments) : []);
+    const requireUpload = selectedService.requireUpload || requiredDocs.length > 0;
+
+    return (
+      <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in">
+        <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
+          {lang === "ar" ? "تفاصيل الخدمة" : "Service Details"}
+        </div>
+        <div className="px-4 py-4 grid grid-cols-1 gap-3 text-base font-semibold text-gray-800">
           <div>
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الخدمة:" : "Service:"}</span>
             <span>{selectedService.name}</span>
@@ -142,7 +154,6 @@ function DetailsBox() {
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الوصف:" : "Description:"}</span>
             <span>{selectedService.desc || selectedService.description}</span>
           </div>
-          {/* مستندات مطلوبة */}
           {requiredDocs.length > 0 && (
             <div>
               <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "المستندات المطلوبة:" : "Required Documents:"}</span>
@@ -169,7 +180,6 @@ function DetailsBox() {
       </div>
     );
   }
-
 
   // توسيع المكان الرئيسي للحقول
   return (
@@ -245,9 +255,10 @@ function DetailsBox() {
           </select>
         </div>
       </form>
-      {/* تفاصيل الخدمة بشكل أنيق */}
+      {/* بيانات العميل تظهر بعد البحث */}
       <div className="rounded-xl bg-white/95 p-4 shadow-lg border border-emerald-100 mt-4">
-        {client && <DetailsBox />}
+        {client && <ClientInfoBox />}
+        {client && selectedService && <ServiceDetailsBox />}
         {fullClientId.length >= 12 && !client && (
           <div className="text-red-600 font-bold text-center py-5 text-base">
             {lang === "ar" ? "العميل غير موجود أو البيانات غير صحيحة." : "Client not found or incorrect info."}
