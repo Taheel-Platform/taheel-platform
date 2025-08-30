@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { firestore } from "@/lib/firebase.client";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const PREFIXES = [
-  { key: "resident", labelAr: "مقيم", labelEn: "Resident" },
-  { key: "nonresident", labelAr: "غير مقيم", labelEn: "Non-Resident" },
-  { key: "company", labelAr: "شركة", labelEn: "Company" }
+  { key: "RES", labelAr: "مقيم", labelEn: "Resident" },
+  { key: "NON", labelAr: "غير مقيم", labelEn: "Non-Resident" },
+  { key: "COM", labelAr: "شركة", labelEn: "Company" }
 ];
 
 export default function ServicesManagementSection({ employeeData, lang }) {
   // البحث
-  const [prefix, setPrefix] = useState("resident");
+  const [prefix, setPrefix] = useState("RES");
   const [clientNumber, setClientNumber] = useState("");
   const [fullClientId, setFullClientId] = useState("");
   const [client, setClient] = useState(null);
@@ -37,7 +37,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
   async function handleSearch(e) {
     e.preventDefault();
     const isValid = /^\d{3}-\d{4}$/.test(clientNumber);
-    const clientId = isValid ? `${prefix.toUpperCase()}-${clientNumber}` : "";
+    const clientId = isValid ? `${prefix}-${clientNumber}` : "";
     setFullClientId(clientId);
 
     if (!clientId || clientId.length < 12) {
@@ -49,15 +49,12 @@ export default function ServicesManagementSection({ employeeData, lang }) {
       return;
     }
 
-    // البحث بالدوكيومنت في حقل customerId وليس باسم الوثيقة نفسها
-    const q = query(collection(firestore, "users"), where("customerId", "==", clientId));
-    const snap = await getDocs(q);
-
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      const data = docSnap.data();
-      setClient({ ...data, customerId: data.customerId, id: docSnap.id });
-      const type = (data.accountType || data.type || "resident").toLowerCase();
+    const docRef = doc(firestore, "users", clientId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      setClient({ ...data, customerId: snap.id });
+      const type = data.accountType || data.type;
       await fetchServicesForType(type);
       await fetchOtherServices();
     } else {
@@ -69,22 +66,24 @@ export default function ServicesManagementSection({ employeeData, lang }) {
     setSelectedService(null);
   }
 
-  // جلب خدمات نوع العميل من قاعدة البيانات بشكل صحيح
   async function fetchServicesForType(type) {
     if (!type) return setServices([]);
-    const collRef = collection(firestore, "servicesByClientType", type, type);
+    // تحويل النوع ليكون lowercase لأن المسار في قاعدة البيانات كذلك
+    const clientType = String(type).toLowerCase();
+    const collRef = collection(firestore, "servicesByClientType", clientType, clientType);
     const snap = await getDocs(collRef);
     let arr = [];
     snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
     setServices(arr);
   }
 
-  // جلب خدمات "other" من قاعدة البيانات بشكل صحيح
   async function fetchOtherServices() {
-    const collRef = collection(firestore, "servicesByClientType", "other", "other");
-    const snap = await getDocs(collRef);
+    const q = query(collection(firestore, "services"), where("type", "==", "other"));
+    const snap = await getDocs(q);
     let arr = [];
-    snap.forEach(doc => arr.push({ id: doc.id, ...doc.data() }));
+    snap.forEach(doc => {
+      arr.push({ id: doc.id, ...doc.data() });
+    });
     setOtherServices(arr);
   }
 
@@ -128,7 +127,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
               </div>
               <div>
                 <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "وصف الخدمة:" : "Description:"}</span>
-                <span>{selectedService.description || selectedService.desc}</span>
+                <span>{selectedService.desc}</span>
               </div>
             </>
           )}
