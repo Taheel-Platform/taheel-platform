@@ -162,7 +162,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
           </select>
         </div>
         {/* رقم العميل (عريض جدا) */}
-        <div className="flex flex-col items-start" style={{ width: "360px", minWidth: "260px" }}>
+        <div className="flex flex-col items-start" style={{ width: "290px", minWidth: "160px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "رقم العميل" : "Client Number"}</label>
           <div className="relative w-full flex flex-row items-center">
             <input
@@ -187,7 +187,7 @@ export default function ServicesManagementSection({ employeeData, lang }) {
           </div>
         </div>
         {/* الخدمة */}
-        <div className="flex flex-col items-start flex-1" style={{ minWidth: "200px" }}>
+        <div className="flex flex-col items-start flex-1" style={{ minWidth: "350px" }}>
           <label className="font-bold text-emerald-700 mb-1 text-sm">{lang === "ar" ? "الخدمة" : "Service"}</label>
           <select
             className="border-2 rounded-lg px-2 py-1 shadow text-base font-bold text-emerald-900 bg-white w-full"
