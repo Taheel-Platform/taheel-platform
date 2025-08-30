@@ -102,14 +102,21 @@ async function fetchServicesForType(type) {
   }, [selectedServiceId, services, otherServices]);
 
   // تفاصيل الخدمة
-  function DetailsBox() {
-    if (!client) return null;
+function DetailsBox() {
+    if (!client || !selectedService) return null;
+
+    // المستندات المطلوبة
+    const requiredDocs = Array.isArray(selectedService.requiredDocuments)
+      ? selectedService.requiredDocuments
+      : (selectedService.requiredDocuments ? Object.values(selectedService.requiredDocuments) : []);
+    const requireUpload = selectedService.requireUpload || requiredDocs.length > 0;
+
     return (
       <div className="w-full rounded-xl overflow-hidden shadow border border-emerald-100 bg-white animate-fade-in">
         <div className="bg-emerald-50 px-4 py-2 text-center font-bold text-emerald-800 text-lg">
           {lang === "ar" ? "تفاصيل الخدمة" : "Service Details"}
         </div>
-        <div className="px-4 py-4 grid grid-cols-1 gap-2 text-base font-semibold text-gray-800">
+        <div className="px-4 py-4 grid grid-cols-1 gap-3 text-base font-semibold text-gray-800">
           <div>
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "اسم العميل:" : "Client Name:"}</span>
             <span>{client.firstName} {client.lastName}</span>
@@ -122,26 +129,47 @@ async function fetchServicesForType(type) {
             <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "نوع العميل:" : "Client Type:"}</span>
             <span>{client.accountType || client.type}</span>
           </div>
-          {selectedService && (
-            <>
-              <div>
-                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الخدمة:" : "Service:"}</span>
-                <span>{selectedService.name}</span>
-              </div>
-              <div>
-                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "السعر:" : "Price:"}</span>
-                <span>{selectedService.price} AED</span>
-              </div>
-              <div>
-                <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "وصف الخدمة:" : "Description:"}</span>
-                <span>{selectedService.desc}</span>
-              </div>
-            </>
+          <hr className="my-2 border-emerald-100"/>
+          <div>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الخدمة:" : "Service:"}</span>
+            <span>{selectedService.name}</span>
+          </div>
+          <div>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "السعر:" : "Price:"}</span>
+            <span>{selectedService.price} AED</span>
+          </div>
+          <div>
+            <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "الوصف:" : "Description:"}</span>
+            <span>{selectedService.desc || selectedService.description}</span>
+          </div>
+          {/* مستندات مطلوبة */}
+          {requiredDocs.length > 0 && (
+            <div>
+              <span className="inline-block w-32 text-emerald-700">{lang === "ar" ? "المستندات المطلوبة:" : "Required Documents:"}</span>
+              <ul className="list-disc list-inside text-gray-700 text-sm mt-1 ml-2">
+                {requiredDocs.map((doc, idx) => (
+                  <li key={idx}>{typeof doc === "string" ? doc : (doc.ar || doc.en || doc.name || doc.label)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* زر رفع المستندات لو الخدمة محتاجاها */}
+          {requireUpload && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-base shadow"
+                onClick={() => alert("فتح مودال رفع المستندات (هتضيفه لاحقًا)")}
+              >
+                {lang === "ar" ? "رفع المستندات المطلوبة" : "Upload Documents"}
+              </button>
+            </div>
           )}
         </div>
       </div>
     );
   }
+
 
   // توسيع المكان الرئيسي للحقول
   return (
